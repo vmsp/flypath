@@ -1,0 +1,38 @@
+{
+  "name": "flypath",
+  "version": "0.0.0",
+  "description": "Full-stack framework for Web, iOS and Android native applications using Server-Driven UI (SDUI).",
+  "keywords": [
+    "android",
+    "framework",
+    "ios",
+    "native",
+    "react",
+    "react-native",
+    "rsc",
+    "sdui",
+    "web"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Vitor Sousa Pereira",
+    "email": "vmsousapereira@gmail.com",
+    "url": "https://0x1.pt"
+  },
+  "bin": {
+    "flypath": "./dist/cli.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.64.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
