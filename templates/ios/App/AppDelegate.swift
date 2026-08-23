@@ -13,6 +13,10 @@ class AppDelegate: RCTAppDelegate {
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
+  override func createJSRuntimeFactory() -> UnsafeMutableRawPointer {
+    return FlypathCreateHermesFactory()
+  }
+
   override func sourceURL(for bridge: RCTBridge) -> URL? {
     return self.bundleURL()
   }

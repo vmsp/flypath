@@ -11,6 +11,9 @@ export type AndroidOptions = {
   root?: string;
 };
 
+// TODO: Add support for finding ANDROID_HOME and JAVA_HOME on Linux and
+// Windows.
+
 function androidHome(): string {
   return (
     process.env["ANDROID_HOME"] ??

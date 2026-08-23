@@ -1,3 +1,5 @@
+// TODO: This package has been dead for 5+ years. Perhaps we can implement our
+// own?
 import {
   fetch as streamingFetch,
   Headers,

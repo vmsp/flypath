@@ -4,7 +4,7 @@ import { cac } from "cac";
 const cli = cac("flypath");
 
 cli
-  .command("web", "Start the dev server (web, flight payloads, native bundles)")
+  .command("dev", "Start the dev server (web, flight payloads, native bundles)")
   .option("--port <port>", "Port to listen on", { default: 8081 })
   .option("--host [host]", "Expose the server on the network")
   .action(async (options: { port: number; host?: boolean | string }) => {

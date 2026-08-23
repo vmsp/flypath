@@ -429,6 +429,12 @@ factory instead of a file per tag; the registry stays closed.
   every branch, animated elements carry frames. If payloads bloat, add a
   payload-level dedupe (single defaults map serialized once per response) —
   design keeps this possible since descriptors are plain data.
+- **Inline elements are blocks on native.** `span` is a `Text` in a column
+  flex container, so it stretches to the container width instead of
+  shrink-wrapping like an inline box. It is invisible for plain text, but a
+  `transform` on a `span` rotates about the centre of a full-width box rather
+  than the glyphs. Nested inline text (`strong`/`em`/`code` inside a `p`)
+  composes correctly, since RN nests `Text` the way the DOM nests inlines.
 - **`:hover` on touch devices**: RN emits hover only for pointer devices;
   web touch browsers emulate sticky hover. Document divergence; don't
   emulate stickiness on native.
@@ -499,6 +505,20 @@ Everything above is implemented except where noted here.
   is `components/native/elements.tsx`, which calls the factory once per tag and
   exports the results as named client references. The native stub used for the
   web client build now generates matching named exports from `TAG_DEFAULTS`.
+- **The intrinsic set is wider than the plan's `div`/`span`/`p`/`h1`–`h6`/
+  `button`/`img`.** Every tag whose behaviour is purely presentational costs a
+  row in `TAG_DEFAULTS`, so the set also covers `article`, `section`, `aside`,
+  `header`, `footer`, `main`, `nav`, `figure`, `figcaption`, `blockquote`,
+  `strong`, `b`, `em`, `i`, `small`, `code`, `pre`, and `label`. `TAGS` in
+  `styles/defaults.ts` is the single source: the `Tag` union drives
+  `IntrinsicElements`, `nativeIntrinsics` is typed `Record<Tag, unknown>` so a
+  missing registration is a compile error, and the web client stub generates
+  its exports from the same table. Interactive tags (`input`, `textarea`,
+  `select`, `form`, `a`) need state and handlers, so they moved to
+  PLAN_CLIENT.md; `ul`/`ol`/`li` and `table` have no native equivalent.
+- Generic font families are mapped on device (`monospace` → `Menlo` on iOS,
+  `monospace` on Android; `system-ui`/`sans-serif` → RN's default), which is
+  what makes `code` and `pre` render correctly.
 - Unitless `lineHeight` parses to an `{ $em }` descriptor (CSS treats it as a
   font-size multiple); `fontWeight` numbers are stringified for RN.
 - `transformOrigin` and `verticalAlign` are in the strict subset for web but
@@ -508,50 +528,54 @@ Everything above is implemented except where noted here.
   only when the element's descriptors actually contain a pseudo condition (or
   the tag is `button`).
 
-### Phase E is blocked, and not by anything in this plan
+### Phase E needed a Hermes runtime flag
 
 `css.keyframes` compiles, `@keyframes` lands in the stylesheet, the animation
 shorthand expands, frames are inlined into the native payload, and the
-`Animated` driver in `components/native/animation.ts` is written as specified
-(timeline value, per-property and per-transform-function interpolation, native
-driver when every animated property is opacity/transform, easing map,
-iteration/delay, reduced-motion skip-to-end). Web animation works on all
-paths.
+`Animated` driver in `components/native/animation.ts` works as specified.
 
-**On native it red-boxes**, and the cause is in the pre-existing native
-bundler, not the style pipeline: Hermes in this shell does not implement
-per-iteration bindings for `let`/`const` in `for` loops, and nothing in the
-pipeline lowers them. Probe injected verbatim into `native-prelude` (so no
-Vite or Babel transform is involved):
+Getting it to run on native took a fix outside the style pipeline. Hermes does
+not enable ES6 per-iteration bindings for `let`/`const` in loops by default —
+it is gated behind `ES6BlockScoping`, off in `RuntimeConfig`. React Native's
+`NativeAnimatedHelper.createNativeOperations()` builds its operation table with
+exactly that pattern, so every entry bound to the last method name
+(`removeListener`, which the TurboModule spec does not have) and
+`API.createAnimatedNode(...)` called an undefined function. Any use of
+`Animated` hit it, with `useNativeDriver` both true and false.
 
-```js
-var fns = [];
-for (let i = 0; i < 3; i++) {
-  const v = "v" + i;
-  fns.push(function () { return v + ":" + i; });
-}
-// expected: v0:0,v1:1,v2:2
-// actual:   v2:3,v2:3,v2:3
+Confirmed against the same Hermes build the app links (`hermesvm` Catalyst
+slice, `withES6BlockScoping` toggled around one `evaluateJavaScript`):
+
+```
+ES6BlockScoping=false: v2:3,v2:3,v2:3
+ES6BlockScoping=true : v0:0,v1:1,v2:2
 ```
 
-React Native's `NativeAnimatedHelper.createNativeOperations()` builds its
-operation table with exactly that pattern, so every entry ends up bound to the
-last method name (`removeListener`, which the TurboModule spec does not have).
-`API.createAnimatedNode(...)` therefore calls an undefined method:
-`TypeError: undefined is not a function`. This fires with `useNativeDriver`
-both true and false — any use of `Animated` in this shell hits it.
+The fix is `native/FlypathHermesRuntime.h`, shipped by the package: a
+platform-neutral `JSRuntimeFactory` that mirrors RN's
+`HermesInstance::createJSRuntime` plus `.withES6BlockScoping(true)`. It is
+included by a thin `templates/ios/App/FlypathHermes.mm` and returned from
+`AppDelegate`'s override of `createJSRuntimeFactory` — RN's own public override
+point, so no patching of `react-native` and no Babel pass over the native
+module graph. `runIos` copies the header next to the template sources, so
+there are no header search paths to configure, and the Android JNI shim will
+include the same file rather than restating it (`__has_include` picks the right
+`HermesRuntimeTargetDelegate` path per platform).
 
-Metro's RN preset lowers block scoping with
-`@babel/plugin-transform-block-scoping`; flypath's quarantined Babel pass
-(Flow + preset-react + codegen) does not, and oxc cannot help — its lowest
-transform target is `es2015`, which keeps `let`/`const` rather than lowering
-them. The fix is a native-bundler change (extend the Babel pass to lower block
-scoping for *all* native modules, not just `react-native`/`@react-native/*`),
-which contradicts the recorded Babel-quarantine decision and so is left for a
-deliberate call rather than made here.
+The alternative considered and rejected was lowering block scoping with
+`@babel/plugin-transform-block-scoping` over every native module, the way
+Metro does. It works, but it rewrites `const` to `var` in the markers the
+native bundler string-matches (`__cjs_to_esm_hoist_`,
+`__cjs_module_runner_transform`, `__vite_ssr_import_N__`), so three separate
+bundler regexes had to be loosened to keep the lazy-require layer working —
+a standing fragility for any future marker. The runtime flag costs nothing per
+module and gives real ES6 semantics instead of a lowering.
 
-The example keeps the animated `<span>`, so the failure is visible rather than
-hidden. Removing that one element makes the example render correctly on iOS.
+**Android still needs the same flag.** `getDefaultReactHost(context,
+reactNativeHost, jsRuntimeFactory)` is the matching Kotlin seam, but
+`JSRuntimeFactory` is a `HybridData`-backed C++ object, so the Android template
+needs a small JNI/CMake module — which means adding an NDK build to a template
+that currently has none. Until that lands, native animations work on iOS only.
 
 ### Verified
 
@@ -568,4 +592,9 @@ hidden. Removing that one element makes the example render correctly on iOS.
 - iOS simulator: h1/h2 type scale, zeroed UA margins, inherited text styles,
   `var()` resolution, `css.override` scoped through `ThemeContext`, button
   padding/radius/background — all matching web.
+- iOS simulator: the full presentational tag set renders, including nested
+  inline text (`strong`/`em`/`code`/`small` inside a `p`) inheriting correctly
+  and `code` resolving to a real monospace face.
+- iOS simulator: the `spin` keyframe animation runs, driven by `Animated` with
+  the native driver, once the Hermes flag is in place.
 - Android and the `:active`/rotation acceptance checks were not run.

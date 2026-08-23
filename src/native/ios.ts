@@ -61,6 +61,10 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
 
   fs.rmSync(target, { recursive: true, force: true });
   materialize("ios", target, context);
+  fs.copyFileSync(
+    path.join(packageRoot, "native", "FlypathHermesRuntime.h"),
+    path.join(target, "App", "FlypathHermesRuntime.h"),
+  );
 
   const spmScript = path.join(
     root,

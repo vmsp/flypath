@@ -13,26 +13,27 @@ import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 
 class MainApplication : Application(), ReactApplication {
-  override val reactNativeHost: ReactNativeHost =
-    object : DefaultReactNativeHost(this@MainApplication) {
-      override fun getPackages(): List<ReactPackage> = PackageList(this@MainApplication).packages
+    override val reactNativeHost: ReactNativeHost =
+        object : DefaultReactNativeHost(this@MainApplication) {
+            override fun getPackages(): List<ReactPackage> =
+                PackageList(this@MainApplication).packages
 
-      override fun getJSMainModuleName(): String = "index"
+            override fun getJSMainModuleName(): String = "index"
 
-      override fun getBundleAssetName(): String = "index.android.bundle"
+            override fun getBundleAssetName(): String = "index.android.bundle"
 
-      override fun getUseDeveloperSupport(): Boolean = true
+            override fun getUseDeveloperSupport(): Boolean = true
 
-      override val isNewArchEnabled: Boolean = true
-      override val isHermesEnabled: Boolean = true
+            override val isNewArchEnabled: Boolean = true
+            override val isHermesEnabled: Boolean = true
+        }
+
+    override val reactHost: ReactHost
+        get() = getDefaultReactHost(applicationContext, reactNativeHost)
+
+    override fun onCreate() {
+        super.onCreate()
+        SoLoader.init(this, OpenSourceMergedSoMapping)
+        load()
     }
-
-  override val reactHost: ReactHost
-    get() = getDefaultReactHost(applicationContext, reactNativeHost)
-
-  override fun onCreate() {
-    super.onCreate()
-    SoLoader.init(this, OpenSourceMergedSoMapping)
-    load()
-  }
 }

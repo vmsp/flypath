@@ -158,6 +158,45 @@ on-device for chunk-rendered trees:
   input primitives — pass-through on web. Handlers only exist inside client
   components, so this lands here rather than in the styles plan.
 
+### Interactive intrinsics (the elements PLAN_STYLES.md could not add)
+
+PLAN_STYLES.md landed every intrinsic whose behaviour is purely presentational
+— `div`, `span`, `p`, `h1`–`h6`, `article`, `section`, `aside`, `header`,
+`footer`, `main`, `nav`, `figure`, `figcaption`, `blockquote`, `strong`, `b`,
+`em`, `i`, `small`, `code`, `pre`, `label`, `button`, `img` — because
+`createPrimitive(tag)` only needs a row in `TAG_DEFAULTS` for those.
+
+The rest are blocked on client components, not on styling. They need state
+and event handlers, which a server component cannot hold and the flight
+payload cannot serialize:
+
+- **`input`, `textarea`** → `TextInput`. Needs `value`/`defaultValue` +
+  `onChange`/`onInput`, controlled-vs-uncontrolled semantics matching the DOM,
+  and DOM-shaped event objects (`event.target.value`) synthesized from RN's
+  `onChangeText`. `type` maps onto `keyboardType`/`secureTextEntry`/
+  `autoComplete`; unmappable types (`file`, `color`, `range`, `date`) are
+  strict-subset errors.
+- **`select`, `option`** → no RN equivalent. Either a `Modal`-based picker
+  primitive or a strict-subset error; decide when the form story is designed.
+- **`form`** → no native submit model. Meaningful only once `"use server"`
+  actions land, which is explicitly out of scope below.
+- **`a`** → `Text` with `onPress` calling `Linking.openURL`, once routing
+  exists to say what an in-app `href` means.
+- **`button` gains its handler here.** The primitive already renders as a
+  `Pressable` and tracks `:active`/`:hover`/`:focus`; `onClick` →
+  `Pressable.onPress` is the mapping described under **Event props** above.
+
+Two more sit outside both plans because no native equivalent exists at all:
+`ul`/`ol`/`li` (no list markers on native — RSD does not support them either;
+would need markers synthesized in the primitive) and `table` and friends,
+`details`, `dialog`, `canvas`, `svg`.
+
+Adding an interactive tag is the same shape as the presentational ones — one
+row in `TAG_DEFAULTS`, one export in `elements.tsx`, one entry in
+`nativeIntrinsics` (typed `Record<Tag, unknown>`, so a missing entry is a
+compile error) — plus the event-prop and controlled-value mapping in
+`createPrimitive`.
+
 ### Composition rules (standard RSC, enforced with good errors)
 
 - Props crossing server → client must be flight-serializable; `children`
@@ -211,10 +250,12 @@ reference the manifest doesn't know is a hard, well-messaged error.
 
 ### Phase 3 — events + errors
 
-Event prop mapping in primitives; chunk source maps through `/symbolicate`;
-loader failure UX through the ErrorBoundary.
-Acceptance: `onClick` fires on all three platforms; a throw inside the
-counter shows LogBox with symbolicated chunk frames.
+Event prop mapping in primitives; the interactive intrinsics above (`input`,
+`textarea`, `a`, and `button`'s handler); chunk source maps through
+`/symbolicate`; loader failure UX through the ErrorBoundary.
+Acceptance: `onClick` fires on all three platforms; a controlled `input`
+round-trips `value`/`onChange` identically on web and both simulators; a throw
+inside the counter shows LogBox with symbolicated chunk frames.
 
 ### Phase 4 — native HMR
 
