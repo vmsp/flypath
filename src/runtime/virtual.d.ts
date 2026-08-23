@@ -13,3 +13,5 @@ declare module "text-encoding" {
   export const TextEncoder: unknown;
   export const TextDecoder: unknown;
 }
+
+declare module "virtual:flypath/styles.css" {}

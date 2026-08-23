@@ -5,16 +5,29 @@ import {
   jsxs as reactJsxs,
 } from "react/jsx-runtime";
 
-import { resolveIntrinsic } from "./intrinsics.ts";
+import type { JsxFn } from "./element.ts";
+import { createIntrinsic } from "./element.ts";
 
 export { Fragment };
+
+const jsxFn = reactJsx as never as JsxFn;
+const jsxsFn = reactJsxs as never as JsxFn;
 
 export function jsx(
   type: unknown,
   props: unknown,
   key?: unknown,
 ): ReactElement {
-  return (reactJsx as never as JsxFn)(resolveIntrinsic(type), props, key);
+  if (typeof type !== "string") return jsxFn(type, props, key);
+  return createIntrinsic(
+    jsxFn,
+    jsxFn,
+    jsxsFn,
+    Fragment,
+    type,
+    props as Record<string, unknown>,
+    key,
+  );
 }
 
 export function jsxs(
@@ -22,7 +35,16 @@ export function jsxs(
   props: unknown,
   key?: unknown,
 ): ReactElement {
-  return (reactJsxs as never as JsxFn)(resolveIntrinsic(type), props, key);
+  if (typeof type !== "string") return jsxsFn(type, props, key);
+  return createIntrinsic(
+    jsxsFn,
+    jsxFn,
+    jsxsFn,
+    Fragment,
+    type,
+    props as Record<string, unknown>,
+    key,
+  );
 }
 
-type JsxFn = (type: unknown, props: unknown, key?: unknown) => ReactElement;
+export type { JSX } from "./jsx.ts";

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import rsc from "@vitejs/plugin-rsc";
 import type { Plugin, PluginOption } from "vite";
 
+import { TAG_DEFAULTS } from "../styles/defaults.ts";
 import { flowStrip } from "./flow.ts";
 import { metroEndpoints } from "./metro-endpoints.ts";
 import {
@@ -13,6 +14,7 @@ import {
   nativeEnvironmentOptions,
   nativeResolve,
 } from "./native-env.ts";
+import { styles } from "./styles.ts";
 
 const distDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -85,7 +87,14 @@ function nativeStub(): Plugin {
     },
     load(id) {
       if (id !== STUB_ID) return;
-      return `export default function FlypathNativeStub() { return null; }\n`;
+      const names = Object.keys(TAG_DEFAULTS).map(
+        (tag) => `${tag[0]?.toUpperCase() ?? ""}${tag.slice(1)}`,
+      );
+      return [
+        "function FlypathNativeStub() { return null; }",
+        "export default FlypathNativeStub;",
+        ...names.map((name) => `export const ${name} = FlypathNativeStub;`),
+      ].join("\n");
     },
   };
 }
@@ -128,6 +137,7 @@ export function flypath(options: FlypathOptions = {}): PluginOption[] {
     ...NATIVE_PLATFORMS.map((platform) =>
       nativeResolve(distDir, platform, () => resolvedRoot),
     ),
+    ...styles(distDir),
     flowStrip(),
     metroEndpoints(distDir),
     rsc({

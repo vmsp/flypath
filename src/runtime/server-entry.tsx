@@ -3,6 +3,8 @@ import type { ComponentType, ReactNode } from "react";
 
 import { parsePlatform, runWithPlatform } from "./platform.ts";
 
+import "virtual:flypath/styles.css";
+
 const FLIGHT_CONTENT_TYPE = "text/x-component;charset=utf-8";
 
 const routes = import.meta.glob<{ default: ComponentType }>(
@@ -21,6 +23,7 @@ function documentShell(children: ReactNode): ReactNode {
         <meta charSet="utf-8" />
         <meta content="width=device-width, initial-scale=1" name="viewport" />
         <title>Flypath</title>
+        {import.meta.viteRsc.loadCss()}
       </head>
       <body>{children}</body>
     </html>

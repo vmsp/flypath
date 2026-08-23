@@ -5,6 +5,7 @@
     "target": "ESNext",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
+    "jsxImportSource": "flypath",
 
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
