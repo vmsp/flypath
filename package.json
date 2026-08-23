@@ -22,15 +22,76 @@
   "bin": {
     "flypath": "./dist/cli.js"
   },
+  "files": [
+    "dist",
+    "templates"
+  ],
   "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./vite": "./dist/vite/index.js",
+    "./jsx-runtime": {
+      "react-server": "./dist/runtime/jsx-runtime.server.js",
+      "default": "./dist/runtime/jsx-runtime.client.js"
+    },
+    "./jsx-dev-runtime": {
+      "react-server": "./dist/runtime/jsx-dev-runtime.server.js",
+      "default": "./dist/runtime/jsx-dev-runtime.client.js"
+    },
+    "./native": "./dist/components/native/index.js",
+    "./package.json": "./package.json"
+  },
   "scripts": {
     "build": "tsc -b",
+    "dev": "tsc -b --watch",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check"
   },
+  "dependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-flow": "^7.27.1",
+    "@babel/preset-react": "^8.0.1",
+    "@jridgewell/gen-mapping": "^0.3.13",
+    "@jridgewell/trace-mapping": "^0.3.31",
+    "@react-native/babel-plugin-codegen": "0.87.0",
+    "@react-native/dev-middleware": "0.87.0",
+    "@react-native/js-polyfills": "0.87.0",
+    "@vitejs/plugin-rsc": "^0.5.34",
+    "babel-plugin-syntax-hermes-parser": "0.36.1",
+    "cac": "^6.7.14",
+    "magic-string": "^0.30.21",
+    "oxc-parser": "^0.146.0",
+    "react-native-fetch-api": "^3.0.0",
+    "react-server-dom-webpack": "^19.2.8",
+    "text-encoding": "^0.7.0",
+    "vite": "^8.2.2",
+    "web-streams-polyfill": "^4.3.0",
+    "ws": "^8.18.3"
+  },
   "devDependencies": {
+    "@types/babel__core": "^7.20.5",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@types/ws": "^8.18.1",
     "oxfmt": "^0.64.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-native": "0.87.0",
     "typescript": "^7.0.2"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-dom": "*",
+    "react-native": "*"
+  },
+  "peerDependenciesMeta": {
+    "react-dom": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=24.0.0"

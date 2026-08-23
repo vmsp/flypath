@@ -1,22 +1,21 @@
 {
   "compilerOptions": {
     "outDir": "dist",
+    "rootDir": "src",
     "moduleResolution": "Bundler",
     "module": "ESNext",
     "target": "ESNext",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "paths": {
-      "#/*": ["./src/*"],
-    },
+    "types": ["node", "vite/client", "@vitejs/plugin-rsc/types"],
 
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "strict": true,
-    "noEmit": true,
     "declaration": true,
     "isolatedDeclarations": true,
     "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
 
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -26,5 +25,5 @@
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true,
   },
-  "include": ["src", "test"],
+  "include": ["src"],
 }

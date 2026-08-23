@@ -11,7 +11,8 @@
   "dependencies": {
     "flypath": "workspace:*",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-native": "0.87.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
