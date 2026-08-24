@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import { addMapping, GenMapping, toEncodedMap } from "@jridgewell/gen-mapping";
@@ -62,6 +63,24 @@ function decodeViteUrl(url: string): string | undefined {
   }
   if (url.startsWith("/@fs/")) return url.slice("/@fs".length);
   return undefined;
+}
+
+const USE_SERVER = /^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*(['"])use server\1/;
+
+function assertServerProxy(id: string, code: string): void {
+  if (id.startsWith("\0") || !/\.[jt]sx?$/.test(id)) return;
+  if (code.includes("createServerReference")) return;
+  let source: string;
+  try {
+    source = fs.readFileSync(id, "utf8");
+  } catch {
+    return;
+  }
+  if (!USE_SERVER.test(source)) return;
+  throw new Error(
+    `flypath: "use server" module reached the native bundle un-proxied — ` +
+      `its body would ship to the device: ${id}`,
+  );
 }
 
 const REQUIRE_RE = /\brequire\s*\(/;
@@ -371,6 +390,8 @@ export class NativeBundler {
       }
       code = magic.toString();
     }
+
+    assertServerProxy(id, code);
 
     this.#modules.set(id, {
       id,

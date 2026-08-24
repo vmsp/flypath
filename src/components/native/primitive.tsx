@@ -1,5 +1,13 @@
 import type { ComponentType, ReactNode } from "react";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   AccessibilityInfo,
   Animated,
@@ -15,12 +23,18 @@ import {
   View,
 } from "react-native";
 
+import type { FormStatus } from "../../runtime/form-status.ts";
 import type { Tag } from "../../styles/defaults.ts";
 import { ROOT_FONT_SIZE, TAG_DEFAULTS } from "../../styles/defaults.ts";
 import type { Animation } from "../../styles/native.ts";
 import { useAnimation } from "./animation.ts";
-import type { FormControl } from "./context.ts";
-import { FormContext, InheritedTextContext, ThemeContext } from "./context.ts";
+import type { FormControl, FormField } from "./context.ts";
+import {
+  FormContext,
+  FormStatusContext,
+  InheritedTextContext,
+  ThemeContext,
+} from "./context.ts";
 import type { Env, Style } from "./resolve.ts";
 import { resolve, resolveStyle, resolveTheme } from "./resolve.ts";
 
@@ -169,26 +183,101 @@ function changeEvent(value: string, native: unknown): unknown {
   };
 }
 
-function submitEvent(): unknown {
+type FormAction = (formData: FormData) => unknown;
+
+function submitEvent(prevent: () => void): unknown {
   const target = {};
   return {
     target,
-    currentTarget: target,
+    get currentTarget(): unknown {
+      if (DEV) {
+        console.error(
+          "flypath: event.currentTarget is not a DOM form on native — " +
+            "use the <form action={...}> prop instead of " +
+            "new FormData(event.currentTarget)",
+        );
+      }
+      return target;
+    },
     type: "submit",
-    preventDefault: () => {},
+    nativeEvent: null,
+    preventDefault: prevent,
     stopPropagation: () => {},
   };
 }
 
-function useFormControl(onSubmit: ChangeHandler | undefined): FormControl {
-  const handler = useRef(onSubmit);
-  useEffect(() => {
-    handler.current = onSubmit;
-  }, [onSubmit]);
-  return useMemo(
-    () => ({ submit: () => handler.current?.(submitEvent()) }),
-    [],
+type FormEntry = { name: string; field: FormField };
+
+function useFormControl(
+  onSubmit: ChangeHandler | undefined,
+  action: unknown,
+): { control: FormControl; status: FormStatus } {
+  const entries = useRef<FormEntry[]>([]);
+  const latest = useRef<{ onSubmit?: ChangeHandler; action: unknown }>({
+    onSubmit,
+    action,
+  });
+  latest.current = { onSubmit, action };
+
+  const [pending, startTransition] = useTransition();
+  const [data, setData] = useState<FormData | null>(null);
+
+  const register = useCallback((name: string, field: FormField) => {
+    const entry: FormEntry = { name, field };
+    entries.current.push(entry);
+    return () => {
+      const index = entries.current.indexOf(entry);
+      if (index !== -1) entries.current.splice(index, 1);
+    };
+  }, []);
+
+  const submit = useCallback(
+    (override?: unknown) => {
+      let prevented = false;
+      latest.current.onSubmit?.(
+        submitEvent(() => {
+          prevented = true;
+        }),
+      );
+      if (prevented) return;
+
+      const target = override ?? latest.current.action;
+      if (typeof target !== "function") return;
+
+      const formData = new FormData();
+      for (const { name, field } of entries.current) {
+        formData.append(name, field.read());
+      }
+
+      setData(formData);
+      startTransition(async () => {
+        try {
+          await (target as FormAction)(formData);
+          for (const { field } of entries.current) field.reset();
+        } finally {
+          setData(null);
+        }
+      });
+    },
+    [startTransition],
   );
+
+  const control = useMemo<FormControl>(
+    () => ({ register, submit }),
+    [register, submit],
+  );
+
+  const status = useMemo<FormStatus>(
+    () => ({
+      pending,
+      data,
+      method: "post",
+      action: (latest.current.action as FormStatus["action"]) ?? null,
+    }),
+    [data, pending],
+  );
+
+  return { control, status };
 }
 
 const ABSOLUTE_URL = /^[a-z][a-z\d+.-]*:/i;
@@ -209,6 +298,7 @@ function openHref(href: unknown): void {
 
 export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
   const defaults = TAG_DEFAULTS[tag];
+  const IS_FIELD = tag === "input" || tag === "textarea";
 
   function Primitive(props: PrimitiveProps): ReactNode {
     const { $style, $text, $theme, $anim, children, ...rest } = props;
@@ -277,14 +367,45 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
 
     const animated = useAnimation($anim, env);
 
-    const { onClick, onFocus, onBlur, onSubmit, ...attributes } = rest as {
-      onClick?: () => void;
-      onFocus?: () => void;
-      onBlur?: () => void;
-      onSubmit?: ChangeHandler;
-    } & Record<string, unknown>;
+    const { onClick, onFocus, onBlur, onSubmit, action, ...attributes } =
+      rest as {
+        onClick?: () => void;
+        onFocus?: () => void;
+        onBlur?: () => void;
+        onSubmit?: ChangeHandler;
+        action?: unknown;
+      } & Record<string, unknown>;
 
-    const control = useFormControl(onSubmit);
+    const { control, status } = useFormControl(onSubmit, action);
+
+    const fieldName =
+      typeof attributes["name"] === "string" ? attributes["name"] : undefined;
+    const controlled = attributes["value"];
+    const fieldValue = useRef("");
+    const controlledValue = useRef<unknown>(undefined);
+    const fieldNode = useRef<{ clear?: () => void } | null>(null);
+    const initialized = useRef(false);
+
+    if (!initialized.current) {
+      initialized.current = true;
+      fieldValue.current = String(
+        controlled ?? attributes["defaultValue"] ?? "",
+      );
+    }
+    controlledValue.current = controlled;
+    if (controlled !== undefined) fieldValue.current = String(controlled);
+
+    useEffect(() => {
+      if (!IS_FIELD || !form || fieldName === undefined) return;
+      return form.register(fieldName, {
+        read: () => fieldValue.current,
+        reset: () => {
+          if (controlledValue.current !== undefined) return;
+          fieldValue.current = "";
+          fieldNode.current?.clear?.();
+        },
+      });
+    }, [fieldName, form]);
 
     const enterFocus = () => {
       setFocus(true);
@@ -351,6 +472,7 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
       } & Record<string, unknown>;
 
       const emit = (event: { nativeEvent: { text: string } }) => {
+        fieldValue.current = event.nativeEvent.text;
         const synthetic = changeEvent(
           event.nativeEvent.text,
           event.nativeEvent,
@@ -374,6 +496,7 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
           onSubmitEditing={
             tag === "input" && form ? () => form.submit() : undefined
           }
+          ref={fieldNode as never}
           style={style as never}
         />
       );
@@ -396,8 +519,9 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
         </Component>
       );
     } else if (tag === "button" || onClick !== undefined) {
-      const { type, ...buttonRest } = attributes as {
+      const { type, formAction, ...buttonRest } = attributes as {
         type?: unknown;
+        formAction?: unknown;
       } & Record<string, unknown>;
       const submits =
         tag === "button" &&
@@ -415,7 +539,7 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
             submits
               ? () => {
                   onClick?.();
-                  form?.submit();
+                  form?.submit(formAction);
                 }
               : onClick
           }
@@ -447,7 +571,11 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
 
     if (tag === "form") {
       node = (
-        <FormContext.Provider value={control}>{node}</FormContext.Provider>
+        <FormContext.Provider value={control}>
+          <FormStatusContext.Provider value={status}>
+            {node}
+          </FormStatusContext.Provider>
+        </FormContext.Provider>
       );
     }
 

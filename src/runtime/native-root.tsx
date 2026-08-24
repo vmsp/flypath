@@ -11,19 +11,18 @@ import {
 } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-type Flypath = {
-  platform: string;
-  serverUrl: string;
-  dev: boolean;
-};
+import { nativeConfig } from "./native-config.ts";
+import type { RscPayload } from "./payload.ts";
 
-function config(): Flypath {
-  return (globalThis as unknown as { __FLYPATH__: Flypath }).__FLYPATH__;
+let update: ((payload: Promise<RscPayload>) => void) | null = null;
+
+export function swapPayload(payload: Promise<RscPayload>): void {
+  startTransition(() => update?.(payload));
 }
 
-function fetchFlight(): Promise<ReactNode> {
-  const { serverUrl, platform } = config();
-  return createFromFetch<ReactNode>(
+function fetchFlight(): Promise<RscPayload> {
+  const { serverUrl, platform } = nativeConfig();
+  return createFromFetch<RscPayload>(
     fetch(`${serverUrl}/?platform=${platform}`, {
       headers: { "x-flypath-platform": platform },
     }),
@@ -51,12 +50,19 @@ class ErrorBoundary extends Component<
   }
 }
 
-function Payload({ payload }: { payload: Promise<ReactNode> }): ReactNode {
-  return use(payload);
+function Payload({ payload }: { payload: Promise<RscPayload> }): ReactNode {
+  return use(payload).root;
 }
 
 export default function Root(): ReactNode {
   const [payload, setPayload] = useState(fetchFlight);
+
+  useEffect(() => {
+    update = setPayload;
+    return () => {
+      update = null;
+    };
+  }, []);
 
   const refresh = useCallback(() => {
     startTransition(() => {
@@ -65,10 +71,9 @@ export default function Root(): ReactNode {
   }, []);
 
   useEffect(() => {
-    if (!config().dev) return;
-    const socket = new WebSocket(
-      `${config().serverUrl.replace(/^http/, "ws")}/flypath`,
-    );
+    const { dev, serverUrl } = nativeConfig();
+    if (!dev) return;
+    const socket = new WebSocket(`${serverUrl.replace(/^http/, "ws")}/flypath`);
     socket.onmessage = (event: { data: unknown }) => {
       const data = JSON.parse(String(event.data)) as { type?: string };
       if (data.type === "rsc-update") refresh();

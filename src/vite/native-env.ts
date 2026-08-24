@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { EnvironmentOptions, Plugin } from "vite";
 
@@ -110,6 +111,14 @@ function deepImport(
   }
 }
 
+const RSC_SSR_SHIM = /[\\/]plugin-rsc[\\/]dist[\\/]react[\\/]ssr\.js$/;
+
+function browserShim(source: string): string | undefined {
+  const file = source.startsWith("file:") ? fileURLToPath(source) : source;
+  if (!RSC_SSR_SHIM.test(file)) return undefined;
+  return file.replace(/ssr\.js$/, "browser.js");
+}
+
 export function nativeResolve(
   distDir: string,
   platform: NativePlatform,
@@ -130,6 +139,8 @@ export function nativeResolve(
     },
     resolveId(source, importer) {
       if (webOnly.has(source)) return REACT_DOM_STUB;
+      const shim = browserShim(source);
+      if (shim) return shim;
       if (source === "flypath/native") {
         return path.join(distDir, "components", "native", "index.js");
       }

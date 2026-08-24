@@ -29,7 +29,11 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./dist/index.js",
+    ".": {
+      "react-server": "./dist/index.server.js",
+      "react-native": "./dist/index.native.js",
+      "default": "./dist/index.web.js"
+    },
     "./vite": "./dist/vite/index.js",
     "./jsx-runtime": {
       "react-server": "./dist/runtime/jsx-runtime.server.js",
@@ -68,6 +72,7 @@
     "oxc-parser": "^0.146.0",
     "react-native-fetch-api": "^3.0.0",
     "react-server-dom-webpack": "^19.2.8",
+    "rsc-html-stream": "^0.0.8",
     "text-encoding": "^0.7.0",
     "vite": "^8.2.2",
     "web-streams-polyfill": "^4.3.0",

@@ -1,4 +1,3 @@
-- Server Actions
 - Native Modules / Components, `CreateHermesRuntimeFactory` on Android
 - Routing / Navigation
 - Release build (Phase 5 of PLAN_CLIENT.md)
