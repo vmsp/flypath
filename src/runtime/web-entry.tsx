@@ -1,4 +1,5 @@
-import { createFromFetch } from "@vitejs/plugin-rsc/browser";
+import "./web-references.ts";
+import { createFromFetch } from "@vitejs/plugin-rsc/react/browser";
 import type { ReactNode } from "react";
 import { hydrateRoot } from "react-dom/client";
 

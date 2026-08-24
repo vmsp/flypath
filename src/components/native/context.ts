@@ -11,3 +11,8 @@ export const ThemeContext: Context<Record<string, unknown>> = createContext<
 export const InheritedTextContext: Context<Style> = createContext<Style>({
   ...INHERITED_ROOT,
 });
+
+export type FormControl = { submit: () => void };
+
+export const FormContext: Context<FormControl | null> =
+  createContext<FormControl | null>(null);

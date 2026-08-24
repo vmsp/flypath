@@ -2,6 +2,7 @@ import { createFromFetch } from "@vitejs/plugin-rsc/react/browser";
 import type { ReactNode } from "react";
 import {
   Component,
+  startTransition,
   Suspense,
   use,
   useCallback,
@@ -58,7 +59,9 @@ export default function Root(): ReactNode {
   const [payload, setPayload] = useState(fetchFlight);
 
   const refresh = useCallback(() => {
-    setPayload(fetchFlight());
+    startTransition(() => {
+      setPayload(fetchFlight());
+    });
   }, []);
 
   useEffect(() => {

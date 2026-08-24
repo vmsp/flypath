@@ -207,7 +207,10 @@ export function styles(distDir: string): Plugin[] {
           modules.set(file, compiled);
           if (previous?.css !== compiled.css) invalidate();
 
-          if (this.environment.name !== "rsc") return compiled.code;
+          const name = this.environment.name;
+          if (name !== "rsc" && !name.startsWith("native_")) {
+            return compiled.code;
+          }
           const registration = `\nimport { registerKeyframes as __fpKeyframes, registerVars as __fpVars } from ${JSON.stringify(
             registryPath,
           )};\n__fpVars(${JSON.stringify(compiled.vars)});\n__fpKeyframes(${JSON.stringify(
@@ -224,7 +227,6 @@ export function styles(distDir: string): Plugin[] {
           );
         }
 
-        if (this.environment.name !== "rsc") return undefined;
         if (!/\.[jt]sx$/.test(file)) return undefined;
 
         ensureScan();

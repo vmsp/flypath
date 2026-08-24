@@ -7,8 +7,6 @@ import {
 
 import { createNativeIntrinsic } from "./element-native.ts";
 import type { JsxFn } from "./element.ts";
-import { createIntrinsic } from "./element.ts";
-import { isNative } from "./platform.ts";
 
 export { Fragment };
 
@@ -21,19 +19,8 @@ export function jsx(
   key?: unknown,
 ): ReactElement {
   if (typeof type !== "string") return jsxFn(type, props, key);
-  if (isNative()) {
-    return createNativeIntrinsic(
-      jsxFn,
-      type,
-      props as Record<string, unknown>,
-      key,
-    );
-  }
-  return createIntrinsic(
+  return createNativeIntrinsic(
     jsxFn,
-    jsxFn,
-    jsxsFn,
-    Fragment,
     type,
     props as Record<string, unknown>,
     key,
@@ -46,19 +33,8 @@ export function jsxs(
   key?: unknown,
 ): ReactElement {
   if (typeof type !== "string") return jsxsFn(type, props, key);
-  if (isNative()) {
-    return createNativeIntrinsic(
-      jsxsFn,
-      type,
-      props as Record<string, unknown>,
-      key,
-    );
-  }
-  return createIntrinsic(
+  return createNativeIntrinsic(
     jsxsFn,
-    jsxFn,
-    jsxsFn,
-    Fragment,
     type,
     props as Record<string, unknown>,
     key,

@@ -1,3 +1,4 @@
+import Counter from "./counter.tsx";
 import { colors, dark, spin } from "./vars.css.ts";
 
 export default function Index() {
@@ -22,6 +23,7 @@ export default function Index() {
         <h2 style={{ color: colors.primary }}>Themed</h2>
       </div>
       <span style={{ animation: `${spin} 1s linear infinite` }}>spin</span>
+      <Counter />
       <button
         style={{
           backgroundColor: { default: colors.secondary, ":active": "black" },

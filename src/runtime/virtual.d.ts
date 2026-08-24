@@ -15,3 +15,10 @@ declare module "text-encoding" {
 }
 
 declare module "virtual:flypath/styles.css" {}
+
+declare module "virtual:vite-rsc/client-references" {
+  const references: Record<string, () => Promise<unknown>>;
+  export default references;
+}
+
+declare const __vite_rsc_raw_import__: (id: string) => Promise<unknown>;

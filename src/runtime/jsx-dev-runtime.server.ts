@@ -1,8 +1,10 @@
 import type { ReactElement } from "react";
 import { Fragment, jsxDEV as reactJsxDEV } from "react/jsx-dev-runtime";
 
+import { createNativeIntrinsic } from "./element-native.ts";
 import type { JsxFn } from "./element.ts";
 import { createIntrinsic } from "./element.ts";
+import { isNative } from "./platform.ts";
 
 export { Fragment };
 
@@ -30,6 +32,14 @@ export function jsxDEV(
   }
   const create: JsxFn = (nextType, nextProps, nextKey) =>
     jsxDevFn(nextType, nextProps, nextKey, isStatic, source, self);
+  if (isNative()) {
+    return createNativeIntrinsic(
+      create,
+      type,
+      props as Record<string, unknown>,
+      key,
+    );
+  }
   const single: JsxFn = (nextType, nextProps, nextKey) =>
     jsxDevFn(nextType, nextProps, nextKey, false, source, self);
   const many: JsxFn = (nextType, nextProps, nextKey) =>

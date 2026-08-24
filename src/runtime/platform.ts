@@ -2,7 +2,13 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 export type Platform = "web" | "ios" | "android";
 
-const storage = new AsyncLocalStorage<Platform>();
+const KEY = "__flypathPlatform";
+
+type Holder = { [KEY]?: AsyncLocalStorage<Platform> };
+
+const holder = globalThis as unknown as Holder;
+const storage: AsyncLocalStorage<Platform> = (holder[KEY] ??=
+  new AsyncLocalStorage<Platform>());
 
 export function parsePlatform(
   value: string | null | undefined,

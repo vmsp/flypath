@@ -7,6 +7,7 @@ import { parseSync } from "oxc-parser";
 import type { DevEnvironment } from "vite";
 
 import { nativePrelude } from "../runtime/native-prelude.ts";
+import { hash } from "../styles/hash.ts";
 
 export type NativeModule = {
   id: string;
@@ -34,6 +35,13 @@ export type NativeBundle = {
   moduleIds: number[];
 };
 
+export type NativeChunk = {
+  code: string;
+  map: NativeSourceMap;
+  moduleId: number;
+  moduleIds: number[];
+};
+
 export type BuildOptions = {
   entries: string[];
   platform: string;
@@ -42,6 +50,10 @@ export type BuildOptions = {
 };
 
 export const WRAPPER_HEADER_LINES = 11;
+
+function numericId(key: string): number {
+  return Number.parseInt(hash(key).slice(-8), 36) % 0x7fffffff;
+}
 
 function decodeViteUrl(url: string): string | undefined {
   if (url.startsWith("/@id/")) {
@@ -180,7 +192,8 @@ export class NativeBundler {
   #ids = new Map<string, number>();
   #urlToId = new Map<string, string>();
   #pending = new Map<string, Promise<void>>();
-  #nextId = 0;
+  #idToModule = new Map<number, string>();
+  #base = new Set<string>();
   #revision = 0;
 
   constructor(environment: DevEnvironment, root: string) {
@@ -193,12 +206,29 @@ export class NativeBundler {
   }
 
   moduleId(id: string): number {
-    let value = this.#ids.get(id);
-    if (value === undefined) {
-      value = this.#nextId++;
-      this.#ids.set(id, value);
+    const cached = this.#ids.get(id);
+    if (cached !== undefined) return cached;
+    const value = numericId(this.moduleKey(id));
+    const clash = this.#idToModule.get(value);
+    if (clash !== undefined && clash !== id) {
+      throw new Error(
+        `flypath: native module id collision between ${clash} and ${id}`,
+      );
     }
+    this.#ids.set(id, value);
+    this.#idToModule.set(value, id);
     return value;
+  }
+
+  moduleKey(id: string): string {
+    if (id.startsWith(this.#root + path.sep)) {
+      return path.relative(this.#root, id).replaceAll(path.sep, "/");
+    }
+    return id.replaceAll(path.sep, "/");
+  }
+
+  isChunkModule(id: string): boolean {
+    return this.#modules.has(id) && !this.#base.has(id);
   }
 
   moduleById(moduleId: number): NativeModule | undefined {
@@ -216,8 +246,16 @@ export class NativeBundler {
       removed.push(mod);
       this.#modules.delete(id);
       this.#pending.delete(id);
+      this.#invalidateGraph(id);
     }
     return removed;
+  }
+
+  #invalidateGraph(id: string): void {
+    const graph = this.#environment.moduleGraph;
+    const nodes = graph.getModulesByFile(id);
+    if (!nodes) return;
+    for (const node of nodes) graph.invalidateModule(node);
   }
 
   inverseDependencies(moduleId: number): Record<number, number[]> {
@@ -356,6 +394,28 @@ export class NativeBundler {
     return id;
   }
 
+  #closure(entryIds: string[]): NativeModule[] {
+    const seen = new Set<string>();
+    const out: NativeModule[] = [];
+    const byId = new Map<number, NativeModule>();
+    for (const mod of this.#modules.values()) byId.set(mod.moduleId, mod);
+
+    const visit = (id: string): void => {
+      if (seen.has(id)) return;
+      seen.add(id);
+      const mod = this.#modules.get(id);
+      if (!mod) return;
+      out.push(mod);
+      for (const dep of mod.deps) {
+        const next = byId.get(dep);
+        if (next) visit(next.id);
+      }
+    };
+
+    for (const id of entryIds) visit(id);
+    return out;
+  }
+
   async build(options: BuildOptions): Promise<NativeBundle> {
     const entryIds: string[] = [];
     for (const entry of options.entries) {
@@ -371,11 +431,14 @@ export class NativeBundler {
       serverUrl: options.serverUrl,
     });
 
+    const modules = this.#closure(entryIds);
+    this.#base = new Set(modules.map((mod) => mod.id));
+
     const generator = new GenMapping();
     const chunks: string[] = [prelude];
     let line = countLines(prelude);
 
-    for (const mod of this.#modules.values()) {
+    for (const mod of modules) {
       const wrapped = wrapModule(mod, options.dev);
       chunks.push(wrapped);
       addModuleMappings(generator, mod, line + WRAPPER_HEADER_LINES);
@@ -391,6 +454,37 @@ export class NativeBundler {
       map: toEncodedMap(generator) as NativeSourceMap,
       revisionId: String(this.#revision++),
       moduleIds: entryIds.map((id) => this.moduleId(id)),
+    };
+  }
+
+  get base(): ReadonlySet<string> {
+    return this.#base;
+  }
+
+  async buildChunk(entry: string, dev: boolean): Promise<NativeChunk> {
+    const id = await this.resolveEntry(entry);
+    await this.load(id);
+
+    const modules = this.#closure([id]).filter(
+      (mod) => !this.#base.has(mod.id),
+    );
+
+    const generator = new GenMapping();
+    const parts: string[] = [];
+    let line = 0;
+
+    for (const mod of modules) {
+      const wrapped = wrapModule(mod, dev);
+      parts.push(wrapped);
+      addModuleMappings(generator, mod, line + WRAPPER_HEADER_LINES);
+      line += countLines(wrapped);
+    }
+
+    return {
+      code: parts.join(""),
+      map: toEncodedMap(generator) as NativeSourceMap,
+      moduleId: this.moduleId(id),
+      moduleIds: modules.map((mod) => mod.moduleId),
     };
   }
 }

@@ -1,8 +1,6 @@
 import { nativeIntrinsics } from "../components/native/index.ts";
-import { isNative } from "./platform.ts";
 
-export function resolveIntrinsic(type: unknown): unknown {
-  if (typeof type !== "string" || !isNative()) return type;
+export function resolveIntrinsic(type: string): unknown {
   const mapped = (nativeIntrinsics as Record<string, unknown>)[type];
   if (mapped === undefined) {
     throw new Error(

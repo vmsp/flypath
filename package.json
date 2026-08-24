@@ -33,10 +33,12 @@
     "./vite": "./dist/vite/index.js",
     "./jsx-runtime": {
       "react-server": "./dist/runtime/jsx-runtime.server.js",
+      "react-native": "./dist/runtime/jsx-runtime.native.js",
       "default": "./dist/runtime/jsx-runtime.client.js"
     },
     "./jsx-dev-runtime": {
       "react-server": "./dist/runtime/jsx-dev-runtime.server.js",
+      "react-native": "./dist/runtime/jsx-dev-runtime.native.js",
       "default": "./dist/runtime/jsx-dev-runtime.client.js"
     },
     "./native": "./dist/components/native/index.js",
@@ -57,10 +59,12 @@
     "@react-native/babel-plugin-codegen": "0.87.0",
     "@react-native/dev-middleware": "0.87.0",
     "@react-native/js-polyfills": "0.87.0",
+    "@vitejs/plugin-react": "^6.1.0",
     "@vitejs/plugin-rsc": "^0.5.34",
     "babel-plugin-syntax-hermes-parser": "0.36.1",
     "cac": "^6.7.14",
     "magic-string": "^0.30.21",
+    "metro-runtime": "0.87.0",
     "oxc-parser": "^0.146.0",
     "react-native-fetch-api": "^3.0.0",
     "react-server-dom-webpack": "^19.2.8",

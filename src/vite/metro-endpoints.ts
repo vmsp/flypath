@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import type { Plugin, ViteDevServer } from "vite";
@@ -26,6 +27,39 @@ function send(
   response.statusCode = status;
   response.setHeader("content-type", type);
   response.end(body);
+}
+
+const USE_CLIENT = /^(?:\s|\/\/[^\n]*\n|\/\*[\s\S]*?\*\/)*(['"])use client\1/;
+
+function isClientModule(file: string): boolean {
+  if (!/\.[jt]sx?$/.test(file)) return false;
+  try {
+    return USE_CLIENT.test(fs.readFileSync(file, "utf8"));
+  } catch {
+    return false;
+  }
+}
+
+function chunkMapPath(platform: string, reference: string): string {
+  return `/chunk/${platform}/${encodeURIComponent(reference)}.map`;
+}
+
+function parseChunkPath(pathname: string):
+  | {
+      platform: NativePlatform;
+      reference: string;
+      kind: "bundle" | "map";
+    }
+  | undefined {
+  const match = /^\/chunk\/([^/]+)\/(.+)\.(bundle|map)$/.exec(pathname);
+  if (!match) return undefined;
+  const platform = match[1] as string;
+  if (!isNativePlatform(platform as never)) return undefined;
+  return {
+    platform: platform as NativePlatform,
+    reference: decodeURIComponent(match[2] as string),
+    kind: match[3] as "bundle" | "map",
+  };
 }
 
 function platformOf(url: URL): NativePlatform | undefined {
@@ -68,9 +102,14 @@ export function metroEndpoints(distDir: string): Plugin {
         void (async () => {
           try {
             const rsc = server.environments["rsc"];
-            if ((rsc?.moduleGraph.getModulesByFile(file)?.size ?? 0) > 0) {
+            if (
+              (rsc?.moduleGraph.getModulesByFile(file)?.size ?? 0) > 0 &&
+              !isClientModule(file)
+            ) {
               flypath.rscUpdate();
             }
+
+            if (native.isChunkModule(file)) native.invalidateChunks();
 
             const updates = await native.hotUpdate(file);
             if (updates.length === 0) return;
@@ -109,6 +148,41 @@ export function metroEndpoints(distDir: string): Plugin {
         if (url.pathname === "/reload") {
           message.reload();
           send(response, 200, "text/plain", "OK");
+          return;
+        }
+
+        const chunkRoute = parseChunkPath(url.pathname);
+        if (chunkRoute) {
+          const { platform, reference, kind } = chunkRoute;
+          try {
+            const chunk = await native.chunk(platform, reference, true);
+            if (kind === "map") {
+              send(
+                response,
+                200,
+                "application/json",
+                JSON.stringify(chunk.map),
+              );
+              return;
+            }
+            response.setHeader("SourceMap", chunkMapPath(platform, reference));
+            send(
+              response,
+              200,
+              "application/javascript",
+              `${chunk.code}\n//# sourceMappingURL=${baseUrl}${chunkMapPath(
+                platform,
+                reference,
+              )}\n`,
+            );
+          } catch (error) {
+            server.config.logger.error(
+              `flypath: chunk build failed for ${reference}\n${
+                error instanceof Error ? (error.stack ?? error.message) : error
+              }`,
+            );
+            send(response, 500, "text/plain", String(error));
+          }
           return;
         }
 

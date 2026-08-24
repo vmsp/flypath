@@ -1,9 +1,7 @@
 import type { ReactElement } from "react";
 
-import { nativeStyle } from "../styles/native.ts";
+import type { AtomicRule } from "../styles/atomic.ts";
 import { webStyle } from "../styles/web.ts";
-import { resolveIntrinsic } from "./intrinsics.ts";
-import { isNative } from "./platform.ts";
 
 export type JsxFn = (
   type: unknown,
@@ -11,13 +9,11 @@ export type JsxFn = (
   key?: unknown,
 ) => ReactElement;
 
-const DEV = process.env["NODE_ENV"] !== "production";
-
 const hoisted = new WeakMap<object, ReactElement[]>();
 
 function styleElements(
   jsx: JsxFn,
-  rules: { className: string; css: string }[],
+  rules: AtomicRule[],
   owner: object,
 ): ReactElement[] {
   const cached = hoisted.get(owner);
@@ -33,22 +29,6 @@ function styleElements(
   return elements;
 }
 
-function nativeProps(
-  tag: string,
-  props: Record<string, unknown>,
-): Record<string, unknown> {
-  const { style, className: _className, ...rest } = props;
-  const normalized = nativeStyle(tag, style, DEV);
-  if (!normalized) return rest;
-  return {
-    ...rest,
-    $style: normalized.view,
-    $text: normalized.text,
-    $theme: normalized.theme,
-    $anim: normalized.animation,
-  };
-}
-
 export function createIntrinsic(
   create: JsxFn,
   jsx: JsxFn,
@@ -58,10 +38,6 @@ export function createIntrinsic(
   props: Record<string, unknown>,
   key?: unknown,
 ): ReactElement {
-  if (isNative()) {
-    return create(resolveIntrinsic(type), nativeProps(type, props), key);
-  }
-
   const style = props["style"];
   if (style === undefined || style === null) return create(type, props, key);
 

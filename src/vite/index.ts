@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import react from "@vitejs/plugin-react";
 import rsc from "@vitejs/plugin-rsc";
 import type { Plugin, PluginOption } from "vite";
 
@@ -14,6 +15,7 @@ import {
   nativeEnvironmentOptions,
   nativeResolve,
 } from "./native-env.ts";
+import { nativeRefresh } from "./native-refresh.ts";
 import { styles } from "./styles.ts";
 
 const distDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -138,8 +140,10 @@ export function flypath(options: FlypathOptions = {}): PluginOption[] {
       nativeResolve(distDir, platform, () => resolvedRoot),
     ),
     ...styles(distDir),
+    nativeRefresh(),
     flowStrip(),
     metroEndpoints(distDir),
+    react({ jsxImportSource: "flypath" }),
     rsc({
       entries: {
         rsc: entry("server-entry.js"),

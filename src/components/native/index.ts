@@ -1,5 +1,6 @@
 import type { Tag } from "../../styles/defaults.ts";
 import {
+  A,
   Article,
   Aside,
   B,
@@ -11,6 +12,7 @@ import {
   Figcaption,
   Figure,
   Footer,
+  Form,
   H1,
   H2,
   H3,
@@ -20,6 +22,7 @@ import {
   Header,
   I,
   Img,
+  Input,
   Label,
   Main,
   Nav,
@@ -29,9 +32,11 @@ import {
   Small,
   Span,
   Strong,
+  Textarea,
 } from "./elements.tsx";
 
 export const nativeIntrinsics: Record<Tag, unknown> = {
+  a: A,
   article: Article,
   aside: Aside,
   b: B,
@@ -43,6 +48,7 @@ export const nativeIntrinsics: Record<Tag, unknown> = {
   figcaption: Figcaption,
   figure: Figure,
   footer: Footer,
+  form: Form,
   h1: H1,
   h2: H2,
   h3: H3,
@@ -52,6 +58,7 @@ export const nativeIntrinsics: Record<Tag, unknown> = {
   header: Header,
   i: I,
   img: Img,
+  input: Input,
   label: Label,
   main: Main,
   nav: Nav,
@@ -61,4 +68,5 @@ export const nativeIntrinsics: Record<Tag, unknown> = {
   small: Small,
   span: Span,
   strong: Strong,
+  textarea: Textarea,
 };

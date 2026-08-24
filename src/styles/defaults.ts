@@ -13,6 +13,7 @@ h1, h2, h3, h4, h5, h6 { text-wrap: balance; }`;
 export const ROOT_FONT_SIZE = 16;
 
 export const TAGS = [
+  "a",
   "article",
   "aside",
   "b",
@@ -24,6 +25,7 @@ export const TAGS = [
   "figcaption",
   "figure",
   "footer",
+  "form",
   "h1",
   "h2",
   "h3",
@@ -33,6 +35,7 @@ export const TAGS = [
   "header",
   "i",
   "img",
+  "input",
   "label",
   "main",
   "nav",
@@ -42,6 +45,7 @@ export const TAGS = [
   "small",
   "span",
   "strong",
+  "textarea",
 ] as const;
 
 export type Tag = (typeof TAGS)[number];
@@ -70,6 +74,11 @@ const text = (style: Record<string, string | number> = {}): TagDefaults => ({
 });
 
 export const TAG_DEFAULTS: Record<Tag, TagDefaults> = {
+  a: {
+    text: true,
+    role: "link",
+    style: { color: "#0000ee", textDecorationLine: "underline" },
+  },
   article: container("article"),
   aside: container("complementary"),
   b: text({ fontWeight: "700" }),
@@ -81,6 +90,7 @@ export const TAG_DEFAULTS: Record<Tag, TagDefaults> = {
   figcaption: container(),
   figure: container("figure"),
   footer: container("contentinfo"),
+  form: container("form"),
   h1: heading(32),
   h2: heading(24),
   h3: heading(18.72),
@@ -90,6 +100,7 @@ export const TAG_DEFAULTS: Record<Tag, TagDefaults> = {
   header: container("banner"),
   i: text({ fontStyle: "italic" }),
   img: { text: false, role: "image", style: {} },
+  input: text(),
   label: text(),
   main: container("main"),
   nav: container("navigation"),
@@ -99,6 +110,7 @@ export const TAG_DEFAULTS: Record<Tag, TagDefaults> = {
   small: text({ fontSize: 12.8, lineHeight: 19.2 }),
   span: text(),
   strong: text({ fontWeight: "700" }),
+  textarea: text(),
 };
 
 export const INHERITED_ROOT: Record<string, string | number> = {

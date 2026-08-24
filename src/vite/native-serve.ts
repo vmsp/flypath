@@ -3,10 +3,11 @@ import path from "node:path";
 import { originalPositionFor, TraceMap } from "@jridgewell/trace-mapping";
 import type { DevEnvironment, ViteDevServer } from "vite";
 
-import type { NativeBundle, NativeModule } from "./bundler.ts";
+import type { NativeBundle, NativeChunk, NativeModule } from "./bundler.ts";
 import { NativeBundler, wrapModule } from "./bundler.ts";
+import type { NativeSourceMap } from "./bundler.ts";
 import type { NativePlatform } from "./native-env.ts";
-import { nativeEnvironmentName } from "./native-env.ts";
+import { isNativePlatform, nativeEnvironmentName } from "./native-env.ts";
 
 const POLYFILLS = [
   "@react-native/js-polyfills/console.js",
@@ -22,6 +23,21 @@ export type StackFrame = {
   [key: string]: unknown;
 };
 
+export type ChunkBundle = {
+  code: string;
+  map: NativeSourceMap;
+};
+
+export function referenceToId(root: string, reference: string): string {
+  if (reference.startsWith("/@id/")) {
+    const value = reference.slice("/@id/".length);
+    return value.startsWith("__x00__") ? `\0${value.slice(7)}` : value;
+  }
+  if (reference.startsWith("/@fs/")) return reference.slice("/@fs".length);
+  if (reference.startsWith("/")) return path.join(root, reference);
+  return reference;
+}
+
 export type HotModuleUpdate = {
   moduleId: number;
   code: string;
@@ -35,6 +51,8 @@ export class NativeServer {
   #bundles = new Map<NativePlatform, NativeBundle>();
   #traces = new Map<NativePlatform, TraceMap>();
   #dirty = new Set<NativePlatform>();
+  #chunks = new Map<string, ChunkBundle>();
+  #chunkTraces = new Map<string, TraceMap>();
 
   constructor(server: ViteDevServer, distDir: string) {
     this.#server = server;
@@ -96,6 +114,43 @@ export class NativeServer {
     return bundle;
   }
 
+  async chunk(
+    platform: NativePlatform,
+    reference: string,
+    dev: boolean,
+  ): Promise<ChunkBundle> {
+    const key = `${platform} ${reference}`;
+    const cached = this.#chunks.get(key);
+    if (cached) return cached;
+
+    await this.bundle(platform, dev);
+
+    const id = referenceToId(this.#server.config.root, reference);
+    const built: NativeChunk = await this.bundler(platform).buildChunk(id, dev);
+    const registration = `global.__flypathChunks = global.__flypathChunks || {};\nglobal.__flypathChunks[${JSON.stringify(
+      reference,
+    )}] = ${built.moduleId};\n`;
+
+    const chunk: ChunkBundle = {
+      code: `${built.code}${registration}`,
+      map: built.map,
+    };
+    this.#chunks.set(key, chunk);
+    return chunk;
+  }
+
+  isChunkModule(file: string): boolean {
+    for (const bundler of this.#bundlers.values()) {
+      if (bundler.isChunkModule(file)) return true;
+    }
+    return false;
+  }
+
+  invalidateChunks(): void {
+    this.#chunks.clear();
+    this.#chunkTraces.clear();
+  }
+
   platforms(): NativePlatform[] {
     return [...this.#bundles.keys()];
   }
@@ -137,17 +192,43 @@ export class NativeServer {
     return trace;
   }
 
+  async #chunkTrace(file: string): Promise<TraceMap | undefined> {
+    const query = file.indexOf("?");
+    const pathname = query === -1 ? file : file.slice(0, query);
+    const match = /\/chunk\/([^/]+)\/(.+)\.bundle$/.exec(pathname);
+    if (!match) return undefined;
+    const platform = match[1] as string;
+    if (!isNativePlatform(platform as never)) return undefined;
+    const reference = decodeURIComponent(match[2] as string);
+
+    const key = `${platform} ${reference}`;
+    const cached = this.#chunkTraces.get(key);
+    if (cached) return cached;
+    const chunk = await this.chunk(platform as NativePlatform, reference, true);
+    const trace = new TraceMap(chunk.map as never);
+    this.#chunkTraces.set(key, trace);
+    return trace;
+  }
+
   async symbolicate(stack: StackFrame[]): Promise<StackFrame[]> {
     const platform = this.#bundles.keys().next().value as
       | NativePlatform
       | undefined;
-    if (!platform) return stack;
-    await this.bundle(platform, true);
-    const trace = this.#trace(platform);
-    if (!trace) return stack;
+    if (platform) await this.bundle(platform, true);
+    const base = platform ? this.#trace(platform) : undefined;
 
-    return stack.map((frame) => {
+    const traces = await Promise.all(
+      stack.map((frame) =>
+        typeof frame.file === "string"
+          ? this.#chunkTrace(frame.file)
+          : Promise.resolve(undefined),
+      ),
+    );
+
+    return stack.map((frame, index) => {
+      const trace = traces[index] ?? base;
       if (
+        !trace ||
         typeof frame.lineNumber !== "number" ||
         typeof frame.column !== "number"
       ) {

@@ -231,6 +231,9 @@ importers:
       '@react-native/js-polyfills':
         specifier: 0.87.0
         version: 0.87.0
+      '@vitejs/plugin-react':
+        specifier: ^6.1.0
+        version: 6.1.0(vite@8.2.2(@types/node@24.13.3)(terser@5.50.0))
       '@vitejs/plugin-rsc':
         specifier: ^0.5.34
         version: 0.5.34(react-dom@19.2.8(react@19.2.8))(react-server-dom-webpack@19.2.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(webpack@5.109.2(lightningcss@1.33.0)(postcss@8.5.26)))(react@19.2.8)(vite@8.2.2(@types/node@24.13.3)(terser@5.50.0))
@@ -243,6 +246,9 @@ importers:
       magic-string:
         specifier: ^0.30.21
         version: 0.30.21
+      metro-runtime:
+        specifier: 0.87.0
+        version: 0.87.0
       oxc-parser:
         specifier: ^0.146.0
         version: 0.146.0
@@ -1113,6 +1119,22 @@ packages:
     engines: {node: '>=16.20.0'}
     cpu: [x64]
     os: [win32]
+
+  '@vitejs/plugin-react@6.1.0':
+    resolution: {integrity: sha512-qd2BzUBehkov86WFhg0JkEFEYyCLG9uPCe6qWTY/kRlss9OvJrOF2UbIWT7p+8IzZHkEu0DNGHc4HSv+JdDLsw==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    peerDependencies:
+      '@rolldown/plugin-babel': ^0.1.7 || ^0.2.0
+      babel-plugin-react-compiler: ^1.0.0
+      oxc-transform-react: ^0.145.0
+      vite: ^8.0.0
+    peerDependenciesMeta:
+      '@rolldown/plugin-babel':
+        optional: true
+      babel-plugin-react-compiler:
+        optional: true
+      oxc-transform-react:
+        optional: true
 
   '@vitejs/plugin-rsc@0.5.34':
     resolution: {integrity: sha512-95V6fyGQklQMYIWTr5qwwNmpDYxsHkTunuzq8i/keIcgdckL9zb6nyEgTnb1CEl1IPJWVxGgORMkTFHrct7XJg==}
@@ -2877,6 +2899,11 @@ snapshots:
 
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
+
+  '@vitejs/plugin-react@6.1.0(vite@8.2.2(@types/node@24.13.3)(terser@5.50.0))':
+    dependencies:
+      '@rolldown/pluginutils': 1.0.1
+      vite: 8.2.2(@types/node@24.13.3)(terser@5.50.0)
 
   '@vitejs/plugin-rsc@0.5.34(react-dom@19.2.8(react@19.2.8))(react-server-dom-webpack@19.2.8(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(webpack@5.109.2(lightningcss@1.33.0)(postcss@8.5.26)))(react@19.2.8)(vite@8.2.2(@types/node@24.13.3)(terser@5.50.0))':
     dependencies:

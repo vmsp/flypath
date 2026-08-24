@@ -12,6 +12,23 @@ export type WebStyle = {
 
 const cache = new WeakMap<object, WebStyle>();
 
+const DEV = process.env["NODE_ENV"] !== "production";
+const DYNAMIC_LIMIT = 256;
+const minted = new Set<string>();
+let warned = false;
+
+function track(rules: AtomicRule[]): void {
+  for (const rule of rules) minted.add(rule.className);
+  if (warned || minted.size <= DYNAMIC_LIMIT) return;
+  warned = true;
+  console.warn(
+    `flypath: ${minted.size} atomic classes have been generated at runtime. ` +
+      "Conditional style values that change every render mint a new class each " +
+      "time and their rules are never removed. Hoist the condition map or move " +
+      "the changing part to a plain (unconditional) style value.",
+  );
+}
+
 function build(input: unknown): WebStyle {
   const { props, theme } = flattenStyle(input);
   const style: Record<string, Scalar> = { ...theme };
@@ -34,6 +51,7 @@ function build(input: unknown): WebStyle {
     hasInline = true;
   }
 
+  if (DEV) track(rules);
   return { style: hasInline ? style : undefined, classes, rules };
 }
 
