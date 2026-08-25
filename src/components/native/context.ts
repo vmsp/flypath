@@ -1,8 +1,7 @@
 import type { Context } from "react";
 import { createContext } from "react";
+import type { FormStatus } from "react-dom";
 
-import type { FormStatus } from "../../runtime/form-status.ts";
-import { IDLE_FORM_STATUS } from "../../runtime/form-status.ts";
 import { INHERITED_ROOT } from "../../styles/defaults.ts";
 import type { Style } from "./resolve.ts";
 
@@ -26,6 +25,13 @@ export type FormControl = {
 
 export const FormContext: Context<FormControl | null> =
   createContext<FormControl | null>(null);
+
+export const IDLE_FORM_STATUS: FormStatus = {
+  pending: false,
+  data: null,
+  method: null,
+  action: null,
+};
 
 export const FormStatusContext: Context<FormStatus> =
   createContext<FormStatus>(IDLE_FORM_STATUS);

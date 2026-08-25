@@ -155,7 +155,18 @@ export function nativeResolve(
     },
     load(id) {
       if (id !== REACT_DOM_STUB) return;
-      return `export default {};\nexport const createPortal = () => null;\n`;
+      const formStatus = path.join(
+        distDir,
+        "components",
+        "native",
+        "form-status.js",
+      );
+      return [
+        `export { useFormStatus } from ${JSON.stringify(formStatus)};`,
+        "export const createPortal = () => null;",
+        "export default {};",
+        "",
+      ].join("\n");
     },
   };
 }

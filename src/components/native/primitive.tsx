@@ -8,6 +8,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import type { FormStatus, FormStatusPending } from "react-dom";
 import {
   AccessibilityInfo,
   Animated,
@@ -23,7 +24,6 @@ import {
   View,
 } from "react-native";
 
-import type { FormStatus } from "../../runtime/form-status.ts";
 import type { Tag } from "../../styles/defaults.ts";
 import { ROOT_FONT_SIZE, TAG_DEFAULTS } from "../../styles/defaults.ts";
 import type { Animation } from "../../styles/native.ts";
@@ -32,6 +32,7 @@ import type { FormControl, FormField } from "./context.ts";
 import {
   FormContext,
   FormStatusContext,
+  IDLE_FORM_STATUS,
   InheritedTextContext,
   ThemeContext,
 } from "./context.ts";
@@ -220,7 +221,10 @@ function useFormControl(
   latest.current = { onSubmit, action };
 
   const [pending, startTransition] = useTransition();
-  const [data, setData] = useState<FormData | null>(null);
+  const [submission, setSubmission] = useState<{
+    data: FormData;
+    action: FormAction;
+  } | null>(null);
 
   const register = useCallback((name: string, field: FormField) => {
     const entry: FormEntry = { name, field };
@@ -249,13 +253,14 @@ function useFormControl(
         formData.append(name, field.read());
       }
 
-      setData(formData);
+      const action = target as FormAction;
+      setSubmission({ data: formData, action });
       startTransition(async () => {
         try {
-          await (target as FormAction)(formData);
+          await action(formData);
           for (const { field } of entries.current) field.reset();
         } finally {
-          setData(null);
+          setSubmission(null);
         }
       });
     },
@@ -268,13 +273,16 @@ function useFormControl(
   );
 
   const status = useMemo<FormStatus>(
-    () => ({
-      pending,
-      data,
-      method: "post",
-      action: (latest.current.action as FormStatus["action"]) ?? null,
-    }),
-    [data, pending],
+    () =>
+      pending && submission
+        ? {
+            pending: true,
+            data: submission.data,
+            method: "post",
+            action: submission.action as FormStatusPending["action"],
+          }
+        : IDLE_FORM_STATUS,
+    [pending, submission],
   );
 
   return { control, status };

@@ -1,7 +1,7 @@
 "use client";
 
-import { useFormStatus } from "flypath";
 import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 
 import { sign } from "./actions.ts";
 import { colors } from "./vars.css.ts";

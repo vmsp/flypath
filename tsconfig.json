@@ -9,6 +9,7 @@
     "jsx": "react-jsx",
     "types": ["node", "vite/client", "@vitejs/plugin-rsc/types"],
 
+    "stripInternal": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "strict": true,

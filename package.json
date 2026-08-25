@@ -29,11 +29,7 @@
   ],
   "type": "module",
   "exports": {
-    ".": {
-      "react-server": "./dist/index.server.js",
-      "react-native": "./dist/index.native.js",
-      "default": "./dist/index.web.js"
-    },
+    ".": "./dist/index.js",
     "./vite": "./dist/vite/index.js",
     "./jsx-runtime": {
       "react-server": "./dist/runtime/jsx-runtime.server.js",
