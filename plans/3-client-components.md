@@ -137,7 +137,7 @@ registry as the built-in fast path).
 
 ### Device-side intrinsics + styles
 
-App client components render DOM intrinsics *on the device*, so the mapping
+App client components render DOM intrinsics _on the device_, so the mapping
 and style work that PLAN_STYLES.md runs in the rsc environment must also run
 on-device for chunk-rendered trees:
 

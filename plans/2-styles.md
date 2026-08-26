@@ -146,16 +146,27 @@ jsx runtime, when a style property's value is a condition map:
   class name, and a self-contained rule set is generated in map order:
 
   ```css
-  .fp-x1 { padding: 8px; }
-  @media (min-width: 600px) { .fp-x1 { padding: 16px; } }
-  .fp-x2 { color: var(--primary-h4x2, red); }
-  .fp-x2:hover { color: var(--secondary-h4x2, blue); }
+  .fp-x1 {
+    padding: 8px;
+  }
+  @media (min-width: 600px) {
+    .fp-x1 {
+      padding: 16px;
+    }
+  }
+  .fp-x2 {
+    color: var(--primary-h4x2, red);
+  }
+  .fp-x2:hover {
+    color: var(--secondary-h4x2, blue);
+  }
   ```
 
   Because each class owns every rule for its property, there is no
   cross-element rule-ordering problem; within a map, later same-specificity
   conditions win, and pseudo-classes outrank media blocks by specificity
   (matching RSD's behavior).
+
 - The element gets the classes appended to `className` and the remaining
   unconditional props as inline `style`. Inline style would beat the class's
   `default`, which is why a property is entirely inline or entirely
@@ -210,7 +221,7 @@ of truth, consumed twice:
 1. **Web**: compiled into the reset portion of `virtual:flypath/styles.css`.
    Base is Josh Comeau's reset verbatim (border-box everywhere, margins
    zeroed except `dialog`, `line-height: 1.5`, media defaults, `font:
-   inherit` on form controls, `overflow-wrap`/`text-wrap` tweaks), plus
+inherit` on form controls, `overflow-wrap`/`text-wrap` tweaks), plus
    alignment additions:
    - `html { font-family: system-ui, sans-serif; }` — matches SF/Roboto on
      native instead of Times New Roman.
@@ -246,7 +257,7 @@ context-dependent resolution on the device:
   `var(--x, red)` → `{ $var: "--x", default: "red" }` (conditional var
   defaults from the server registry become nested condition descriptors),
   animation names → `{ $keyframes: [...frames], duration, easing,
-  iterations, delay }` looked up from the server keyframes registry.
+iterations, delay }` looked up from the server keyframes registry.
 - Condition maps become structured descriptors with pre-parsed predicates:
   `{ $cond: { default: 8, conditions: [[{ minWidth: 600 }, 16]] } }`,
   pseudo-classes as `[{ hover: true }, value]` — map order preserved.
@@ -300,7 +311,7 @@ factory instead of a file per tag; the registry stays closed.
   `{ default: T } & { [K in Condition]?: T }` with `Condition` a union of
   the pseudo-class literals and template-literal types for the supported
   media queries. `style?: StrictStyles | ReadonlyArray<StrictStyles |
-  Theme>`.
+Theme>`.
 - Ship a `JSX` namespace from `flypath/jsx-runtime` /
   `flypath/jsx-dev-runtime` types: `IntrinsicElements` based on React's DOM
   attributes but with `style` replaced by the strict type (and, over time,
@@ -471,7 +482,7 @@ Everything above is implemented except where noted here.
 - `css.override` values are restricted to scalars. Overriding a var with a
   condition map is a build error; the plan's Phase D acceptance for
   "overriding a var whose default is condition-mapped" holds only in the other
-  direction (the *base* var may be condition-mapped, and the override replaces
+  direction (the _base_ var may be condition-mapped, and the override replaces
   it wholesale).
 - `css.vars` conditions are restricted to `@media`; pseudo-classes are
   rejected, since `:root:hover` is not the semantics anyone wants.
@@ -486,7 +497,7 @@ Everything above is implemented except where noted here.
   the inline/class split.
 - **Pre-extraction markers carry the original condition map.** The build-time
   pass rewrites a resolvable condition map to `{ $c: {longhand: class}, $v:
-  <original map> }` rather than a bare class reference. The rsc environment
+<original map> }` rather than a bare class reference. The rsc environment
   serves both web and native from the same rewritten module, so native needs
   `$v` to build its descriptors; web uses `$c` and ignores `$v`.
 - **Pre-extraction runs only in the rsc environment**, so client components

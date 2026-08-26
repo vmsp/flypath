@@ -37,7 +37,9 @@ export default function Guestbook() {
   return (
     <form action={action}>
       <input name="name" />
-      <button disabled={pending} type="submit">sign</button>
+      <button disabled={pending} type="submit">
+        sign
+      </button>
       {error && <p>{error}</p>}
     </form>
   );
@@ -136,7 +138,7 @@ too — this is what makes the post-action root platform-correct):
    - `formState = await decodeFormState(result, formData)`.
 3. Either way, re-render the route and stream
    `renderToReadableStream<RscPayload>({ root, returnValue, formState },
-   { temporaryReferences })`. For case 2 the response continues into the SSR
+{ temporaryReferences })`. For case 2 the response continues into the SSR
    path and returns HTML, so no-JS round-trips land on a fully rendered page.
 
 Action throws propagate through the flight stream and surface in the
@@ -155,8 +157,8 @@ args (`encryptActionBoundArgs`) transparently.
      `rsc-html-stream/client`,
    - `hydrateRoot(document, <Root />, { formState: initial.formState })`,
    - `setServerCallback(async (id, args) => { ... })`: `encodeReply(args,
-     { temporaryReferences })`, POST to the current URL with `x-rsc-action:
-     id`, decode the `RscPayload` with the same temporary reference set,
+{ temporaryReferences })`, POST to the current URL with `x-rsc-action:
+id`, decode the `RscPayload` with the same temporary reference set,
      `startTransition(() => setPayload(payload))`, return
      `payload.returnValue`,
    - the existing `rsc:update` HMR listener refetches `?__flight=1` and calls
@@ -229,7 +231,7 @@ streaming fetch does not use. So `flight-native.ts` grows:
 ### Form primitive redesign (`primitive.tsx` + `context.ts`)
 
 The current `FormControl = { submit }` model only relays a synthetic event
-to `onSubmit`. Actions need the form to *own field state*, so `FormContext`
+to `onSubmit`. Actions need the form to _own field state_, so `FormContext`
 becomes a registry:
 
 ```ts
