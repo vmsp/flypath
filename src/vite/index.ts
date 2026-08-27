@@ -15,6 +15,7 @@ import {
   nativeEnvironmentOptions,
   nativeResolve,
 } from "./native-env.ts";
+import { nativeModules } from "./native-modules.ts";
 import { nativeRefresh } from "./native-refresh.ts";
 import { styles } from "./styles.ts";
 
@@ -136,6 +137,7 @@ export function flypath(options: FlypathOptions = {}): PluginOption[] {
     flypathConfig(port),
     nativeStub(),
     clientReferences(),
+    ...nativeModules(distDir),
     ...NATIVE_PLATFORMS.map((platform) =>
       nativeResolve(distDir, platform, () => resolvedRoot),
     ),

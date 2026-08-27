@@ -1,6 +1,7 @@
 plugins {
   id("com.android.application")
   id("com.facebook.react")
+  id("org.jetbrains.kotlin.plugin.compose") version "2.2.10"
 }
 
 react {
@@ -40,6 +41,24 @@ android {
     }
   }
 
+  buildFeatures {
+    compose = true
+  }
+
+  sourceSets {
+    getByName("main") {
+      kotlin.directories.add("__FLYPATH_KIT_DIR__")
+      kotlin.directories.add("__FLYPATH_REACT_KIT_DIR__")
+__FLYPATH_KOTLIN_SRC_DIRS__
+    }
+  }
+
+  externalNativeBuild {
+    cmake {
+      path = file("src/main/jni/CMakeLists.txt")
+    }
+  }
+
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
@@ -49,4 +68,10 @@ android {
 dependencies {
   implementation("com.facebook.react:react-android")
   implementation("com.facebook.react:hermes-android")
+  implementation(platform("androidx.compose:compose-bom:2025.06.01"))
+  implementation("androidx.compose.runtime:runtime")
+  implementation("androidx.compose.ui:ui")
+  implementation("androidx.compose.foundation:foundation")
+  implementation("androidx.compose.material3:material3")
+  implementation("androidx.activity:activity-compose:1.10.1")
 }

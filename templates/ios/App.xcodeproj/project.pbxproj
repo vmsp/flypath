@@ -8,15 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* AppDelegate.swift */; };
-		A10000000000000000000003 /* FlypathHermes.mm in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* FlypathHermes.mm */; };
 		A10000000000000000000002 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* LaunchScreen.storyboard */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000010 /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000011 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		A10000000000000000000014 /* FlypathHermes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FlypathHermes.h; sourceTree = "<group>"; };
-		A10000000000000000000015 /* FlypathHermes.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = FlypathHermes.mm; sourceTree = "<group>"; };
 		A10000000000000000000012 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A10000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -44,8 +41,6 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000011 /* AppDelegate.swift */,
-				A10000000000000000000014 /* FlypathHermes.h */,
-				A10000000000000000000015 /* FlypathHermes.mm */,
 				A10000000000000000000012 /* LaunchScreen.storyboard */,
 				A10000000000000000000013 /* Info.plist */,
 			);
@@ -130,7 +125,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000001 /* AppDelegate.swift in Sources */,
-				A10000000000000000000003 /* FlypathHermes.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -201,7 +195,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = __FLYPATH_BUNDLE_ID__;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "App/FlypathHermes.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "App/Flypath.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -224,7 +218,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = __FLYPATH_BUNDLE_ID__;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "App/FlypathHermes.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "App/Flypath.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

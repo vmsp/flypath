@@ -1,7 +1,20 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { generateCorePackage } from "./apple.ts";
 import { run } from "./exec.ts";
+import {
+  generateAppleComponents,
+  generateAppleRegistry,
+} from "./generate-cpp.ts";
+import { generateCxxAdapters } from "./generate-cxx.ts";
+import {
+  appleTargetName,
+  cxxSources,
+  nativeDir,
+  scaffoldNative,
+  writeSourcekitConfig,
+} from "./scaffold.ts";
 import {
   materialize,
   outputDir,
@@ -59,12 +72,35 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
   const context = projectContext(root, port);
   const target = outputDir(root, "ios");
 
+  const manifest = scaffoldNative(context);
+  const cxx = manifest.modules.filter((module) => module.cpp !== undefined);
+  const platform = manifest.modules.filter(
+    (module) => module.cpp === undefined,
+  );
+
   fs.rmSync(target, { recursive: true, force: true });
   materialize("ios", target, context);
-  fs.copyFileSync(
-    path.join(packageRoot, "native", "FlypathHermesRuntime.h"),
-    path.join(target, "App", "FlypathHermesRuntime.h"),
-  );
+
+  generateCorePackage({
+    target,
+    consumer:
+      platform.length === 0
+        ? undefined
+        : {
+            name: appleTargetName(context.appName),
+            dir: nativeDir(root, "apple"),
+          },
+    extra: cxx.length === 0 ? [] : cxxSources(root),
+    generated: {
+      "FlypathGenerated.cpp": generateAppleRegistry(manifest),
+      "FlypathGeneratedComponents.mm": generateAppleComponents(manifest),
+      ...(cxx.length === 0
+        ? {}
+        : { "FlypathCxxAdapters.cpp": generateCxxAdapters(cxx) }),
+    },
+  });
+
+  if (platform.length > 0) await writeSourcekitConfig(root);
 
   const spmScript = path.join(
     root,

@@ -2,6 +2,10 @@ declare module "virtual:flypath/client-references" {
   export const registry: Record<string, unknown>;
 }
 
+declare module "virtual:flypath/native-references" {
+  export const nativeReferences: Record<string, unknown>;
+}
+
 declare module "react-native-fetch-api" {
   export const fetch: unknown;
   export const Headers: unknown;
@@ -22,3 +26,17 @@ declare module "virtual:vite-rsc/client-references" {
 }
 
 declare const __vite_rsc_raw_import__: (id: string) => Promise<unknown>;
+
+declare module "react-native/Libraries/NativeComponent/NativeComponentRegistry" {
+  import type { HostComponent } from "react-native";
+
+  export function get<Props>(
+    name: string,
+    viewConfigProvider: () => {
+      uiViewClassName: string;
+      validAttributes: Record<string, boolean>;
+      bubblingEventTypes?: Record<string, unknown>;
+      directEventTypes?: Record<string, unknown>;
+    },
+  ): HostComponent<Props>;
+}

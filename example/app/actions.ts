@@ -15,3 +15,7 @@ export async function sign(
   signatures = [...signatures, name];
   return null;
 }
+
+export async function signForm(formData: FormData): Promise<void> {
+  await sign(null, formData);
+}

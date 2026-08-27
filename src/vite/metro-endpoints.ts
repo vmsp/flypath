@@ -145,6 +145,24 @@ export function metroEndpoints(distDir: string): Plugin {
           return;
         }
 
+        if (url.pathname === "/flypath-skew") {
+          const body = await readBody(request);
+          let platform = "the app";
+          try {
+            platform = String(
+              (JSON.parse(body) as { platform?: string }).platform ?? platform,
+            );
+          } catch {
+            // keep the default label
+          }
+          server.config.logger.warn(
+            `flypath: ${platform} was built from stale "use native" declarations — ` +
+              `run "pnpm ${platform}" to rebuild the app`,
+          );
+          send(response, 200, "text/plain", "OK");
+          return;
+        }
+
         if (url.pathname === "/reload") {
           message.reload();
           send(response, 200, "text/plain", "OK");

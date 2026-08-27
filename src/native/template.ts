@@ -32,6 +32,8 @@ function replacements(context: ProjectContext): Array<[string, string]> {
     ["__FLYPATH_RN_ROOT__", context.reactNativeRoot],
     ["__FLYPATH_RN_DIR__", context.reactNativeDir],
     ["__FLYPATH_GRADLE_PLUGIN_DIR__", context.gradlePluginDir],
+    ["__FLYPATH_KIT_DIR__", path.join(packageRoot, "android", "kit")],
+    ["__FLYPATH_REACT_KIT_DIR__", path.join(packageRoot, "android", "react")],
   ];
 }
 
@@ -45,9 +47,10 @@ export function materialize(
   templateName: string,
   target: string,
   context: ProjectContext,
+  extra: Array<[string, string]> = [],
 ): void {
   const source = path.join(templatesDir, templateName);
-  const pairs = replacements(context);
+  const pairs = [...replacements(context), ...extra];
 
   const walk = (from: string, to: string): void => {
     fs.mkdirSync(to, { recursive: true });
@@ -77,9 +80,13 @@ export function projectContext(root: string, port: number): ProjectContext {
   const appName = rawName.replace(/[^A-Za-z0-9]/g, "") || "FlypathApp";
   const slug = appName.toLowerCase();
 
-  const resolve = createRequire(path.join(root, "index.js"));
-  const packageDir = (name: string): string =>
-    path.dirname(resolve.resolve(`${name}/package.json`));
+  const packageDir = (name: string, from: string): string =>
+    path.dirname(createRequire(from).resolve(`${name}/package.json`));
+
+  const reactNativeDir = packageDir(
+    "react-native",
+    path.join(root, "index.js"),
+  );
 
   return {
     root,
@@ -88,8 +95,11 @@ export function projectContext(root: string, port: number): ProjectContext {
     androidPackage: `dev.flypath.${slug}`,
     port,
     reactNativeRoot: root,
-    reactNativeDir: packageDir("react-native"),
-    gradlePluginDir: packageDir("@react-native/gradle-plugin"),
+    reactNativeDir,
+    gradlePluginDir: packageDir(
+      "@react-native/gradle-plugin",
+      path.join(reactNativeDir, "package.json"),
+    ),
   };
 }
 

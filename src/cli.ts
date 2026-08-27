@@ -17,6 +17,16 @@ cli
   });
 
 cli.command("build", "Build for production").action(async () => {
+  const { scaffoldNative } = await import("./native/scaffold.ts");
+  const { projectContext } = await import("./native/template.ts");
+  try {
+    scaffoldNative(projectContext(process.cwd(), 8081));
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("react-native")) {
+      throw error;
+    }
+  }
+
   const { createBuilder } = await import("vite");
   const builder = await createBuilder();
   await builder.buildApp();

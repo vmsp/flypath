@@ -1,10 +1,19 @@
 import fs from "node:fs";
-import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 
 import { run } from "./exec.ts";
-import { materialize, outputDir, projectContext } from "./template.ts";
+import { generateAndroidRegistry } from "./generate-cpp.ts";
+import { generateCxxAdapters } from "./generate-cxx.ts";
+import { link, list } from "./link.ts";
+import { componentName } from "./manifest.ts";
+import { cxxSources, kotlinSourceDirs, scaffoldNative } from "./scaffold.ts";
+import {
+  materialize,
+  outputDir,
+  packageRoot,
+  projectContext,
+} from "./template.ts";
 
 export type AndroidOptions = {
   port?: number;
@@ -79,6 +88,27 @@ function writeAutolinkingConfig(
   );
 }
 
+function linkNativeSources(
+  target: string,
+  generated: Record<string, string>,
+  extra: string[],
+): void {
+  const jni = path.join(target, "app", "src", "main", "jni");
+
+  for (const file of [
+    ...list(path.join(packageRoot, "cpp", "abi", "include"), [".h"]),
+    ...list(path.join(packageRoot, "cpp"), [".h", ".cpp"]),
+    ...list(path.join(packageRoot, "cpp", "include"), [".h"]),
+    ...list(path.join(packageRoot, "android", "jni"), [".h", ".cpp"]),
+    ...extra,
+  ]) {
+    link(file, path.join(jni, path.basename(file)));
+  }
+  for (const [name, contents] of Object.entries(generated)) {
+    fs.writeFileSync(path.join(jni, name), contents);
+  }
+}
+
 async function ensureKeystore(root: string, target: string): Promise<void> {
   const shared = path.join(root, "node_modules", ".flypath", "debug.keystore");
   const keystore = path.join(target, "app", "debug.keystore");
@@ -115,13 +145,7 @@ async function ensureKeystore(root: string, target: string): Promise<void> {
   );
 }
 
-function ensureWrapper(root: string, target: string): void {
-  const source = path.dirname(
-    createRequire(path.join(root, "index.js")).resolve(
-      "@react-native/gradle-plugin/package.json",
-    ),
-  );
-
+function ensureWrapper(source: string, target: string): void {
   fs.mkdirSync(path.join(target, "gradle", "wrapper"), { recursive: true });
   for (const file of ["gradle-wrapper.jar", "gradle-wrapper.properties"]) {
     fs.copyFileSync(
@@ -139,9 +163,39 @@ export async function runAndroid(options: AndroidOptions = {}): Promise<void> {
   const context = projectContext(root, port);
   const target = outputDir(root, "android");
 
+  const manifest = scaffoldNative(context);
+  const cxx = manifest.modules.filter((module) => module.cpp !== undefined);
+
   fs.rmSync(target, { recursive: true, force: true });
-  materialize("android", target, context);
+  materialize("android", target, context, [
+    [
+      "__FLYPATH_KOTLIN_SRC_DIRS__",
+      kotlinSourceDirs(root)
+        .map((dir) => `      kotlin.directories.add(${JSON.stringify(dir)})`)
+        .join("\n"),
+    ],
+    [
+      "__FLYPATH_VIEW_NAMES__",
+      manifest.modules
+        .flatMap((module) =>
+          module.components.map((entry) =>
+            JSON.stringify(componentName(module.slug, entry.name)),
+          ),
+        )
+        .join(", "),
+    ],
+  ]);
   movePackageSources(target, context.androidPackage);
+  linkNativeSources(
+    target,
+    {
+      "FlypathGenerated.cpp": generateAndroidRegistry(manifest),
+      ...(cxx.length === 0
+        ? {}
+        : { "FlypathCxxAdapters.cpp": generateCxxAdapters(cxx) }),
+    },
+    cxx.length === 0 ? [] : cxxSources(root),
+  );
 
   fs.writeFileSync(
     path.join(target, "local.properties"),
@@ -150,7 +204,7 @@ export async function runAndroid(options: AndroidOptions = {}): Promise<void> {
 
   writeAutolinkingConfig(target, context);
   await ensureKeystore(root, target);
-  ensureWrapper(root, target);
+  ensureWrapper(context.gradlePluginDir, target);
 
   await run(path.join(target, "gradlew"), ["installDebug"], {
     cwd: target,

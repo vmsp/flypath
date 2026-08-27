@@ -1,5 +1,6 @@
 import { setRequireModule } from "@vitejs/plugin-rsc/core/browser";
 import { registry } from "virtual:flypath/client-references";
+import { nativeReferences } from "virtual:flypath/native-references";
 
 type Config = {
   platform: string;
@@ -105,11 +106,12 @@ export function installClientReferences(): void {
   installBundleLoader();
   setRequireModule({
     load: async (id: string) => {
-      const mod = registry[normalizeReferenceId(id)];
+      const reference = normalizeReferenceId(id);
+      const mod = registry[reference] ?? nativeReferences[reference];
       if (mod) return mod;
-      const reference = stripReferenceTag(id);
-      assertLocal(reference);
-      return loadChunk(reference);
+      const chunk = stripReferenceTag(id);
+      assertLocal(chunk);
+      return loadChunk(chunk);
     },
   });
 }

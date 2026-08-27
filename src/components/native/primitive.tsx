@@ -10,22 +10,18 @@ import {
 } from "react";
 import type { FormStatus, FormStatusPending } from "react-dom";
 import {
-  AccessibilityInfo,
   Animated,
   Image,
   Linking,
-  PixelRatio,
   Platform,
   Pressable,
   Text,
   TextInput,
-  useColorScheme,
-  useWindowDimensions,
   View,
 } from "react-native";
 
 import type { Tag } from "../../styles/defaults.ts";
-import { ROOT_FONT_SIZE, TAG_DEFAULTS } from "../../styles/defaults.ts";
+import { TAG_DEFAULTS } from "../../styles/defaults.ts";
 import type { Animation } from "../../styles/native.ts";
 import { useAnimation } from "./animation.ts";
 import type { FormControl, FormField } from "./context.ts";
@@ -36,6 +32,7 @@ import {
   InheritedTextContext,
   ThemeContext,
 } from "./context.ts";
+import { useStyleEnv } from "./env.ts";
 import type { Env, Style } from "./resolve.ts";
 import { resolve, resolveStyle, resolveTheme } from "./resolve.ts";
 
@@ -101,25 +98,6 @@ function usesPseudo(style: Style | undefined): boolean {
     }
   }
   return false;
-}
-
-function useReduceMotion(): boolean {
-  const [value, setValue] = useState(false);
-  useEffect(() => {
-    let mounted = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then((next) => {
-      if (mounted) setValue(next);
-    });
-    const subscription = AccessibilityInfo.addEventListener(
-      "reduceMotionChanged",
-      setValue,
-    );
-    return () => {
-      mounted = false;
-      subscription.remove();
-    };
-  }, []);
-  return value;
 }
 
 const AnimatedPressable: ComponentType<Record<string, unknown>> =
@@ -311,9 +289,6 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
   function Primitive(props: PrimitiveProps): ReactNode {
     const { $style, $text, $theme, $anim, children, ...rest } = props;
 
-    const { width, height } = useWindowDimensions();
-    const scheme = useColorScheme() === "dark" ? "dark" : "light";
-    const reduceMotion = useReduceMotion();
     const parentTheme = useContext(ThemeContext);
     const inherited = useContext(InheritedTextContext);
     const form = useContext(FormContext);
@@ -324,35 +299,8 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
     const [active, setActive] = useState(false);
     const [focus, setFocus] = useState(false);
 
-    const rootFontSize = ROOT_FONT_SIZE * PixelRatio.getFontScale();
-    const inheritedFontSize = Number(inherited["fontSize"] ?? rootFontSize);
-
-    const base: Env = useMemo(
-      () => ({
-        width,
-        height,
-        scheme,
-        reduceMotion,
-        hover,
-        active,
-        focus,
-        fontSize: inheritedFontSize,
-        rootFontSize,
-        theme: parentTheme,
-      }),
-      [
-        active,
-        focus,
-        height,
-        hover,
-        inheritedFontSize,
-        parentTheme,
-        reduceMotion,
-        rootFontSize,
-        scheme,
-        width,
-      ],
-    );
+    const base = useStyleEnv({ hover, active, focus });
+    const inheritedFontSize = base.fontSize;
 
     const theme = useMemo(
       () => resolveTheme($theme, base) ?? parentTheme,

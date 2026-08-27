@@ -18,7 +18,7 @@ const SKIP = new Set([
   "build",
   ".git",
   "android",
-  "ios",
+  "apple",
 ]);
 
 function scan(dir: string, out: string[]): void {

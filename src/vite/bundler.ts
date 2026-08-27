@@ -48,6 +48,7 @@ export type BuildOptions = {
   platform: string;
   dev: boolean;
   serverUrl: string;
+  manifestHash: string;
 };
 
 export const WRAPPER_HEADER_LINES = 11;
@@ -450,6 +451,7 @@ export class NativeBundler {
       platform: options.platform,
       dev: options.dev,
       serverUrl: options.serverUrl,
+      manifestHash: options.manifestHash,
     });
 
     const modules = this.#closure(entryIds);

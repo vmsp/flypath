@@ -23,8 +23,11 @@
     "flypath": "./dist/cli.js"
   },
   "files": [
+    "Package.swift",
+    "android",
+    "cpp",
+    "apple",
     "dist",
-    "native",
     "templates"
   ],
   "type": "module",
@@ -47,8 +50,8 @@
   "scripts": {
     "build": "tsc -b",
     "dev": "tsc -b --watch",
-    "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check"
+    "fmt": "oxfmt && git ls-files -co --exclude-standard -z '*.c' '*.h' '*.cpp' '*.hpp' '*.m' '*.mm' | xargs -0 clang-format -i && git ls-files -co --exclude-standard -z '*.swift' | xargs -0 swift format --in-place --parallel",
+    "fmt:check": "oxfmt --check && git ls-files -co --exclude-standard -z '*.c' '*.h' '*.cpp' '*.hpp' '*.m' '*.mm' | xargs -0 clang-format --dry-run -Werror && git ls-files -co --exclude-standard -z '*.swift' | xargs -0 swift format lint --strict --parallel"
   },
   "dependencies": {
     "@babel/core": "^7.28.4",

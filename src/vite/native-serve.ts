@@ -8,6 +8,7 @@ import { NativeBundler, wrapModule } from "./bundler.ts";
 import type { NativeSourceMap } from "./bundler.ts";
 import type { NativePlatform } from "./native-env.ts";
 import { isNativePlatform, nativeEnvironmentName } from "./native-env.ts";
+import { currentManifest } from "./native-modules.ts";
 
 const POLYFILLS = [
   "@react-native/js-polyfills/console.js",
@@ -106,6 +107,7 @@ export class NativeServer {
       platform,
       dev,
       serverUrl: this.serverUrl(),
+      manifestHash: currentManifest()?.hash ?? "",
     });
 
     this.#bundles.set(platform, bundle);

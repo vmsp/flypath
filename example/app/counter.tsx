@@ -1,13 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { batteryLevel, greet, printHello } from "./battery.ts";
+import { fingerprint } from "./hash.ts";
 import { colors, spin } from "./vars.css.ts";
+
+function shout(text: string): string {
+  "use native";
+  return `${text.toUpperCase()}!`;
+}
 
 export default function Counter() {
   const [n, setN] = useState(0);
   const [name, setName] = useState("");
   const [greeting, setGreeting] = useState("");
+  const [battery, setBattery] = useState("battery: ?");
+
+  useEffect(() => {
+    printHello();
+    batteryLevel().then(
+      (level) =>
+        setBattery(
+          `${shout(greet("native", 1))} — battery ${Math.round(level * 100)}% — ${fingerprint("flypath")}`,
+        ),
+      (error: unknown) => setBattery(String(error)),
+    );
+  }, []);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -67,6 +86,17 @@ export default function Counter() {
           greet
         </button>
       </form>
+
+      <button
+        style={{
+          backgroundColor: colors.secondary,
+          borderRadius: 8,
+          color: "white",
+          padding: 12,
+        }}
+      >
+        {battery}
+      </button>
 
       <a href="https://react.dev">react.dev</a>
     </div>
