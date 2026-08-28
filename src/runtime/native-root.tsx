@@ -29,10 +29,10 @@ import type {
   StackState,
 } from "../components/native/stack-context.ts";
 import { StackContext } from "../components/native/stack-context.ts";
-import type { Navigation, Router } from "../router/context.ts";
-import { NavigationContext } from "../router/context.ts";
+import { NavigationContext } from "../router/client.ts";
 import { boundaryOf, matchManifest } from "../router/manifest.ts";
-import { normalizePath } from "../router/path.ts";
+import { normalizePath, searchParamsOf } from "../router/path.ts";
+import type { Navigation } from "../router/types.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import { readInsets, watchInsets } from "./native-insets.ts";
 import type { RscPayload } from "./payload.ts";
@@ -265,23 +265,17 @@ export default function Root(): ReactNode {
   );
 
   const top = (stacks[activeTab] ?? []).at(-1);
-  const pathname = normalizePath(top?.url ?? "/");
+  const url = top?.url ?? "/";
+  const pathname = normalizePath(url);
 
-  const navigation = useMemo<Navigation>(() => {
-    const router: Router = {
-      push: (href) => push(href as string, false),
-      replace: (href) => push(href as string, true),
-      back: () => void back(),
-      refresh,
-      switchTab,
-      prefetch: () => undefined,
-    };
-    return {
+  const navigation = useMemo<Navigation>(
+    () => ({
       pathname,
       params: matchManifest(manifest, pathname)?.params ?? {},
-      router,
-    };
-  }, [pathname, push, back, refresh, switchTab]);
+      searchParams: searchParamsOf(new URL(url, "http://flypath.local")),
+    }),
+    [url, pathname],
+  );
 
   return (
     <InsetsContext.Provider value={insets}>

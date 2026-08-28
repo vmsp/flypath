@@ -7,24 +7,15 @@ import { use } from "react";
 import { renderToReadableStream } from "react-dom/server.edge";
 import { injectRSCPayload } from "rsc-html-stream/server";
 
-import type { Navigation, Router } from "../router/context.ts";
-import { NavigationContext } from "../router/context.ts";
-import type { Params } from "../router/types.ts";
+import { NavigationContext } from "../router/client.ts";
+import type { Navigation, Params, SearchParams } from "../router/types.ts";
 import type { RscPayload } from "./payload.ts";
 
 export type SsrOptions = {
   formState?: unknown;
   pathname?: string;
   params?: Params;
-};
-
-const STATIC_ROUTER: Router = {
-  push: () => undefined,
-  replace: () => undefined,
-  back: () => undefined,
-  refresh: () => undefined,
-  switchTab: () => undefined,
-  prefetch: () => undefined,
+  searchParams?: SearchParams;
 };
 
 export async function handleSsr(
@@ -36,7 +27,7 @@ export async function handleSsr(
   const navigation: Navigation = {
     pathname: options.pathname ?? "/",
     params: options.params ?? {},
-    router: STATIC_ROUTER,
+    searchParams: options.searchParams ?? {},
   };
 
   let payload: Promise<RscPayload> | undefined;

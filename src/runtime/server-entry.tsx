@@ -9,6 +9,7 @@ import {
 import type { ReactNode } from "react";
 import { tree } from "virtual:flypath/routes";
 
+import { matchRoutes } from "../router/flatten.ts";
 import type { NavigationSignal } from "../router/navigation.ts";
 import { navigationSignal } from "../router/navigation.ts";
 import { normalizePath, searchParamsOf } from "../router/path.ts";
@@ -160,9 +161,18 @@ export default async function handler(request: Request): Promise<Response> {
     "web";
 
   const pathname = normalizePath(url.pathname);
+  const searchParams = searchParamsOf(url);
+  const resolved = resolveTree(tree);
+  const matched = matchRoutes(resolved.routes, pathname);
 
-  return runWithRequest({ platform, pathname }, async () => {
-    const resolved = resolveTree(tree);
+  const info = {
+    platform,
+    pathname,
+    params: matched?.params ?? {},
+    searchParams,
+  };
+
+  return runWithRequest(info, async () => {
     const screen =
       request.headers.get("x-flypath-screen") ??
       url.searchParams.get("__flypath_screen");
@@ -189,7 +199,6 @@ export default async function handler(request: Request): Promise<Response> {
       });
     }
 
-    const searchParams = searchParamsOf(url);
     const boundary = screen === null ? undefined : screen;
 
     const compose = (rendering: ScreenRender): Promise<Rendered> => {
@@ -198,20 +207,22 @@ export default async function handler(request: Request): Promise<Response> {
           ? withSafeArea(rendering.route, rendering.node)
           : rendering.node;
       const title = rendering.route.options.title ?? "Flypath";
-      return toFlight(
-        {
-          root:
-            platform === "web" && screen === null
-              ? documentShell(content, title)
-              : content,
-          returnValue: action.returnValue,
-          formState: action.formState,
-        },
-        temporaryReferences,
+      return runWithRequest({ ...info, params: rendering.params }, () =>
+        toFlight(
+          {
+            root:
+              platform === "web" && screen === null
+                ? documentShell(content, title)
+                : content,
+            returnValue: action.returnValue,
+            formState: action.formState,
+          },
+          temporaryReferences,
+        ),
       );
     };
 
-    let match = await renderScreen(resolved, pathname, searchParams, boundary);
+    let match = await renderScreen(resolved, pathname, boundary);
     let rendered = match ? await compose(match) : undefined;
 
     if (rendered?.signal?.kind === "redirect") {
@@ -227,7 +238,6 @@ export default async function handler(request: Request): Promise<Response> {
         resolved,
         fallback,
         { "*": pathname.replace(/^\//, "") },
-        searchParams,
         boundary,
       );
       rendered = await compose(match);
@@ -259,6 +269,7 @@ export default async function handler(request: Request): Promise<Response> {
         formState: action.formState,
         pathname,
         params: match.params,
+        searchParams,
       }),
       {
         status,

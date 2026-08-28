@@ -5,16 +5,11 @@ import { NativeNavigator } from "../components/native/navigator.tsx";
 import { SafeAreaView } from "../components/safe-area.ts";
 import type { BoundaryInfo, FlatRoute } from "../router/flatten.ts";
 import { flatten, matchRoutes, ROOT_BOUNDARY } from "../router/flatten.ts";
-import type {
-  AnyNode,
-  Params,
-  RouteTree,
-  SearchParams,
-} from "../router/types.ts";
+import type { AnyNode, Params, RouteTree } from "../router/types.ts";
 
-type Wrapper = ComponentType<{ children: ReactNode; params: Params }>;
+type Wrapper = ComponentType<{ children: ReactNode }>;
 
-type Page = ComponentType<{ params: Params; searchParams: SearchParams }>;
+type Page = ComponentType<Record<string, never>>;
 
 export type Resolved = {
   routes: readonly FlatRoute[];
@@ -47,13 +42,12 @@ async function componentOf(node: AnyNode): Promise<ComponentType<never>> {
 
 async function wrap(
   chain: readonly AnyNode[],
-  params: Params,
   inner: ReactNode,
 ): Promise<ReactNode> {
   let node = inner;
   for (const wrapper of [...chain].reverse()) {
     const Wrap = (await componentOf(wrapper)) as Wrapper;
-    node = createElement(Wrap, { params, children: node });
+    node = createElement(Wrap, { children: node });
   }
   return node;
 }
@@ -68,7 +62,6 @@ export async function renderMatch(
   resolved: Resolved,
   route: FlatRoute,
   params: Params,
-  searchParams: SearchParams,
   boundary: string | undefined,
 ): Promise<ScreenRender> {
   const skip = new Set<AnyNode>(
@@ -78,27 +71,20 @@ export async function renderMatch(
   );
 
   const Leaf = (await componentOf(route.leaf)) as Page;
-  const page = createElement(Leaf, { params, searchParams });
+  const page = createElement(Leaf);
   const chain = route.chain.filter((node) => !skip.has(node));
 
-  return { route, params, node: await wrap(chain, params, page) };
+  return { route, params, node: await wrap(chain, page) };
 }
 
 export async function renderScreen(
   resolved: Resolved,
   pathname: string,
-  searchParams: SearchParams,
   boundary: string | undefined,
 ): Promise<ScreenRender | undefined> {
   const matched = matchRoutes(resolved.routes, pathname);
   if (!matched) return undefined;
-  return renderMatch(
-    resolved,
-    matched.route,
-    matched.params,
-    searchParams,
-    boundary,
-  );
+  return renderMatch(resolved, matched.route, matched.params, boundary);
 }
 
 export async function renderChrome(resolved: Resolved): Promise<ReactNode> {
@@ -114,9 +100,7 @@ export async function renderChrome(resolved: Resolved): Promise<ReactNode> {
 
   return wrap(
     above,
-    {},
     createElement(Chrome, {
-      params: {},
       children: createElement(NativeNavigator, { boundary: navigator.id }),
     }),
   );

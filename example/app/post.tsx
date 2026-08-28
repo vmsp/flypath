@@ -1,11 +1,11 @@
-import { notFound } from "flypath";
-import type { PageProps } from "flypath";
+import { notFound, useParams } from "flypath";
 
 import { getPost } from "./posts.ts";
 import { colors } from "./vars.css.ts";
 
-export default async function PostPage({ params }: PageProps) {
-  const post = await getPost(params["id"] ?? "");
+export default async function PostPage() {
+  const { id } = useParams<"/p/:id">();
+  const post = await getPost(id);
   if (!post) notFound();
 
   return (

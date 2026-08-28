@@ -1,5 +1,6 @@
 - Release build (Phase 5 of PLAN_CLIENT.md)
 - Skew
+- Middleware
 - DB, Migrations
 - Jobs, Crons
 - Email

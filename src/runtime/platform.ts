@@ -1,11 +1,10 @@
+import type { Navigation } from "../router/types.ts";
+
 export type Platform = "web" | "ios" | "android";
 
 const KEY = "__flypathRequest";
 
-export type RequestInfo = {
-  platform: Platform;
-  pathname: string;
-};
+export type RequestInfo = Navigation & { platform: Platform };
 
 export type RequestStore = { get: () => RequestInfo | undefined };
 
@@ -28,16 +27,20 @@ export function parsePlatform(
     : undefined;
 }
 
+export function getRequest(): RequestInfo | undefined {
+  return holder[KEY]?.get();
+}
+
 export function getPlatform(): Platform {
   return (
-    holder[KEY]?.get()?.platform ??
+    getRequest()?.platform ??
     parsePlatform(holder.__FLYPATH__?.platform) ??
     "web"
   );
 }
 
 export function getPathname(): string {
-  return holder[KEY]?.get()?.pathname ?? "/";
+  return getRequest()?.pathname ?? "/";
 }
 
 export function isNative(): boolean {

@@ -144,7 +144,14 @@ export type Params = Record<string, string>;
 
 export type SearchParams = Record<string, string | string[]>;
 
-export type PageProps = {
+export type Navigation = {
+  pathname: string;
   params: Params;
   searchParams: SearchParams;
 };
+
+export type RouteParams<P> = [P] extends [never]
+  ? Params
+  : string extends P
+    ? Params
+    : { [K in ParamNames<P>]: string };

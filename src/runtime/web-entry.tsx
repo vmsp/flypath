@@ -10,7 +10,12 @@ import { hydrateRoot } from "react-dom/client";
 import { rscStream } from "rsc-html-stream/client";
 
 import type { RscPayload } from "./payload.ts";
-import { refreshPayload, swapPayload, WebRouter } from "./router-web.tsx";
+import {
+  followRedirect,
+  refreshPayload,
+  swapPayload,
+  WebRouter,
+} from "./router-web.tsx";
 
 async function callServer(id: string, args: unknown[]): Promise<unknown> {
   const temporaryReferences = createTemporaryReferenceSet();
@@ -24,7 +29,7 @@ async function callServer(id: string, args: unknown[]): Promise<unknown> {
   const redirect = response.headers.get("x-flypath-redirect");
   if (redirect !== null) {
     void response.body?.cancel();
-    window.location.href = redirect;
+    followRedirect(redirect);
     return undefined;
   }
 

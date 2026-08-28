@@ -4,11 +4,10 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { manifest } from "virtual:flypath/route-manifest";
 
-import type { Navigation, Router } from "../router/context.ts";
-import { NavigationContext } from "../router/context.ts";
+import { NavigationContext } from "../router/client.ts";
 import { matchManifest } from "../router/manifest.ts";
-import { normalizePath } from "../router/path.ts";
-import type { Params } from "../router/types.ts";
+import { normalizePath, searchParamsOf } from "../router/path.ts";
+import type { Navigation, Params } from "../router/types.ts";
 import type { RscPayload } from "./payload.ts";
 
 type Snapshot = {
@@ -133,12 +132,23 @@ function internalHref(anchor: HTMLAnchorElement): string | undefined {
 
 let dispatch: ((next: State) => void) | null = null;
 let read: (() => State) | null = null;
+let go: ((href: string, mode: "push" | "replace") => Promise<void>) | null =
+  null;
 
 export function swapPayload(payload: RscPayload): void {
   const state = read?.();
   if (!state) return;
   invalidatePayloads();
   startTransition(() => dispatch?.({ ...state, payload, modal: undefined }));
+}
+
+export function followRedirect(href: string): void {
+  invalidatePayloads();
+  if (!go) {
+    window.location.href = href;
+    return;
+  }
+  void go(href, "replace");
 }
 
 export function refreshPayload(): void {
@@ -216,9 +226,11 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
   useEffect(() => {
     dispatch = (next) => setState(next);
     read = () => state;
+    go = navigate;
     return () => {
       dispatch = null;
       read = null;
+      go = null;
     };
   });
 
@@ -359,28 +371,16 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
     };
   }, [navigate]);
 
-  const pathname = normalizePath(
-    new URL(state.modal?.url ?? state.url, window.location.origin).pathname,
+  const current = new URL(
+    state.modal?.url ?? state.url,
+    window.location.origin,
   );
-
-  const router: Router = {
-    push: (href) => void navigate(href as string, "push"),
-    replace: (href) => void navigate(href as string, "replace"),
-    back: () => window.history.back(),
-    refresh: refreshPayload,
-    switchTab: (key) => {
-      const tab = manifest.boundaries
-        .flatMap((boundary) => boundary.tabs)
-        .find((entry) => entry.key === key);
-      if (tab) void navigate(tab.path, "push");
-    },
-    prefetch: (href) => void load(href as string, false),
-  };
+  const pathname = normalizePath(current.pathname);
 
   const value: Navigation = {
     pathname,
     params: optionsFor(pathname).params,
-    router,
+    searchParams: searchParamsOf(current),
   };
 
   return (

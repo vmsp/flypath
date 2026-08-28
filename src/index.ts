@@ -1,10 +1,11 @@
-export * from "./index.server.ts";
-export type { Navigation, Router } from "./router/context.ts";
+export * from "./index.shared.ts";
 export {
   NavigationContext,
+  notFound,
+  redirect,
   useParams,
   usePathname,
-  useRouter,
-} from "./router/context.ts";
+  useSearchParams,
+} from "./router/client.ts";
 
 export interface Register {}
