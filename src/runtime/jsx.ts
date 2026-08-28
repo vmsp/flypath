@@ -1,10 +1,18 @@
 import type * as React from "react";
 
+import type { ExternalHref, Href } from "../router/types.ts";
 import type { Tag } from "../styles/defaults.ts";
 import type { StyleProp } from "../styles/types.ts";
 
-type Strict<T> = {
-  [K in keyof T]: Omit<T[K], "style"> & { style?: StyleProp };
+type Anchor = Omit<React.JSX.IntrinsicElements["a"], "href" | "style"> & {
+  href?: Href | ExternalHref;
+  style?: StyleProp;
+};
+
+type Elements = {
+  [K in Tag]: K extends "a"
+    ? Anchor
+    : Omit<React.JSX.IntrinsicElements[K], "style"> & { style?: StyleProp };
 };
 
 export namespace JSX {
@@ -18,7 +26,5 @@ export namespace JSX {
   export type IntrinsicAttributes = React.JSX.IntrinsicAttributes;
   export type IntrinsicClassAttributes<T> =
     React.JSX.IntrinsicClassAttributes<T>;
-  export type IntrinsicElements = Strict<
-    Pick<React.JSX.IntrinsicElements, Tag>
-  >;
+  export type IntrinsicElements = Elements;
 }

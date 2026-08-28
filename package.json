@@ -32,7 +32,12 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./dist/index.js",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "react-server": "./dist/index.server.js",
+      "default": "./dist/index.js"
+    },
+    "./router": "./dist/router/index.js",
     "./vite": "./dist/vite/index.js",
     "./jsx-runtime": {
       "react-server": "./dist/runtime/jsx-runtime.server.js",

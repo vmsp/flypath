@@ -1,3 +1,11 @@
+declare module "virtual:flypath/routes" {
+  export const tree: import("../router/types.ts").RouteTree;
+}
+
+declare module "virtual:flypath/route-manifest" {
+  export const manifest: import("../router/manifest.ts").RouteManifest;
+}
+
 declare module "virtual:flypath/client-references" {
   export const registry: Record<string, unknown>;
 }

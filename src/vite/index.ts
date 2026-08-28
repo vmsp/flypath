@@ -17,6 +17,7 @@ import {
 } from "./native-env.ts";
 import { nativeModules } from "./native-modules.ts";
 import { nativeRefresh } from "./native-refresh.ts";
+import { routes } from "./routes.ts";
 import { styles } from "./styles.ts";
 
 const distDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -74,6 +75,8 @@ function clientReferences(): Plugin {
 
 const STUB_ID = "\0flypath:native-stub";
 
+const STUB_EXPORTS = ["NativeNavigator", "NativeTabBar"];
+
 function nativeStub(): Plugin {
   const nativeDir = path.join(distDir, "components", "native") + path.sep;
 
@@ -90,12 +93,16 @@ function nativeStub(): Plugin {
     },
     load(id) {
       if (id !== STUB_ID) return;
-      const names = Object.keys(TAG_DEFAULTS).map(
-        (tag) => `${tag[0]?.toUpperCase() ?? ""}${tag.slice(1)}`,
-      );
+      const names = [
+        ...Object.keys(TAG_DEFAULTS).map(
+          (tag) => `${tag[0]?.toUpperCase() ?? ""}${tag.slice(1)}`,
+        ),
+        ...STUB_EXPORTS,
+      ];
       return [
         "function FlypathNativeStub() { return null; }",
         "export default FlypathNativeStub;",
+        "export const nativeIntrinsics = {};",
         ...names.map((name) => `export const ${name} = FlypathNativeStub;`),
       ].join("\n");
     },
@@ -137,6 +144,7 @@ export function flypath(options: FlypathOptions = {}): PluginOption[] {
     flypathConfig(port),
     nativeStub(),
     clientReferences(),
+    routes(),
     ...nativeModules(distDir),
     ...NATIVE_PLATFORMS.map((platform) =>
       nativeResolve(distDir, platform, () => resolvedRoot),

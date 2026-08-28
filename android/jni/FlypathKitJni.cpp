@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "FlypathInsets.h"
+
 namespace {
 
 FlypathValueRef value(jlong ref) {
@@ -166,6 +168,11 @@ JNIEXPORT void JNICALL Java_dev_flypath_kit_FlypathAbi_promiseReject(
     JNIEnv* env, jclass, jlong ref, jstring message) {
   const std::string text = utf8(env, message);
   flypath_promise_reject(promise(ref), text.data(), text.size());
+}
+
+JNIEXPORT void JNICALL Java_dev_flypath_kit_FlypathInsets_publish(
+    JNIEnv*, jclass, jdouble top, jdouble bottom, jdouble left, jdouble right) {
+  flypath::publishInsets({top, bottom, left, right});
 }
 
 }  // extern "C"

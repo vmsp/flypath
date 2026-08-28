@@ -4,6 +4,8 @@
 #import <ReactCommon/TurboModule.h>
 
 #import "FlypathHermesRuntime.h"
+#import "FlypathInsets.h"
+#import "FlypathInsetsProbe.h"
 #import "FlypathModule.h"
 
 extern "C" NSDictionary* FlypathFabricComponents(void);
@@ -27,7 +29,17 @@ extern "C" NSDictionary* FlypathFabricComponents(void);
   if (auto module = flypath::FlypathModule::provider(name, jsInvoker)) {
     return module;
   }
+  if (auto insets = flypath::FlypathInsetsModule::provider(name, jsInvoker)) {
+    return insets;
+  }
   return [super getTurboModule:name jsInvoker:jsInvoker];
+}
+
+- (BOOL)application:(UIApplication*)application
+    didFinishLaunchingWithOptions:(NSDictionary*)launchOptions {
+  BOOL started = [super application:application didFinishLaunchingWithOptions:launchOptions];
+  [FlypathInsetsProbe installInWindow:self.window];
+  return started;
 }
 
 @end

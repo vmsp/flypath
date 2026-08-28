@@ -30,6 +30,7 @@ export type Animation = {
 };
 
 export type NativeStyle = {
+  flex: boolean;
   view: Record<string, Descriptor>;
   text: Record<string, Descriptor>;
   theme: Record<string, Descriptor>;
@@ -163,7 +164,8 @@ export function normalizeNativeStyle(
     props.delete(key);
   }
 
-  if (props.get("display") === "flex") {
+  const flex = props.get("display") === "flex";
+  if (flex) {
     props.delete("display");
     for (const [key, value] of Object.entries(FLEX_DEFAULTS)) {
       if (!props.has(key)) props.set(key, value);
@@ -197,6 +199,7 @@ export function normalizeNativeStyle(
   }
 
   return {
+    flex,
     view,
     text,
     theme: themeDescriptors,

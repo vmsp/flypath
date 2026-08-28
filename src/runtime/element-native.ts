@@ -15,6 +15,7 @@ function nativeProps(
   if (!normalized) return rest;
   return {
     ...rest,
+    $flex: normalized.flex,
     $style: normalized.view,
     $text: normalized.text,
     $theme: normalized.theme,

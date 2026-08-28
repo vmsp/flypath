@@ -3,9 +3,10 @@ import { WebView } from "./battery.ts";
 import Counter from "./counter.tsx";
 import Guestbook from "./guestbook.tsx";
 import Loaded from "./loaded.tsx";
-import { colors, dark, spin } from "./vars.css.ts";
+import NavDemo from "./nav-demo.tsx";
+import { colors, dark } from "./vars.css.ts";
 
-export default async function Index() {
+export default async function Profile() {
   const signatures = await entries();
 
   return (
@@ -17,7 +18,7 @@ export default async function Index() {
         padding: { default: 8, "@media (min-width: 600px)": 32 },
       }}
     >
-      <h1 style={{ color: colors.primary }}>Hello World!</h1>
+      <h1 style={{ color: colors.primary }}>Profile</h1>
       <p
         style={{
           color: { default: colors.primary, ":hover": colors.secondary },
@@ -55,6 +56,8 @@ export default async function Index() {
           sign
         </button>
       </form>
+
+      <NavDemo />
 
       <Guestbook />
 

@@ -20,6 +20,7 @@ import {
   View,
 } from "react-native";
 
+import type { Edge } from "../../router/types.ts";
 import type { Tag } from "../../styles/defaults.ts";
 import { TAG_DEFAULTS } from "../../styles/defaults.ts";
 import type { Animation } from "../../styles/native.ts";
@@ -33,10 +34,13 @@ import {
   ThemeContext,
 } from "./context.ts";
 import { useStyleEnv } from "./env.ts";
+import { insetPadding, useInsets } from "./insets.ts";
 import type { Env, Style } from "./resolve.ts";
 import { resolve, resolveStyle, resolveTheme } from "./resolve.ts";
+import { nativeRouter } from "./router-store.ts";
 
 export type PrimitiveProps = {
+  $flex?: boolean;
   $style?: Style;
   $text?: Style;
   $theme?: Style;
@@ -270,16 +274,21 @@ const ABSOLUTE_URL = /^[a-z][a-z\d+.-]*:/i;
 
 function openHref(href: unknown): void {
   if (typeof href !== "string" || href === "") return;
-  if (!ABSOLUTE_URL.test(href)) {
+  if (ABSOLUTE_URL.test(href)) {
+    void Linking.openURL(href);
+    return;
+  }
+  const router = nativeRouter();
+  if (!router) {
     if (DEV) {
       console.error(
-        `flypath: <a href="${href}"> — relative hrefs need routing, ` +
-          "which does not exist yet; only absolute URLs open on native",
+        `flypath: <a href="${href}"> was pressed before the flypath router ` +
+          "was ready",
       );
     }
     return;
   }
-  void Linking.openURL(href);
+  router.push(href);
 }
 
 export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
@@ -287,7 +296,8 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
   const IS_FIELD = tag === "input" || tag === "textarea";
 
   function Primitive(props: PrimitiveProps): ReactNode {
-    const { $style, $text, $theme, $anim, children, ...rest } = props;
+    const { $flex, $style, $text, $theme, $anim, children, ...rest } = props;
+    const blockLink = tag === "a" && $flex === true;
 
     const parentTheme = useContext(ThemeContext);
     const inherited = useContext(InheritedTextContext);
@@ -323,14 +333,28 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
 
     const animated = useAnimation($anim, env);
 
-    const { onClick, onFocus, onBlur, onSubmit, action, ...attributes } =
-      rest as {
-        onClick?: () => void;
-        onFocus?: () => void;
-        onBlur?: () => void;
-        onSubmit?: ChangeHandler;
-        action?: unknown;
-      } & Record<string, unknown>;
+    const {
+      onClick,
+      onFocus,
+      onBlur,
+      onSubmit,
+      action,
+      $safeArea,
+      ...attributes
+    } = rest as {
+      onClick?: () => void;
+      onFocus?: () => void;
+      onBlur?: () => void;
+      onSubmit?: ChangeHandler;
+      action?: unknown;
+      $safeArea?: readonly Edge[];
+    } & Record<string, unknown>;
+
+    const insets = useInsets();
+    const safeArea = useMemo(
+      () => ($safeArea ? insetPadding(insets, $safeArea) : undefined),
+      [$safeArea, insets],
+    );
 
     const { control, status } = useFormControl(onSubmit, action);
 
@@ -386,9 +410,10 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
       [inherited, text],
     );
 
-    const style = defaults.text
-      ? [inherited, text, view, animated?.style]
-      : [view, animated?.style];
+    const style =
+      defaults.text && !blockLink
+        ? [inherited, text, view, animated?.style, safeArea]
+        : [view, animated?.style, safeArea];
 
     let node: ReactNode;
     if (tag === "img") {
@@ -456,7 +481,7 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
           style={style as never}
         />
       );
-    } else if (defaults.text) {
+    } else if (defaults.text && !blockLink) {
       const Component = animated ? Animated.Text : Text;
       const { href, ...textRest } = attributes as {
         href?: unknown;
@@ -474,10 +499,11 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
           </InheritedTextContext.Provider>
         </Component>
       );
-    } else if (tag === "button" || onClick !== undefined) {
-      const { type, formAction, ...buttonRest } = attributes as {
+    } else if (blockLink || tag === "button" || onClick !== undefined) {
+      const { type, formAction, href, ...buttonRest } = attributes as {
         type?: unknown;
         formAction?: unknown;
+        href?: unknown;
       } & Record<string, unknown>;
       const submits =
         tag === "button" &&
@@ -497,7 +523,9 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
                   onClick?.();
                   form?.submit(formAction);
                 }
-              : onClick
+              : blockLink
+                ? (onClick ?? (() => openHref(href)))
+                : onClick
           }
           onPressIn={() => setActive(true)}
           onPressOut={() => setActive(false)}

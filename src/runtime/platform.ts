@@ -1,14 +1,21 @@
-import { AsyncLocalStorage } from "node:async_hooks";
-
 export type Platform = "web" | "ios" | "android";
 
-const KEY = "__flypathPlatform";
+const KEY = "__flypathRequest";
 
-type Holder = { [KEY]?: AsyncLocalStorage<Platform> };
+export type RequestInfo = {
+  platform: Platform;
+  pathname: string;
+};
+
+export type RequestStore = { get: () => RequestInfo | undefined };
+
+type Holder = { [KEY]?: RequestStore };
 
 const holder = globalThis as unknown as Holder;
-const storage: AsyncLocalStorage<Platform> = (holder[KEY] ??=
-  new AsyncLocalStorage<Platform>());
+
+export function setRequestStore(store: RequestStore): void {
+  holder[KEY] = store;
+}
 
 export function parsePlatform(
   value: string | null | undefined,
@@ -18,12 +25,12 @@ export function parsePlatform(
     : undefined;
 }
 
-export function runWithPlatform<T>(platform: Platform, fn: () => T): T {
-  return storage.run(platform, fn);
+export function getPlatform(): Platform {
+  return holder[KEY]?.get()?.platform ?? "web";
 }
 
-export function getPlatform(): Platform {
-  return storage.getStore() ?? "web";
+export function getPathname(): string {
+  return holder[KEY]?.get()?.pathname ?? "/";
 }
 
 export function isNative(): boolean {
