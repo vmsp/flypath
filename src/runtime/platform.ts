@@ -9,7 +9,10 @@ export type RequestInfo = {
 
 export type RequestStore = { get: () => RequestInfo | undefined };
 
-type Holder = { [KEY]?: RequestStore };
+type Holder = {
+  [KEY]?: RequestStore;
+  __FLYPATH__?: { platform?: string };
+};
 
 const holder = globalThis as unknown as Holder;
 
@@ -26,7 +29,11 @@ export function parsePlatform(
 }
 
 export function getPlatform(): Platform {
-  return holder[KEY]?.get()?.platform ?? "web";
+  return (
+    holder[KEY]?.get()?.platform ??
+    parsePlatform(holder.__FLYPATH__?.platform) ??
+    "web"
+  );
 }
 
 export function getPathname(): string {
@@ -35,4 +42,12 @@ export function getPathname(): string {
 
 export function isNative(): boolean {
   return getPlatform() !== "web";
+}
+
+export function isIos(): boolean {
+  return getPlatform() === "ios";
+}
+
+export function isAndroid(): boolean {
+  return getPlatform() === "android";
 }

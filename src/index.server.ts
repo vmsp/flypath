@@ -14,6 +14,7 @@ export type {
   VarToken,
 } from "./styles/types.ts";
 export type { Platform } from "./runtime/platform.ts";
+export { getPlatform, isAndroid, isIos, isNative } from "./runtime/platform.ts";
 export { SafeAreaView } from "./components/safe-area.ts";
 export { TabBar } from "./components/tab-bar.ts";
 export type { TabBarProps } from "./components/tab-bar.ts";
