@@ -44,14 +44,12 @@ export function layout<const C extends readonly unknown[]>(
 export function tabs<const C extends readonly unknown[]>(
   load: Loader,
   children: C,
-  options?: RouteOptions,
 ): {
   readonly kind: "tabs";
   readonly load: Loader;
-  readonly options: RouteOptions;
   readonly children: C;
 } {
-  return { kind: "tabs", load, options: options ?? {}, children };
+  return { kind: "tabs", load, children };
 }
 
 export function isRouteTree(value: unknown): value is RouteTree {

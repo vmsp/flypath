@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "flypath dev",
+    "build": "flypath build",
     "ios": "flypath ios",
     "android": "flypath android"
   },

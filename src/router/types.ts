@@ -38,7 +38,6 @@ export type LayoutNode = {
 export type TabsNode = {
   readonly kind: "tabs";
   readonly load: Loader;
-  readonly options: RouteOptions;
   readonly children: readonly AnyNode[];
 };
 

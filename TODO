@@ -5,3 +5,5 @@
 - Email
 - I18N
 - LSP on consumer Kotlin code
+
+Deep links are wired but unexercisable. Linking.getInitialURL() and the url listener are in native-root.tsx, but no URL scheme is registered in templates/ios/App/Info.plist or the Android manifest — so nothing can deliver one. Written, never run.

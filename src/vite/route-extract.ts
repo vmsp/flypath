@@ -143,7 +143,6 @@ function interpret(input: Node, context: Context): AnyNode {
       return {
         kind: "tabs",
         load: NOOP,
-        options: options(args[2], context),
         children: children(args[1], context),
       };
     case "route": {
