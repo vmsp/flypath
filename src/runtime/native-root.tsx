@@ -33,7 +33,7 @@ import type { Navigation, Router } from "../router/context.ts";
 import { NavigationContext } from "../router/context.ts";
 import { boundaryOf, matchManifest } from "../router/manifest.ts";
 import { normalizePath } from "../router/path.ts";
-import { nativeConfig } from "./native-config.ts";
+import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import { readInsets, watchInsets } from "./native-insets.ts";
 import type { RscPayload } from "./payload.ts";
 
@@ -65,7 +65,9 @@ async function fetchPayload(
   const redirect = response.headers.get("x-flypath-redirect");
   if (redirect !== null) return fetchPayload(redirect, boundary);
 
-  return createFromFetch<RscPayload>(Promise.resolve(response));
+  return createFromFetch<RscPayload>(Promise.resolve(response), {
+    findSourceMapURL,
+  } as Parameters<typeof createFromFetch>[1]);
 }
 
 function makeScreen(url: string): ScreenState {

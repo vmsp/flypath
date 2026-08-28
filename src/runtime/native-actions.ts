@@ -7,7 +7,7 @@ import {
 import { manifest } from "virtual:flypath/route-manifest";
 
 import { nativeRouter } from "../components/native/router-store.ts";
-import { nativeConfig } from "./native-config.ts";
+import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import type { RscPayload } from "./payload.ts";
 
 export function installServerCallback(): void {
@@ -35,7 +35,9 @@ export function installServerCallback(): void {
 
     const payload = await createFromFetch<RscPayload>(
       Promise.resolve(response),
-      { temporaryReferences },
+      { temporaryReferences, findSourceMapURL } as Parameters<
+        typeof createFromFetch
+      >[1],
     );
 
     router?.applyPayload(Promise.resolve(payload));
