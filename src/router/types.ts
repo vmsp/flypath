@@ -7,7 +7,6 @@ export type Edge = "top" | "bottom" | "left" | "right";
 export type Presentation = "push" | "modal";
 
 export type RouteOptions = {
-  title?: string;
   safeArea?: boolean | readonly Edge[];
   presentation?: Presentation;
   prefetch?: "hover" | false;
@@ -35,13 +34,25 @@ export type LayoutNode = {
   readonly children: readonly AnyNode[];
 };
 
-export type TabsNode = {
-  readonly kind: "tabs";
+export type StackNode = {
+  readonly kind: "stack";
+  readonly children: readonly AnyNode[];
+};
+
+export type BranchesNode = {
+  readonly kind: "branches";
   readonly load: Loader;
   readonly children: readonly AnyNode[];
 };
 
-export type AnyNode = RouteNode | IndexNode | LayoutNode | TabsNode;
+export type AnyNode =
+  | RouteNode
+  | IndexNode
+  | LayoutNode
+  | StackNode
+  | BranchesNode;
+
+export type LoadedNode = Exclude<AnyNode, StackNode>;
 
 export type RouteTree = {
   readonly kind: "routes";
@@ -71,9 +82,11 @@ type Branch<S extends string, Base extends string, C> =
     ? never
     : `${Base}/${S}` | Under<Item<C>, `${Base}/${S}`>;
 
+type Container = "layout" | "stack" | "branches";
+
 type Under<N, Base extends string> = N extends IndexNode
   ? Root<Base>
-  : N extends { kind: "layout" | "tabs"; children: infer C }
+  : N extends { kind: Container; children: infer C }
     ? Under<Item<C>, Base>
     : N extends { kind: "route"; pattern: infer P; children: infer C }
       ? P extends string
@@ -87,7 +100,7 @@ type DeclaredBranch<S extends string, Base extends string, C> =
 
 type Declared<N, Base extends string> = N extends IndexNode
   ? Root<Base>
-  : N extends { kind: "layout" | "tabs"; children: infer C }
+  : N extends { kind: Container; children: infer C }
     ? Declared<Item<C>, Base>
     : N extends { kind: "route"; pattern: infer P; children: infer C }
       ? P extends string

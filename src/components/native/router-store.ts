@@ -5,8 +5,8 @@ export type NativeRouterApi = {
   replace: (href: string) => void;
   back: () => void;
   refresh: () => void;
-  switchTab: (key: string) => void;
   currentUrl: () => string;
+  currentContainer: () => string;
   applyPayload: (payload: Promise<RscPayload>) => void;
 };
 

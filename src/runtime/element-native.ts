@@ -1,8 +1,9 @@
 import type { ReactElement } from "react";
+import { Fragment } from "react";
 
 import { nativeStyle } from "../styles/native.ts";
 import type { JsxFn } from "./element.ts";
-import { resolveIntrinsic } from "./intrinsics.ts";
+import { isMetadata, resolveIntrinsic } from "./intrinsics.ts";
 
 const DEV = process.env["NODE_ENV"] !== "production";
 
@@ -29,5 +30,6 @@ export function createNativeIntrinsic(
   props: Record<string, unknown>,
   key?: unknown,
 ): ReactElement {
+  if (isMetadata(type)) return create(Fragment, {}, key);
   return create(resolveIntrinsic(type), nativeProps(type, props), key);
 }

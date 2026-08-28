@@ -10,8 +10,8 @@ navigation state and navigator chrome only. Includes a real `SafeAreaView`.
 
 Milestone: the example app becomes a mini feed client — feed at `/`, permalink
 at `/p/:id` (modal over the feed when reached in-app on web, pushed screen on
-native), three tabs (feed / explore / profile) each with an independent stack
-on native, safe areas configured per route.
+native), three parallel stacks (feed / explore / profile) presented as tabs by
+the app's own chrome, safe areas configured per route.
 
 ## Field notes — how instagram.com actually routes
 
@@ -26,7 +26,7 @@ Meta's Comet router; Polaris is just the IG product layer on top):
   `installRouteResolver`).
 - **A route definition is data, not code.** Shape observed:
   `{ url, routePath, params, canonicalRouteName, rootView: { resource,
-  allResources, props, entryPoint }, meta, tracePolicy, ... }` — a pointer to
+allResources, props, entryPoint }, meta, tracePolicy, ... }` — a pointer to
   lazily-loadable JSResources plus a Relay EntryPoint whose
   `getPreloadProps(params)` names the GraphQL queries to preload.
 - **Code and data load in parallel, suspend as a unit**, via EntryPoint
@@ -69,21 +69,27 @@ rather than a lone `cfg/` directory reaching into `app/`.
 The API stays close to React Router's data-router builders:
 
 ```ts
-import { index, layout, route, routes, tabs } from "flypath/router";
+import { index, layout, route, routes, stacks } from "flypath/router";
 
 const config = routes([
-  layout(() => import("./shell.tsx"), [
-    tabs(() => import("./tab-bar.tsx"), [
-      index(() => import("./feed.tsx"), { title: "Home" }),
-      route("explore", () => import("./explore.tsx"), { title: "Explore" }),
-      route("me", () => import("./profile.tsx"), { title: "Profile" }),
-    ]),
-    route("p/:id", () => import("./post.tsx"), {
-      presentation: "modal",
-      safeArea: false,
-    }),
-    route("*", () => import("./not-found.tsx")),
-  ]),
+  layout(
+    () => import("./shell.tsx"),
+    [
+      stacks(
+        () => import("./tab-bar.tsx"),
+        [
+          index(() => import("./feed.tsx")),
+          route("explore", () => import("./explore.tsx")),
+          route("me", () => import("./profile.tsx")),
+        ],
+      ),
+      route("p/:id", () => import("./post.tsx"), {
+        presentation: "modal",
+        safeArea: false,
+      }),
+      route("*", () => import("./not-found.tsx")),
+    ],
+  ),
 ]);
 
 export default config;
@@ -105,22 +111,30 @@ Builders:
 - `index(load, options?)` — matches the parent path exactly.
 - `layout(load, children)` — pathless wrapper; receives `children` and the
   matched params. Persists across navigations beneath it.
-- `tabs(load, children, options?)` — a navigator node. Each direct child
-  subtree is one tab; the child's own route defines the tab's URL. The `load`
-  component is the user's tab chrome (renders `children` plus the flypath
-  `TabBar` primitive).
+- `stacks(load, children)` — a navigator node. It declares two things: the
+  boundary between persistent chrome and swappable screens, and that each
+  direct child subtree is an independent stack rooted at that child's own URL.
+  The `load` component is the user's chrome — it renders `children` and draws
+  its own switcher (a tab bar, a drawer, a segmented control) from
+  `useStacks()`. The framework owns stack behavior and owns none of that UI.
 
 Semantics worth pinning down now:
 
 - Matching is declaration order, first match wins. No specificity ranking.
   Trailing slashes are insignificant.
-- Routes declared **under** a tab always render inside that tab. Routes
-  declared **outside** `tabs` (like `p/:id` above) are free-floating: on
+- Routes declared **under** a stack always render inside that stack. Routes
+  declared **outside** `stacks` (like `p/:id` above) are free-floating: on
   native they push onto whichever stack is currently active, exactly how
   Instagram pushes a post onto the tab you tapped it from. Declaration
   position fixes the layout chain; runtime attribution fixes the stack.
-- Options bag (typed, extensible): `title`, `safeArea: boolean | Edge[]`,
-  `presentation: "push" | "modal"`, `prefetch: "hover" | false`.
+- An `<a href>` pointing at a stack's root URL switches to that stack instead
+  of pushing a duplicate root screen onto it; re-tapping the active one pops
+  it to root. So the app's switcher is plain links, not a special component.
+- Options bag (typed, extensible): `safeArea: boolean | Edge[]`,
+  `presentation: "push" | "modal"`, `prefetch: "hover" | false`. Route options
+  describe navigation behavior only — never presentation. Page titles are a
+  plain React 19 `<title>` rendered by the page (see below); switcher labels
+  and icons live in the app's own chrome.
 
 ## Typesafe URLs
 
@@ -152,10 +166,11 @@ href("/explore");
 href("/p/:id", { id: post.id });
 ```
 
-  The pattern argument autocompletes across the route table; the params
-  object is required exactly when the pattern has dynamic segments, keyed and
-  typed per segment. Unlike inline interpolation, the helper percent-encodes
-  param values and joins splat arrays.
+The pattern argument autocompletes across the route table; the params
+object is required exactly when the pattern has dynamic segments, keyed and
+typed per segment. Unlike inline interpolation, the helper percent-encodes
+param values and joins splat arrays.
+
 - Everything that consumes a URL takes `Href`: `useRouter().push`/`replace`,
   `redirect()`, prefetch APIs. One type, checked end to end.
 - Escape hatch if type-level joining gets slow on large trees: the manifest
@@ -170,7 +185,7 @@ href("/p/:id", { id: post.id });
 - **client / native envs** — `virtual:flypath/route-manifest`: statically
   extracted with the oxc + `evaluate` infrastructure already used for styles
   (`src/vite/eval.ts`, same contract as `vars.css.ts`): entries of
-  `{ id, pattern, safeArea, presentation, tab, boundary }`. Loaders are
+  `{ id, pattern, safeArea, presentation, stack, boundary }`. Loaders are
   dropped; a route option the static evaluator cannot see is a build error.
 
 The server side also derives **boundaries** from the tree: the root, plus
@@ -182,7 +197,7 @@ subtree below boundary B for URL U".
 Replaces the `import.meta.glob` routing in `server-entry.tsx`:
 
 - Match URL → `[layout…, page]` chain; compose
-  `<Shell><TabChrome><Page params={…} searchParams={…} /></TabChrome></Shell>`.
+  `<Shell><Chrome><Page params={…} searchParams={…} /></Chrome></Shell>`.
 - A `?screen=<boundary>` param (set by native clients) renders only the
   subtree below that boundary. Web and the native shell use the root
   boundary.
@@ -221,10 +236,10 @@ Navigator chrome is client-side (new components in `src/components/native/`);
 screens are server-driven:
 
 - Boot fetches the root-boundary payload once: the user's root layouts down
-  to the navigator client references (`TabsNavigator` / `StackNavigator`).
+  to the navigator client reference (`NativeNavigator`).
   This replaces the single-payload `native-root.tsx` flow.
-- Router state: `{ stacks: Record<tabKey, ScreenEntry[]>, activeTab }`, or a
-  single stack when the tree has no `tabs` node.
+- Router state: `{ screens: Record<stackKey, ScreenEntry[]>, activeStack }`, or
+  a single stack when the tree has no `stacks` node.
   `ScreenEntry = { key, url, routeId, payload }`.
 - A screen's content is a flight fetch of its URL at the owning tab's
   boundary, hosted in `<Screen>` with a Suspense fallback and error boundary.
@@ -236,15 +251,17 @@ screens are server-driven:
 - Push/pop are JS-driven `Animated` transitions (slide on iOS, fade-through
   on Android) — no react-native-screens dependency in v1.
 - Android hardware back pops the active stack, then falls back to the first
-  tab, then exits. Re-tapping the active tab pops it to root.
-- Deep links: `Linking` URL → manifest match → activate owning tab, reset or
-  push its stack.
+  stack, then exits. Re-tapping the active stack pops it to root.
+- Deep links: `Linking` URL → manifest match → activate owning stack, reset or
+  push it.
 - Server actions (`native-actions.ts`): after an action, refetch the visible
   screen's payload and invalidate the rest. Same for HMR `rsc-update`.
 
 Hooks for client components on both platforms: `useRouter()`
-(`push`/`replace`/`back`/`switchTab`), `usePathname()`, `useParams()`. Server
-components read `params`/`searchParams` props instead of hooks.
+(`push`/`replace`/`back`/`switchStack`), `usePathname()`, `useParams()`, and
+`useStacks()` — the latter returning `{ key, href, active }[]` in declaration
+order, so chrome can render a switcher without knowing any of the above.
+Server components read `params`/`searchParams` props instead of hooks.
 
 ## SafeAreaView
 
@@ -292,11 +309,11 @@ Boundary-scoped rendering (`?screen`), `StackNavigator` + `Screen`, push/pop
 animations, hardware back, `<a>` push wiring. Example: feed → post pushes on
 device with working back.
 
-### Phase 5 — tabs
+### Phase 5 — parallel stacks
 
-`TabsNavigator` + `TabBar` primitive, per-tab stacks, active-stack
-attribution of free-floating routes, re-tap pops to root, deep links.
-Example: three tabs with independent stacks.
+`NativeNavigator` + `useStacks()`, per-stack screen history, active-stack
+attribution of free-floating routes, root-href switching, re-tap pops to root,
+deep links. Example: three stacks the app presents as tabs.
 
 ### Phase 6 — safe areas
 
@@ -326,8 +343,16 @@ payload cache tuning, iOS swipe-back spike, scroll-to-top on re-tap at root.
 - Web navigation swaps one root payload per navigation; nested-boundary
   partial rendering is deferred, but the boundary machinery (`?screen`) built
   for native is the seed for it.
-- Stacks and tabs exist only on native; web is one live route over browser
-  history, matching both Comet and browser expectations.
+- Parallel stacks exist only on native; web is one live route over browser
+  history, matching both Comet and browser expectations. `stacks()` still marks
+  the chrome boundary on web, where it drives content-only fetches for modals.
+- The framework owns navigation behavior, never navigator UI. `stacks()` is
+  named for what it does — a chrome boundary plus parallel stacks — not for the
+  tab bar an app might draw on top of it. There is no `TabBar` primitive.
+- Page titles are a plain React 19 `<title>` rendered by the page, hoisted into
+  `<head>` on web and dropped on native (metadata tags resolve to nothing in
+  the native intrinsic layer). No `title` route option, so titles can be
+  dynamic and are never duplicated in the manifest.
 - Native screens stay mounted below the stack top; payload retention is the
   back-gesture cache.
 - JS-driven `Animated` transitions in v1; react-native-screens fidelity
@@ -346,9 +371,19 @@ payload cache tuning, iOS swipe-back spike, scroll-to-top on re-tap at root.
 - JS-driven stack animations will not match native gesture fidelity (iOS
   interactive swipe-back especially); the phase 7 spike decides whether
   react-native-screens earns its weight.
-- Precise rules for `layout` nodes nested inside `tabs` children (and tab
-  metadata placement) need to be specified during phase 1 before types are
-  frozen.
+- Precise rules for `layout` nodes nested inside `stacks` children need to be
+  specified during phase 1 before types are frozen.
+- React does not dedupe `<title>`: if a layout and its leaf both render one,
+  both land in `<head>` and the browser honors the first, so the outer wins
+  over the more specific page. Today's rule is "titles belong in leaves"; a
+  merge step would be needed to make layout defaults overridable.
+- `useStacks()` derives `active` from the manifest's `stack` field, so a
+  free-floating route pushed onto a stack (`/p/:id`) reports no active stack on
+  web — the switcher de-highlights behind a modal. Native is correct because it
+  reads real router state. Fixing web means tracking the background route's
+  stack across a modal.
+- Only one `stacks()` boundary is honored: `manifest.navigator` takes the first
+  non-root boundary, so nested or sibling navigators are not yet supported.
 - Template-literal holes are permissive: `/p/${string}` accepts trailing
   junk, so the types catch wrong routes and typos, not malformed suffixes —
   `href()` is the strict path. Also watch checker cost as route counts grow

@@ -19,7 +19,7 @@ import { parsePlatform } from "./platform.ts";
 import type { ScreenRender } from "./router-server.tsx";
 import {
   fallbackRoute,
-  renderChrome,
+  renderFragment,
   renderMatch,
   renderScreen,
   resolveTree,
@@ -30,13 +30,12 @@ import "virtual:flypath/styles.css";
 
 const FLIGHT_CONTENT_TYPE = "text/x-component;charset=utf-8";
 
-function documentShell(children: ReactNode, title: string): ReactNode {
+function documentShell(children: ReactNode): ReactNode {
   return (
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta content="width=device-width, initial-scale=1" name="viewport" />
-        <title>{title}</title>
         {import.meta.viteRsc.loadCss()}
       </head>
       <body>{children}</body>
@@ -189,30 +188,33 @@ export default async function handler(request: Request): Promise<Response> {
       url.searchParams.has("__flight") ||
       request.headers.has("x-rsc-action");
 
-    if (screen === "chrome") {
-      const chrome = await toFlight(
-        { root: await renderChrome(resolved) },
+    const fragment =
+      request.headers.get("x-flypath-fragment") ??
+      url.searchParams.get("__flypath_fragment");
+
+    if (fragment !== null) {
+      const rendering = await toFlight(
+        { root: await renderFragment(resolved, fragment) },
         temporaryReferences,
       );
-      return new Response(replay(chrome.bytes), {
+      return new Response(replay(rendering.bytes), {
         headers: { "content-type": FLIGHT_CONTENT_TYPE },
       });
     }
 
-    const boundary = screen === null ? undefined : screen;
+    const container = screen === null ? undefined : screen;
 
     const compose = (rendering: ScreenRender): Promise<Rendered> => {
       const content =
         platform === "web"
           ? withSafeArea(rendering.route, rendering.node)
           : rendering.node;
-      const title = rendering.route.options.title ?? "Flypath";
       return runWithRequest({ ...info, params: rendering.params }, () =>
         toFlight(
           {
             root:
               platform === "web" && screen === null
-                ? documentShell(content, title)
+                ? documentShell(content)
                 : content,
             returnValue: action.returnValue,
             formState: action.formState,
@@ -222,7 +224,7 @@ export default async function handler(request: Request): Promise<Response> {
       );
     };
 
-    let match = await renderScreen(resolved, pathname, boundary);
+    let match = await renderScreen(resolved, pathname, container);
     let rendered = match ? await compose(match) : undefined;
 
     if (rendered?.signal?.kind === "redirect") {
@@ -238,7 +240,7 @@ export default async function handler(request: Request): Promise<Response> {
         resolved,
         fallback,
         { "*": pathname.replace(/^\//, "") },
-        boundary,
+        container,
       );
       rendered = await compose(match);
       if (rendered.signal?.kind === "not-found") return plainNotFound();

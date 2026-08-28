@@ -6,17 +6,20 @@ import {
   ActivityIndicator,
   Animated,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { manifest } from "virtual:flypath/route-manifest";
 
+import { containerById } from "../../router/manifest.ts";
+import { ContainerScope } from "../../router/scope.tsx";
 import type { RscPayload } from "../../runtime/payload.ts";
 import { edgesOf, insetPadding, useInsets } from "./insets.ts";
-import { nativeRouter } from "./router-store.ts";
-import type { ScreenState } from "./stack-context.ts";
-import { useStacks } from "./stack-context.ts";
+import type { Entry, ScreenEntry } from "./navigator-context.ts";
+import { useNavigator } from "./navigator-context.ts";
+
+const EMPTY: readonly Entry[] = [];
 
 class ScreenBoundary extends Component<
   { children: ReactNode },
@@ -43,8 +46,45 @@ function Payload({ payload }: { payload: Promise<RscPayload> }): ReactNode {
   return use(payload).root;
 }
 
+function Loading(): ReactNode {
+  return (
+    <View style={styles.center}>
+      <ActivityIndicator />
+    </View>
+  );
+}
+
+function Host({ id }: { id: string }): ReactNode {
+  return containerById(manifest, id)?.kind === "branches" ? (
+    <BranchesHost id={id} />
+  ) : (
+    <StackHost id={id} />
+  );
+}
+
+function Container({ id }: { id: string }): ReactNode {
+  const { fragments } = useNavigator();
+  const fragment = fragments[id];
+
+  if (!fragment) {
+    return (
+      <ContainerScope id={id}>
+        <Host id={id} />
+      </ContainerScope>
+    );
+  }
+
+  return (
+    <ScreenBoundary>
+      <Suspense fallback={<Loading />}>
+        <Payload payload={fragment} />
+      </Suspense>
+    </ScreenBoundary>
+  );
+}
+
 type ScreenProps = {
-  entry: ScreenState;
+  entry: ScreenEntry;
   depth: number;
   exiting: boolean;
   onExited: () => void;
@@ -107,13 +147,7 @@ function Screen({ entry, depth, exiting, onExited }: ScreenProps): ReactNode {
       ]}
     >
       <ScreenBoundary>
-        <Suspense
-          fallback={
-            <View style={styles.center}>
-              <ActivityIndicator />
-            </View>
-          }
-        >
+        <Suspense fallback={<Loading />}>
           <Payload payload={entry.payload} />
         </Suspense>
       </ScreenBoundary>
@@ -121,14 +155,12 @@ function Screen({ entry, depth, exiting, onExited }: ScreenProps): ReactNode {
   );
 }
 
-function Stack({
-  entries,
-  visible,
-}: {
-  entries: readonly ScreenState[];
-  visible: boolean;
-}): ReactNode {
-  const [exiting, setExiting] = useState<ScreenState | null>(null);
+export function StackHost({ id }: { id: string }): ReactNode {
+  const { tree } = useNavigator();
+  const state = tree[id];
+  const entries = state?.kind === "stack" ? state.entries : EMPTY;
+
+  const [exiting, setExiting] = useState<Entry | null>(null);
   const previous = useRef(entries);
 
   useEffect(() => {
@@ -136,7 +168,9 @@ function Stack({
     previous.current = entries;
     if (entries.length < before.length) {
       const removed = before[before.length - 1];
-      if (removed && !entries.includes(removed)) setExiting(removed);
+      if (removed && removed.kind === "screen" && !entries.includes(removed)) {
+        setExiting(removed);
+      }
     }
   }, [entries]);
 
@@ -144,65 +178,48 @@ function Stack({
     exiting && !entries.includes(exiting) ? [...entries, exiting] : entries;
 
   return (
-    <View
-      pointerEvents={visible ? "auto" : "none"}
-      style={[styles.stack, visible ? null : styles.hidden]}
-    >
-      {rendered.map((entry, depth) => (
-        <Screen
-          depth={depth}
-          entry={entry}
-          exiting={entry === exiting}
-          key={entry.key}
-          onExited={() => setExiting(null)}
-        />
-      ))}
+    <View style={styles.stack}>
+      {rendered.map((entry, depth) =>
+        entry.kind === "screen" ? (
+          <Screen
+            depth={depth}
+            entry={entry}
+            exiting={entry === exiting}
+            key={entry.key}
+            onExited={() => setExiting(null)}
+          />
+        ) : (
+          <View
+            key={entry.key}
+            style={depth === 0 ? styles.base : styles.overlay}
+          >
+            <Container id={entry.id} />
+          </View>
+        ),
+      )}
     </View>
   );
 }
 
-export function NativeNavigator({ boundary }: { boundary: string }): ReactNode {
-  const { stacks, activeTab, tabs } = useStacks();
-  const keys = tabs.length > 0 ? tabs.map((tab) => tab.key) : [boundary];
+export function BranchesHost({ id }: { id: string }): ReactNode {
+  const { tree } = useNavigator();
+  const state = tree[id];
+  const branches = containerById(manifest, id)?.branches ?? [];
+  const active = state?.kind === "branches" ? state.active : branches[0];
 
   return (
     <View style={styles.stack}>
-      {keys.map((key) => (
-        <Stack
-          entries={stacks[key] ?? []}
-          key={key}
-          visible={key === activeTab}
-        />
-      ))}
-    </View>
-  );
-}
-
-export function NativeTabBar(): ReactNode {
-  const { tabs, activeTab } = useStacks();
-  const insets = useInsets();
-
-  return (
-    <View
-      style={[styles.tabBar, { paddingBottom: insets.bottom }]}
-      testID="flypath-tab-bar"
-    >
-      {tabs.map((tab) => (
-        <Pressable
-          key={tab.key}
-          onPress={() => nativeRouter()?.switchTab(tab.key)}
-          style={styles.tab}
-        >
-          <Text
-            style={[
-              styles.tabLabel,
-              tab.key === activeTab ? styles.tabActive : null,
-            ]}
+      {branches
+        .filter((branch) => tree[branch] !== undefined)
+        .map((branch) => (
+          <View
+            key={branch}
+            pointerEvents={branch === active ? "auto" : "none"}
+            style={[styles.stack, branch === active ? null : styles.hidden]}
           >
-            {tab.title ?? tab.path}
-          </Text>
-        </Pressable>
-      ))}
+            <Container id={branch} />
+          </View>
+        ))}
     </View>
   );
 }
@@ -233,24 +250,5 @@ const styles = StyleSheet.create({
   },
   stack: {
     flex: 1,
-  },
-  tab: {
-    alignItems: "center",
-    flex: 1,
-    paddingVertical: 10,
-  },
-  tabActive: {
-    color: "#0b5cff",
-    fontWeight: "600",
-  },
-  tabBar: {
-    backgroundColor: "#fafafa",
-    borderTopColor: "#e2e2e2",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-  },
-  tabLabel: {
-    color: "#555",
-    fontSize: 13,
   },
 });

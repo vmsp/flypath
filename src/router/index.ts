@@ -1,11 +1,20 @@
-export { index, isRouteTree, layout, route, routes, tabs } from "./config.ts";
+export {
+  branches,
+  index,
+  isRouteTree,
+  layout,
+  route,
+  routes,
+  stack,
+} from "./config.ts";
 export type {
   AnyNode,
   IndexNode,
   LayoutNode,
   Loader,
+  BranchesNode,
   RouteNode,
   RouteOptions,
   RouteTree,
-  TabsNode,
+  StackNode,
 } from "./types.ts";

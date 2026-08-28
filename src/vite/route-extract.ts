@@ -1,6 +1,6 @@
 import { parseSync } from "oxc-parser";
 
-import { flatten, ROOT_BOUNDARY } from "../router/flatten.ts";
+import { flatten, hasChrome } from "../router/flatten.ts";
 import type { RouteManifest } from "../router/manifest.ts";
 import type {
   AnyNode,
@@ -11,7 +11,14 @@ import type {
 import type { Node } from "./eval.ts";
 import { evaluate, StaticError, unwrap } from "./eval.ts";
 
-const BUILDERS = new Set(["routes", "route", "index", "layout", "tabs"]);
+const BUILDERS = new Set([
+  "routes",
+  "route",
+  "index",
+  "layout",
+  "stack",
+  "branches",
+]);
 
 const NOOP: Loader = () =>
   Promise.reject(new Error("flypath: route loaders are server-only"));
@@ -139,9 +146,11 @@ function interpret(input: Node, context: Context): AnyNode {
         load: NOOP,
         children: children(args[1], context),
       };
-    case "tabs":
+    case "stack":
+      return { kind: "stack", children: children(args[0], context) };
+    case "branches":
       return {
-        kind: "tabs",
+        kind: "branches",
         load: NOOP,
         children: children(args[1], context),
       };
@@ -196,22 +205,22 @@ export function parseRouteTree(id: string, code: string): RouteTree {
 }
 
 export function routeManifest(tree: RouteTree): RouteManifest {
-  const { routes, boundaries } = flatten(tree);
-  const navigator =
-    [...boundaries.keys()].find((id) => id !== ROOT_BOUNDARY) ?? ROOT_BOUNDARY;
+  const { routes, containers } = flatten(tree);
 
   return {
     routes: routes.map((route) => ({
       id: route.id,
       pattern: route.pattern,
       options: route.options,
-      boundary: route.boundary,
-      ...(route.tab === undefined ? {} : { tab: route.tab }),
+      placement: [...route.placement],
     })),
-    boundaries: [...boundaries.values()].map((boundary) => ({
-      id: boundary.id,
-      tabs: boundary.tabs.map((tab) => ({ ...tab })),
+    containers: [...containers.values()].map((container) => ({
+      id: container.id,
+      kind: container.kind,
+      ...(container.parent === undefined ? {} : { parent: container.parent }),
+      branches: [...container.branches],
+      root: container.root,
+      chrome: hasChrome(containers, container),
     })),
-    navigator,
   };
 }

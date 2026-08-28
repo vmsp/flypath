@@ -15,6 +15,16 @@ import type {
 export const NavigationContext: Context<Navigation | null> =
   createContext<Navigation | null>(null);
 
+let handler: (() => void) | undefined;
+
+export function registerBack(fn: (() => void) | undefined): void {
+  handler = fn;
+}
+
+export function back(): void {
+  handler?.();
+}
+
 function useNavigation(): Navigation {
   const value = useContext(NavigationContext);
   if (!value) {

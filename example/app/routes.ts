@@ -1,15 +1,19 @@
-import { index, layout, route, routes, tabs } from "flypath/router";
+import { branches, index, layout, route, routes, stack } from "flypath/router";
 
 // prettier-ignore
 const config = routes([
   layout(() => import("./shell.tsx"), [
-    tabs(() => import("./tab-bar.tsx"), [
-      index(() => import("./feed.tsx"), { title: "Home" }),
-      route("explore", () => import("./explore.tsx"), { title: "Explore", prefetch: "hover" }),
-      route("me", () => import("./profile.tsx"), { title: "Profile" }),
+    stack([
+      branches(() => import("./tab-bar.tsx"), [
+        stack([index(() => import("./feed.tsx"))]),
+        stack([route("explore", () => import("./explore.tsx"), { prefetch: "hover" })]),
+        stack([route("me", () => import("./profile.tsx"))]),
+        route("p/:id", () => import("./post.tsx"), { safeArea: ["top"] }),
+      ]),
+      route("settings", () => import("./settings.tsx"), { safeArea: ["top"] }),
+      route("compose", () => import("./compose.tsx"), { presentation: "modal", safeArea: ["top"] }),
     ]),
-    route("p/:id", () => import("./post.tsx"), { title: "Post", presentation: "modal", safeArea: ["top"] }),
-    route("*", () => import("./not-found.tsx"), { title: "Not found" }),
+    route("*", () => import("./not-found.tsx")),
   ]),
 ]);
 

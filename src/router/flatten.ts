@@ -1,47 +1,55 @@
+import type { ContainerKind } from "./manifest.ts";
+import { ROOT_CONTAINER, SHARED } from "./manifest.ts";
 import { joinPattern, matchPattern } from "./path.ts";
-import type { AnyNode, RouteOptions, RouteTree, TabsNode } from "./types.ts";
+import type {
+  AnyNode,
+  LoadedNode,
+  BranchesNode,
+  RouteOptions,
+  RouteTree,
+} from "./types.ts";
 
-export const ROOT_BOUNDARY = "root";
+export { ROOT_CONTAINER, SHARED } from "./manifest.ts";
 
-export type TabInfo = {
-  key: string;
-  path: string;
-  title?: string;
-};
-
-export type BoundaryInfo = {
+export type ContainerInfo = {
   id: string;
-  node: TabsNode | undefined;
-  ancestors: readonly AnyNode[];
-  tabs: readonly TabInfo[];
+  kind: ContainerKind;
+  parent: string | undefined;
+  node: BranchesNode | undefined;
+  ancestors: readonly LoadedNode[];
+  branches: string[];
+  root: string;
 };
 
 export type FlatRoute = {
   id: string;
   pattern: string;
   options: RouteOptions;
-  chain: readonly AnyNode[];
-  leaf: AnyNode;
-  boundary: string;
-  tab?: string;
+  chain: readonly LoadedNode[];
+  leaf: LoadedNode;
+  placement: readonly string[];
 };
 
 export type Flattened = {
   routes: readonly FlatRoute[];
-  boundaries: ReadonlyMap<string, BoundaryInfo>;
+  containers: ReadonlyMap<string, ContainerInfo>;
 };
 
 export function flatten(tree: RouteTree): Flattened {
   const routes: FlatRoute[] = [];
-  const boundaries = new Map<string, BoundaryInfo>();
+  const containers = new Map<string, ContainerInfo>();
   const ids = new Set<string>();
+  const rooted = new Set<string>();
   let counter = 0;
 
-  boundaries.set(ROOT_BOUNDARY, {
-    id: ROOT_BOUNDARY,
+  containers.set(ROOT_CONTAINER, {
+    id: ROOT_CONTAINER,
+    kind: "stack",
+    parent: undefined,
     node: undefined,
     ancestors: [],
-    tabs: [],
+    branches: [],
+    root: "/",
   });
 
   const uniqueId = (pattern: string): string => {
@@ -58,88 +66,109 @@ export function flatten(tree: RouteTree): Flattened {
 
   const emit = (
     pattern: string,
-    leaf: AnyNode,
+    leaf: LoadedNode,
     options: RouteOptions,
-    chain: readonly AnyNode[],
-    boundary: string,
-    tab: string | undefined,
-  ): FlatRoute => {
-    const route: FlatRoute = {
+    chain: readonly LoadedNode[],
+    placement: readonly string[],
+  ): void => {
+    routes.push({
       id: uniqueId(pattern),
       pattern,
       options,
       chain,
       leaf,
-      boundary,
-      ...(tab === undefined ? {} : { tab }),
-    };
-    routes.push(route);
-    return route;
+      placement,
+    });
+    for (const id of placement) {
+      if (id === SHARED || rooted.has(id)) continue;
+      rooted.add(id);
+      const container = containers.get(id);
+      if (container) container.root = pattern;
+    }
   };
 
   const walk = (
     nodes: readonly AnyNode[],
     base: string,
-    chain: readonly AnyNode[],
-    boundary: string,
-    tab: string | undefined,
+    chain: readonly LoadedNode[],
+    placement: readonly string[],
+    shared: ContainerInfo | undefined,
   ): void => {
+    const of = (): readonly string[] =>
+      shared ? [...placement, SHARED] : placement;
+
     for (const node of nodes) {
       if (node.kind === "index") {
-        emit(
-          base === "" ? "/" : base,
-          node,
-          node.options,
-          chain,
-          boundary,
-          tab,
-        );
+        emit(base === "" ? "/" : base, node, node.options, chain, of());
         continue;
       }
+
       if (node.kind === "layout") {
-        walk(node.children, base, [...chain, node], boundary, tab);
+        walk(node.children, base, [...chain, node], placement, shared);
         continue;
       }
-      if (node.kind === "tabs") {
+
+      if (node.kind === "stack" || node.kind === "branches") {
         const id = `#${counter}`;
         counter += 1;
-        const nested = [...chain, node];
-        const tabInfos: TabInfo[] = [];
-        boundaries.set(id, {
+        const parent = placement.at(-1) ?? ROOT_CONTAINER;
+        const branching = node.kind === "branches";
+        const ancestors = branching ? [...chain, node] : chain;
+        const info: ContainerInfo = {
           id,
-          node,
-          ancestors: nested,
-          tabs: tabInfos,
-        });
-        for (const [position, child] of node.children.entries()) {
-          const key = `${id}:${position}`;
-          const before = routes.length;
-          walk([child], base, nested, id, key);
-          const first = routes[before];
-          if (!first) continue;
-          tabInfos.push({
-            key,
-            path: first.pattern,
-            ...(first.options.title === undefined
-              ? {}
-              : { title: first.options.title }),
-          });
+          kind: node.kind,
+          parent,
+          node: branching ? node : undefined,
+          ancestors,
+          branches: [],
+          root: "/",
+        };
+        containers.set(id, info);
+        containers.get(parent)?.branches.push(id);
+        walk(
+          node.children,
+          base,
+          ancestors,
+          [...placement, id],
+          branching ? info : undefined,
+        );
+        if (branching && info.branches.length === 0) {
+          throw new Error(
+            "flypath: branches() needs at least one stack() or branches() " +
+              "child to branch into",
+          );
         }
         continue;
       }
 
       const pattern = joinPattern(base, node.pattern);
       if (node.children.length === 0) {
-        emit(pattern, node, node.options, chain, boundary, tab);
+        emit(pattern, node, node.options, chain, of());
         continue;
       }
-      walk(node.children, pattern, [...chain, node], boundary, tab);
+      walk(node.children, pattern, [...chain, node], placement, shared);
     }
   };
 
-  walk(tree.children, "", [], ROOT_BOUNDARY, undefined);
+  walk(tree.children, "", [], [ROOT_CONTAINER], undefined);
 
-  return { routes, boundaries };
+  for (const info of [...containers.values()].reverse()) {
+    if (info.kind !== "branches") continue;
+    const first = info.branches[0];
+    const branch = first === undefined ? undefined : containers.get(first);
+    if (branch) info.root = branch.root;
+  }
+
+  return { routes, containers };
+}
+
+export function hasChrome(
+  containers: ReadonlyMap<string, ContainerInfo>,
+  info: ContainerInfo,
+): boolean {
+  const parent =
+    info.parent === undefined ? undefined : containers.get(info.parent);
+  return info.ancestors.length > (parent?.ancestors.length ?? 0);
 }
 
 export function matchRoutes(

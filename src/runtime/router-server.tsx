@@ -1,11 +1,17 @@
 import type { ComponentType, ReactNode } from "react";
 import { createElement } from "react";
 
-import { NativeNavigator } from "../components/native/navigator.tsx";
+import { BranchesHost, StackHost } from "../components/native/navigator.tsx";
 import { SafeAreaView } from "../components/safe-area.ts";
-import type { BoundaryInfo, FlatRoute } from "../router/flatten.ts";
-import { flatten, matchRoutes, ROOT_BOUNDARY } from "../router/flatten.ts";
-import type { AnyNode, Params, RouteTree } from "../router/types.ts";
+import type { ContainerInfo, FlatRoute } from "../router/flatten.ts";
+import { flatten, matchRoutes } from "../router/flatten.ts";
+import { ContainerScope } from "../router/scope.tsx";
+import type {
+  AnyNode,
+  LoadedNode,
+  Params,
+  RouteTree,
+} from "../router/types.ts";
 
 type Wrapper = ComponentType<{ children: ReactNode }>;
 
@@ -13,8 +19,8 @@ type Page = ComponentType<Record<string, never>>;
 
 export type Resolved = {
   routes: readonly FlatRoute[];
-  boundaries: ReadonlyMap<string, BoundaryInfo>;
-  navigator: BoundaryInfo;
+  containers: ReadonlyMap<string, ContainerInfo>;
+  scopes: ReadonlyMap<AnyNode, string>;
 };
 
 const cache = new WeakMap<RouteTree, Resolved>();
@@ -23,31 +29,34 @@ export function resolveTree(tree: RouteTree): Resolved {
   const cached = cache.get(tree);
   if (cached) return cached;
 
-  const { routes, boundaries } = flatten(tree);
-  const tabs = [...boundaries.values()].find(
-    (boundary) => boundary.id !== ROOT_BOUNDARY,
-  );
-  const resolved: Resolved = {
-    routes,
-    boundaries,
-    navigator: tabs ?? (boundaries.get(ROOT_BOUNDARY) as BoundaryInfo),
-  };
+  const { routes, containers } = flatten(tree);
+  const scopes = new Map<AnyNode, string>();
+  for (const container of containers.values()) {
+    if (container.node) scopes.set(container.node, container.id);
+  }
+
+  const resolved: Resolved = { routes, containers, scopes };
   cache.set(tree, resolved);
   return resolved;
 }
 
-async function componentOf(node: AnyNode): Promise<ComponentType<never>> {
+async function componentOf(node: LoadedNode): Promise<ComponentType<never>> {
   return (await node.load()).default;
 }
 
 async function wrap(
-  chain: readonly AnyNode[],
+  resolved: Resolved,
+  chain: readonly LoadedNode[],
   inner: ReactNode,
 ): Promise<ReactNode> {
   let node = inner;
   for (const wrapper of [...chain].reverse()) {
     const Wrap = (await componentOf(wrapper)) as Wrapper;
     node = createElement(Wrap, { children: node });
+    const id = resolved.scopes.get(wrapper);
+    if (id !== undefined) {
+      node = createElement(ContainerScope, { id, children: node });
+    }
   }
   return node;
 }
@@ -62,48 +71,51 @@ export async function renderMatch(
   resolved: Resolved,
   route: FlatRoute,
   params: Params,
-  boundary: string | undefined,
+  container: string | undefined,
 ): Promise<ScreenRender> {
   const skip = new Set<AnyNode>(
-    boundary === undefined
+    container === undefined
       ? []
-      : (resolved.boundaries.get(boundary)?.ancestors ?? []),
+      : (resolved.containers.get(container)?.ancestors ?? []),
   );
 
   const Leaf = (await componentOf(route.leaf)) as Page;
   const page = createElement(Leaf);
   const chain = route.chain.filter((node) => !skip.has(node));
 
-  return { route, params, node: await wrap(chain, page) };
+  return { route, params, node: await wrap(resolved, chain, page) };
 }
 
 export async function renderScreen(
   resolved: Resolved,
   pathname: string,
-  boundary: string | undefined,
+  container: string | undefined,
 ): Promise<ScreenRender | undefined> {
   const matched = matchRoutes(resolved.routes, pathname);
   if (!matched) return undefined;
-  return renderMatch(resolved, matched.route, matched.params, boundary);
+  return renderMatch(resolved, matched.route, matched.params, container);
 }
 
-export async function renderChrome(resolved: Resolved): Promise<ReactNode> {
-  const { navigator } = resolved;
-
-  if (navigator.id === ROOT_BOUNDARY || !navigator.node) {
-    return createElement(NativeNavigator, { boundary: ROOT_BOUNDARY });
+export async function renderFragment(
+  resolved: Resolved,
+  id: string,
+): Promise<ReactNode> {
+  const container = resolved.containers.get(id);
+  if (!container) {
+    throw new Error(`flypath: unknown navigation container "${id}"`);
   }
 
-  const chrome = navigator.ancestors.at(-1) as AnyNode;
-  const above = navigator.ancestors.slice(0, -1);
-  const Chrome = (await componentOf(chrome)) as Wrapper;
+  const parent =
+    container.parent === undefined
+      ? undefined
+      : resolved.containers.get(container.parent);
+  const above = container.ancestors.slice(parent?.ancestors.length ?? 0);
+  const Host = container.kind === "branches" ? BranchesHost : StackHost;
 
-  return wrap(
-    above,
-    createElement(Chrome, {
-      children: createElement(NativeNavigator, { boundary: navigator.id }),
-    }),
-  );
+  return createElement(ContainerScope, {
+    id,
+    children: await wrap(resolved, above, createElement(Host, { id })),
+  });
 }
 
 export function fallbackRoute(resolved: Resolved): FlatRoute | undefined {

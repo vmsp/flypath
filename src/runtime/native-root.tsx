@@ -4,7 +4,6 @@ import {
   Component,
   startTransition,
   Suspense,
-  use,
   useCallback,
   useEffect,
   useMemo,
@@ -23,68 +22,52 @@ import { manifest } from "virtual:flypath/route-manifest";
 
 import type { Insets } from "../components/native/insets.ts";
 import { InsetsContext } from "../components/native/insets.ts";
+import { NavigatorContext } from "../components/native/navigator-context.ts";
+import { StackHost } from "../components/native/navigator.tsx";
 import { setNativeRouter } from "../components/native/router-store.ts";
-import type {
-  ScreenState,
-  StackState,
-} from "../components/native/stack-context.ts";
-import { StackContext } from "../components/native/stack-context.ts";
-import { NavigationContext } from "../router/client.ts";
-import { boundaryOf, matchManifest } from "../router/manifest.ts";
+import { NavigationContext, registerBack } from "../router/client.ts";
+import { matchManifest, ROOT_CONTAINER } from "../router/manifest.ts";
 import { normalizePath, searchParamsOf } from "../router/path.ts";
+import type { ContainerRuntime } from "../router/scope.tsx";
+import { ContainerRuntimeContext, ContainerScope } from "../router/scope.tsx";
 import type { Navigation } from "../router/types.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import { readInsets, watchInsets } from "./native-insets.ts";
+import type { Fetchers, Router } from "./native-router.ts";
+import {
+  activeBranch,
+  applyPayload,
+  focusedScreen,
+  goBack,
+  initialRouter,
+  navigate,
+  refresh as refreshRouter,
+} from "./native-router.ts";
 import type { RscPayload } from "./payload.ts";
-
-type Stacks = Record<string, readonly ScreenState[]>;
-
-const TABS = boundaryOf(manifest, manifest.navigator)?.tabs ?? [];
-const SCREEN_BOUNDARY = manifest.navigator;
-const ROOT_STACK = TABS[0]?.key ?? SCREEN_BOUNDARY;
-
-let counter = 0;
-
-function nextKey(): string {
-  counter += 1;
-  return `screen-${counter}`;
-}
 
 async function fetchPayload(
   url: string,
-  boundary: string,
+  headers: Record<string, string>,
 ): Promise<RscPayload> {
   const { serverUrl, platform } = nativeConfig();
   const response = await fetch(`${serverUrl}${url}`, {
-    headers: {
-      "x-flypath-platform": platform,
-      "x-flypath-screen": boundary,
-    },
+    headers: { "x-flypath-platform": platform, ...headers },
   });
 
   const redirect = response.headers.get("x-flypath-redirect");
-  if (redirect !== null) return fetchPayload(redirect, boundary);
+  if (redirect !== null) return fetchPayload(redirect, headers);
 
   return createFromFetch<RscPayload>(Promise.resolve(response), {
     findSourceMapURL,
   } as Parameters<typeof createFromFetch>[1]);
 }
 
-function makeScreen(url: string): ScreenState {
-  const matched = matchManifest(manifest, normalizePath(url));
-  return {
-    key: nextKey(),
-    url,
-    safeArea: matched?.route.options.safeArea,
-    presentation: matched?.route.options.presentation ?? "push",
-    payload: fetchPayload(url, SCREEN_BOUNDARY),
-  };
-}
-
-function stackKeyFor(url: string, activeTab: string): string {
-  const matched = matchManifest(manifest, normalizePath(url));
-  return matched?.route.tab ?? activeTab;
-}
+const fetchers: Fetchers = {
+  screen: (url, container) =>
+    fetchPayload(url, { "x-flypath-screen": container }),
+  fragment: (url, container) =>
+    fetchPayload(url, { "x-flypath-fragment": container }),
+};
 
 class RootBoundary extends Component<
   { children: ReactNode },
@@ -107,124 +90,57 @@ class RootBoundary extends Component<
   }
 }
 
-function Chrome({ payload }: { payload: Promise<RscPayload> }): ReactNode {
-  return use(payload).root;
-}
-
 export default function Root(): ReactNode {
-  const [chrome, setChrome] = useState(() => fetchPayload("/", "chrome"));
-  const [activeTab, setActiveTab] = useState(ROOT_STACK);
-  const [stacks, setStacks] = useState<Stacks>(() => ({
-    [ROOT_STACK]: [makeScreen(TABS[0]?.path ?? "/")],
-  }));
+  const [router, setRouter] = useState<Router>(() =>
+    initialRouter("/", fetchers),
+  );
   const [insets, setInsets] = useState<Insets>(readInsets);
 
-  const state = useRef({ activeTab, stacks });
-  state.current = { activeTab, stacks };
+  const state = useRef(router);
+  state.current = router;
 
   useEffect(() => watchInsets(setInsets), []);
 
-  const ensure = useCallback((key: string, current: Stacks): Stacks => {
-    if (current[key]) return current;
-    const tab = TABS.find((entry) => entry.key === key);
-    return { ...current, [key]: [makeScreen(tab?.path ?? "/")] };
-  }, []);
-
-  const push = useCallback(
-    (href: string, replace: boolean) => {
-      const key = stackKeyFor(href, state.current.activeTab);
-      startTransition(() => {
-        if (key !== state.current.activeTab) setActiveTab(key);
-        setStacks((current) => {
-          const next = ensure(key, current);
-          const stack = next[key] ?? [];
-          const kept = replace ? stack.slice(0, -1) : stack;
-          return { ...next, [key]: [...kept, makeScreen(href)] };
-        });
-      });
-    },
-    [ensure],
-  );
-
   const back = useCallback((): boolean => {
-    const { activeTab: key, stacks: current } = state.current;
-    const stack = current[key] ?? [];
-    if (stack.length > 1) {
-      startTransition(() =>
-        setStacks((value) => ({ ...value, [key]: stack.slice(0, -1) })),
-      );
-      return true;
-    }
-    if (key !== ROOT_STACK) {
-      startTransition(() => setActiveTab(ROOT_STACK));
-      return true;
-    }
-    return false;
+    const next = goBack(state.current);
+    if (!next) return false;
+    startTransition(() => setRouter(next));
+    return true;
   }, []);
 
-  const switchTab = useCallback(
-    (key: string) => {
-      startTransition(() => {
-        if (state.current.activeTab === key) {
-          setStacks((current) => {
-            const stack = current[key] ?? [];
-            return stack.length > 1
-              ? { ...current, [key]: stack.slice(0, 1) }
-              : current;
-          });
-          return;
-        }
-        setActiveTab(key);
-        setStacks((current) => ensure(key, current));
-      });
-    },
-    [ensure],
-  );
+  const push = useCallback((href: string, replace: boolean) => {
+    startTransition(() =>
+      setRouter((current) => navigate(current, href, replace, fetchers)),
+    );
+  }, []);
 
   const refresh = useCallback(() => {
-    startTransition(() => {
-      setChrome(fetchPayload("/", "chrome"));
-      setStacks((current) => {
-        const next: Stacks = {};
-        for (const [key, stack] of Object.entries(current)) {
-          next[key] = stack.map((entry) => ({
-            ...entry,
-            payload: fetchPayload(entry.url, SCREEN_BOUNDARY),
-          }));
-        }
-        return next;
-      });
-    });
+    startTransition(() =>
+      setRouter((current) => refreshRouter(current, fetchers)),
+    );
   }, []);
 
   useEffect(() => {
+    registerBack(() => void back());
     setNativeRouter({
       push: (href: string) => push(href, false),
       replace: (href: string) => push(href, true),
       back: () => void back(),
       refresh,
-      switchTab,
-      currentUrl: () => {
-        const { activeTab: key, stacks: current } = state.current;
-        return (current[key] ?? []).at(-1)?.url ?? "/";
-      },
+      currentUrl: () => focusedScreen(state.current)?.url ?? "/",
+      currentContainer: () =>
+        focusedScreen(state.current)?.container ?? ROOT_CONTAINER,
       applyPayload: (payload) => {
-        const { activeTab: key } = state.current;
         startTransition(() =>
-          setStacks((current) => {
-            const stack = current[key] ?? [];
-            const top = stack.at(-1);
-            if (!top) return current;
-            return {
-              ...current,
-              [key]: [...stack.slice(0, -1), { ...top, payload }],
-            };
-          }),
+          setRouter((current) => applyPayload(current, payload)),
         );
       },
     });
-    return () => setNativeRouter(undefined);
-  }, [push, back, refresh, switchTab]);
+    return () => {
+      registerBack(undefined);
+      setNativeRouter(undefined);
+    };
+  }, [push, back, refresh]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener(
@@ -259,13 +175,12 @@ export default function Root(): ReactNode {
     return () => socket.close();
   }, [refresh]);
 
-  const stackState = useMemo<StackState>(
-    () => ({ stacks, activeTab, tabs: TABS }),
-    [stacks, activeTab],
+  const runtime = useMemo<ContainerRuntime>(
+    () => ({ activeBranch: (id) => activeBranch(router, id) }),
+    [router],
   );
 
-  const top = (stacks[activeTab] ?? []).at(-1);
-  const url = top?.url ?? "/";
+  const url = focusedScreen(router)?.url ?? "/";
   const pathname = normalizePath(url);
 
   const navigation = useMemo<Navigation>(
@@ -279,23 +194,27 @@ export default function Root(): ReactNode {
 
   return (
     <InsetsContext.Provider value={insets}>
-      <StackContext.Provider value={stackState}>
-        <NavigationContext.Provider value={navigation}>
-          <View style={styles.container}>
-            <RootBoundary>
-              <Suspense
-                fallback={
-                  <View style={styles.center}>
-                    <ActivityIndicator />
-                  </View>
-                }
-              >
-                <Chrome payload={chrome} />
-              </Suspense>
-            </RootBoundary>
-          </View>
-        </NavigationContext.Provider>
-      </StackContext.Provider>
+      <NavigatorContext.Provider value={router}>
+        <ContainerRuntimeContext.Provider value={runtime}>
+          <NavigationContext.Provider value={navigation}>
+            <View style={styles.container}>
+              <RootBoundary>
+                <Suspense
+                  fallback={
+                    <View style={styles.center}>
+                      <ActivityIndicator />
+                    </View>
+                  }
+                >
+                  <ContainerScope id={ROOT_CONTAINER}>
+                    <StackHost id={ROOT_CONTAINER} />
+                  </ContainerScope>
+                </Suspense>
+              </RootBoundary>
+            </View>
+          </NavigationContext.Provider>
+        </ContainerRuntimeContext.Provider>
+      </NavigatorContext.Provider>
     </InsetsContext.Provider>
   );
 }

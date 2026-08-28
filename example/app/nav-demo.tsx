@@ -26,6 +26,34 @@ export default function NavDemo() {
       >
         open the first post
       </a>
+      <a
+        href="/settings"
+        style={{
+          backgroundColor: colors.primary,
+          borderRadius: 8,
+          color: "white",
+          padding: 12,
+          textAlign: "center",
+          textDecorationLine: "none",
+        }}
+      >
+        settings (covers the tab bar)
+      </a>
+      <a
+        href="/compose"
+        style={{
+          borderColor: colors.border,
+          borderRadius: 8,
+          borderStyle: "solid",
+          borderWidth: 1,
+          color: colors.text,
+          padding: 12,
+          textAlign: "center",
+          textDecorationLine: "none",
+        }}
+      >
+        compose (modal above the tab bar)
+      </a>
     </div>
   );
 }

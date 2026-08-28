@@ -41,15 +41,21 @@ export function layout<const C extends readonly unknown[]>(
   return { kind: "layout", load, children };
 }
 
-export function tabs<const C extends readonly unknown[]>(
+export function stack<const C extends readonly unknown[]>(
+  children: C,
+): { readonly kind: "stack"; readonly children: C } {
+  return { kind: "stack", children };
+}
+
+export function branches<const C extends readonly unknown[]>(
   load: Loader,
   children: C,
 ): {
-  readonly kind: "tabs";
+  readonly kind: "branches";
   readonly load: Loader;
   readonly children: C;
 } {
-  return { kind: "tabs", load, children };
+  return { kind: "branches", load, children };
 }
 
 export function isRouteTree(value: unknown): value is RouteTree {

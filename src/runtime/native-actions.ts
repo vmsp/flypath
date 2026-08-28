@@ -4,9 +4,9 @@ import {
   encodeReply,
   setServerCallback,
 } from "@vitejs/plugin-rsc/react/browser";
-import { manifest } from "virtual:flypath/route-manifest";
 
 import { nativeRouter } from "../components/native/router-store.ts";
+import { ROOT_CONTAINER } from "../router/manifest.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import type { RscPayload } from "./payload.ts";
 
@@ -23,7 +23,7 @@ export function installServerCallback(): void {
       headers: {
         "x-rsc-action": id,
         "x-flypath-platform": platform,
-        "x-flypath-screen": manifest.navigator,
+        "x-flypath-screen": router?.currentContainer() ?? ROOT_CONTAINER,
       },
     });
 

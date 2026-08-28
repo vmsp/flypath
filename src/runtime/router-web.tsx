@@ -4,16 +4,27 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { manifest } from "virtual:flypath/route-manifest";
 
-import { NavigationContext } from "../router/client.ts";
-import { matchManifest } from "../router/manifest.ts";
+import { NavigationContext, registerBack } from "../router/client.ts";
+import type { ManifestRoute } from "../router/manifest.ts";
+import {
+  containerById,
+  declaredContainer,
+  matchManifest,
+  SHARED,
+} from "../router/manifest.ts";
 import { normalizePath, searchParamsOf } from "../router/path.ts";
+import type { ContainerRuntime } from "../router/scope.tsx";
+import { ContainerRuntimeContext } from "../router/scope.tsx";
 import type { Navigation, Params } from "../router/types.ts";
 import type { RscPayload } from "./payload.ts";
+
+type Branches = Readonly<Record<string, string>>;
 
 type Snapshot = {
   url: string;
   payload: RscPayload;
   modal: { url: string; payload: RscPayload } | undefined;
+  branches: Branches;
 };
 
 type State = Snapshot & { key: string };
@@ -61,12 +72,15 @@ function currentUrl(): string {
   return `${window.location.pathname}${window.location.search}`;
 }
 
-async function request(url: string, contentOnly: boolean): Promise<Fetched> {
+async function request(
+  url: string,
+  container: string | undefined,
+): Promise<Fetched> {
   const target = new URL(url, window.location.origin);
   target.searchParams.set("__flight", "1");
 
   const response = await fetch(target, {
-    headers: contentOnly ? { "x-flypath-screen": manifest.navigator } : {},
+    headers: container === undefined ? {} : { "x-flypath-screen": container },
   });
 
   const redirect = response.headers.get("x-flypath-redirect");
@@ -80,11 +94,11 @@ async function request(url: string, contentOnly: boolean): Promise<Fetched> {
   };
 }
 
-function load(url: string, contentOnly: boolean): Promise<Fetched> {
-  const cacheKey = `${contentOnly ? "c" : "d"}:${url}`;
+function load(url: string, container: string | undefined): Promise<Fetched> {
+  const cacheKey = `${container ?? "document"}:${url}`;
   const cached = prefetched.get(cacheKey);
   if (cached) return cached;
-  const task = request(url, contentOnly);
+  const task = request(url, container);
   prefetched.set(cacheKey, task);
   cap(prefetched, PAYLOAD_LIMIT);
   task.catch(() => prefetched.delete(cacheKey));
@@ -100,13 +114,30 @@ function optionsFor(pathname: string): {
   params: Params;
   presentation: string;
   prefetch: string | false;
+  route: ManifestRoute | undefined;
 } {
   const matched = matchManifest(manifest, pathname);
   return {
     params: matched?.params ?? {},
     presentation: matched?.route.options.presentation ?? "push",
     prefetch: matched?.route.options.prefetch ?? false,
+    route: matched?.route,
   };
+}
+
+function branchesFor(
+  route: ManifestRoute | undefined,
+  current: Branches,
+): Branches {
+  if (!route) return current;
+  const next: Record<string, string> = { ...current };
+  for (const [position, id] of route.placement.entries()) {
+    if (containerById(manifest, id)?.kind !== "branches") continue;
+    const child = route.placement[position + 1];
+    if (child === undefined || child === SHARED) continue;
+    next[id] = child;
+  }
+  return next;
 }
 
 function anchorFor(target: EventTarget | null): HTMLAnchorElement | null {
@@ -155,7 +186,7 @@ export function refreshPayload(): void {
   const state = read?.();
   if (!state) return;
   invalidatePayloads();
-  void load(state.url, false).then((result) => {
+  void load(state.url, undefined).then((result) => {
     if (!result.payload) return;
     startTransition(() =>
       dispatch?.({
@@ -216,21 +247,31 @@ function Modal({
 }
 
 export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
-  const [state, setState] = useState<State>(() => ({
-    key: historyKey(),
-    url: currentUrl(),
-    payload: initial,
-    modal: undefined,
-  }));
+  const [state, setState] = useState<State>(() => {
+    const url = currentUrl();
+    return {
+      key: historyKey(),
+      url,
+      payload: initial,
+      modal: undefined,
+      branches: branchesFor(
+        optionsFor(normalizePath(new URL(url, window.location.origin).pathname))
+          .route,
+        {},
+      ),
+    };
+  });
 
   useEffect(() => {
     dispatch = (next) => setState(next);
     read = () => state;
     go = navigate;
+    registerBack(() => window.history.back());
     return () => {
       dispatch = null;
       read = null;
       go = null;
+      registerBack(undefined);
     };
   });
 
@@ -249,11 +290,14 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       }
 
       const path = `${url.pathname}${url.search}`;
-      const { presentation } = optionsFor(normalizePath(url.pathname));
+      const { presentation, route } = optionsFor(normalizePath(url.pathname));
       const previous = read?.();
       const asModal = presentation === "modal" && previous !== undefined;
 
-      const result = await load(path, asModal);
+      const result = await load(
+        path,
+        asModal && route ? declaredContainer(route.placement) : undefined,
+      );
       if (result.redirect !== undefined) {
         await navigate(result.redirect, "replace");
         return;
@@ -268,18 +312,23 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
           url: current.url,
           payload: current.payload,
           modal: current.modal,
+          branches: current.branches,
         });
       }
 
       const key = nextKey();
+      const branches = asModal
+        ? (current?.branches ?? {})
+        : branchesFor(route, current?.branches ?? {});
       const next: State = asModal
         ? {
             key,
             url: current?.url ?? path,
             payload: current?.payload ?? payload,
             modal: { url: path, payload },
+            branches,
           }
-        : { key, url: path, payload, modal: undefined };
+        : { key, url: path, payload, modal: undefined, branches };
 
       if (mode === "push") {
         window.history.pushState({ __flypathKey: key }, "", path);
@@ -322,7 +371,7 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       if (href === undefined) return;
       const path = normalizePath(new URL(href, window.location.href).pathname);
       if (optionsFor(path).prefetch !== "hover") return;
-      void load(href, false);
+      void load(href, undefined);
     };
 
     const onPop = (): void => {
@@ -333,6 +382,7 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
           url: previous.url,
           payload: previous.payload,
           modal: previous.modal,
+          branches: previous.branches,
         });
       }
       const key = historyKey();
@@ -345,14 +395,21 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
         });
         return;
       }
-      void load(url, false).then((result) => {
+      void load(url, undefined).then((result) => {
         if (!result.payload) return;
         startTransition(() => {
+          const current = read?.();
           setState({
             key,
             url,
             payload: result.payload as RscPayload,
             modal: undefined,
+            branches: branchesFor(
+              optionsFor(
+                normalizePath(new URL(url, window.location.origin).pathname),
+              ).route,
+              current?.branches ?? {},
+            ),
           });
           window.scrollTo(0, scrolls.get(key) ?? 0);
         });
@@ -383,17 +440,23 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
     searchParams: searchParamsOf(current),
   };
 
+  const runtime: ContainerRuntime = {
+    activeBranch: (id) => state.branches[id],
+  };
+
   return (
-    <NavigationContext.Provider value={value}>
-      {state.payload.root}
-      {state.modal
-        ? createPortal(
-            <Modal onDismiss={() => window.history.back()}>
-              {state.modal.payload.root}
-            </Modal>,
-            document.body,
-          )
-        : null}
-    </NavigationContext.Provider>
+    <ContainerRuntimeContext.Provider value={runtime}>
+      <NavigationContext.Provider value={value}>
+        {state.payload.root}
+        {state.modal
+          ? createPortal(
+              <Modal onDismiss={() => window.history.back()}>
+                {state.modal.payload.root}
+              </Modal>,
+              document.body,
+            )
+          : null}
+      </NavigationContext.Provider>
+    </ContainerRuntimeContext.Provider>
   );
 }

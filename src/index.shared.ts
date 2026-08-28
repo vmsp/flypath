@@ -16,8 +16,6 @@ export type {
 export type { Platform } from "./runtime/platform.ts";
 export { getPlatform, isAndroid, isIos, isNative } from "./runtime/platform.ts";
 export { SafeAreaView } from "./components/safe-area.ts";
-export { TabBar } from "./components/tab-bar.ts";
-export type { TabBarProps } from "./components/tab-bar.ts";
 export type { SafeAreaViewProps } from "./components/safe-area.ts";
 export { href } from "./router/href.ts";
 export { NavigationError, navigationSignal } from "./router/navigation.ts";

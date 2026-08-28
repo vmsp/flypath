@@ -1,29 +1,31 @@
 import { matchPattern } from "./path.ts";
 import type { Params, RouteOptions } from "./types.ts";
 
+export const ROOT_CONTAINER = "root";
+
+export const SHARED = "*";
+
+export type ContainerKind = "stack" | "branches";
+
+export type ManifestContainer = {
+  id: string;
+  kind: ContainerKind;
+  parent?: string;
+  branches: string[];
+  root: string;
+  chrome: boolean;
+};
+
 export type ManifestRoute = {
   id: string;
   pattern: string;
   options: RouteOptions;
-  boundary: string;
-  tab?: string;
-};
-
-export type ManifestTab = {
-  key: string;
-  path: string;
-  title?: string;
-};
-
-export type ManifestBoundary = {
-  id: string;
-  tabs: ManifestTab[];
+  placement: string[];
 };
 
 export type RouteManifest = {
   routes: ManifestRoute[];
-  boundaries: ManifestBoundary[];
-  navigator: string;
+  containers: ManifestContainer[];
 };
 
 export type RouteMatch = {
@@ -42,9 +44,15 @@ export function matchManifest(
   return undefined;
 }
 
-export function boundaryOf(
+export function containerById(
   manifest: RouteManifest,
   id: string,
-): ManifestBoundary | undefined {
-  return manifest.boundaries.find((boundary) => boundary.id === id);
+): ManifestContainer | undefined {
+  return manifest.containers.find((container) => container.id === id);
+}
+
+export function declaredContainer(placement: readonly string[]): string {
+  const last = placement.at(-1);
+  if (last !== SHARED) return last ?? ROOT_CONTAINER;
+  return placement.at(-2) ?? ROOT_CONTAINER;
 }

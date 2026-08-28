@@ -75,7 +75,7 @@ function clientReferences(): Plugin {
 
 const STUB_ID = "\0flypath:native-stub";
 
-const STUB_EXPORTS = ["NativeNavigator", "NativeTabBar"];
+const STUB_EXPORTS = ["BranchesHost", "StackHost"];
 
 function nativeStub(): Plugin {
   const nativeDir = path.join(distDir, "components", "native") + path.sep;
