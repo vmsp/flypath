@@ -1,13 +1,14 @@
 import type { AtomicRule } from "./atomic.ts";
 import { atomicRule } from "./atomic.ts";
 import type { ConditionValues, FlatValue } from "./flatten.ts";
-import { flattenStyle, isClassRef } from "./flatten.ts";
+import { flattenStyle, isClassRef, isScrollValue } from "./flatten.ts";
 import type { Scalar } from "./shorthands.ts";
 
 export type WebStyle = {
   style: Record<string, Scalar> | undefined;
   classes: string[];
   rules: AtomicRule[];
+  scrolls: boolean;
 };
 
 const cache = new WeakMap<object, WebStyle>();
@@ -52,12 +53,19 @@ function build(input: unknown): WebStyle {
   }
 
   if (DEV) track(rules);
-  return { style: hasInline ? style : undefined, classes, rules };
+  return {
+    style: hasInline ? style : undefined,
+    classes,
+    rules,
+    scrolls:
+      isScrollValue(props.get("overflowX")) ||
+      isScrollValue(props.get("overflowY")),
+  };
 }
 
 export function webStyle(input: unknown): WebStyle {
   if (input === null || typeof input !== "object") {
-    return { style: undefined, classes: [], rules: [] };
+    return { style: undefined, classes: [], rules: [], scrolls: false };
   }
   const cached = cache.get(input as object);
   if (cached) return cached;

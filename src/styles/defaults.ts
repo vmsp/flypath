@@ -1,9 +1,12 @@
 export const RESET = `*, *::before, *::after { box-sizing: border-box; }
-* { margin: 0; }
+* { margin: 0; min-height: 0; min-width: 0; }
 dialog { margin: auto; }
+html, body { height: 100%; }
 html { font-family: system-ui, sans-serif; }
 :root { color-scheme: light dark; }
-body { line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body { display: flex; flex-direction: column; line-height: 1.5; overflow: hidden; -webkit-font-smoothing: antialiased; }
+[data-fp-scroll] { overscroll-behavior: contain; }
+[data-fp-scroll] > * { flex-shrink: 0; }
 img, picture, video, canvas, svg { display: block; max-width: 100%; }
 input, button, textarea, select { font: inherit; }
 p, h1, h2, h3, h4, h5, h6 { overflow-wrap: break-word; }

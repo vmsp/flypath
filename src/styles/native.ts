@@ -1,7 +1,13 @@
 import type { Predicate } from "./conditions.ts";
 import { parseCondition } from "./conditions.ts";
 import { FLEX_DEFAULTS } from "./defaults.ts";
-import { flattenStyle, isClassRef } from "./flatten.ts";
+import type { FlatValue } from "./flatten.ts";
+import {
+  conditionValues,
+  flattenStyle,
+  isClassRef,
+  isScrollValue,
+} from "./flatten.ts";
 import { isNativeProperty, TEXT_PROPERTIES } from "./properties.ts";
 import type { Frames } from "./registry.ts";
 import { lookupKeyframes, lookupVar } from "./registry.ts";
@@ -29,8 +35,18 @@ export type Animation = {
   fill: string;
 };
 
+export type Flag =
+  | boolean
+  | { $cond: { d: boolean; c: [Predicate, boolean][] } };
+
+export type Scroll = {
+  axis: "horizontal" | "vertical";
+  enabled: Flag;
+};
+
 export type NativeStyle = {
   flex: boolean;
+  scroll: Scroll | undefined;
   view: Record<string, Descriptor>;
   text: Record<string, Descriptor>;
   theme: Record<string, Descriptor>;
@@ -91,6 +107,53 @@ function parseConditions(
     conditions.push([parseCondition(condition), parseValue(property, value)]);
   }
   return { $cond: { d: fallback, c: conditions } };
+}
+
+function scrollFlag(value: FlatValue): Flag {
+  const map = conditionValues(value);
+  if (!map) return isScrollValue(value);
+
+  const conditions: [Predicate, boolean][] = [];
+  let fallback = false;
+  for (const [condition, entry] of Object.entries(map)) {
+    if (condition === "default") {
+      fallback = isScrollValue(entry);
+      continue;
+    }
+    conditions.push([parseCondition(condition), isScrollValue(entry)]);
+  }
+  return { $cond: { d: fallback, c: conditions } };
+}
+
+function clipsContent(value: FlatValue | undefined): boolean {
+  if (value === undefined) return false;
+  const map = conditionValues(value);
+  if (!map) return value !== "visible";
+  return Object.values(map).some((entry) => entry !== "visible");
+}
+
+type Overflow = {
+  scroll: Scroll | undefined;
+  clip: string | undefined;
+};
+
+function takeOverflow(props: Map<string, FlatValue>): Overflow {
+  const x = props.get("overflowX");
+  const y = props.get("overflowY");
+  props.delete("overflowX");
+  props.delete("overflowY");
+  if (x === undefined && y === undefined) {
+    return { scroll: undefined, clip: undefined };
+  }
+
+  const clip = clipsContent(x) || clipsContent(y) ? "hidden" : "visible";
+  if (y !== undefined && isScrollValue(y)) {
+    return { scroll: { axis: "vertical", enabled: scrollFlag(y) }, clip };
+  }
+  if (x !== undefined && isScrollValue(x)) {
+    return { scroll: { axis: "horizontal", enabled: scrollFlag(x) }, clip };
+  }
+  return { scroll: undefined, clip };
 }
 
 function frameOffset(key: string): number {
@@ -172,6 +235,8 @@ export function normalizeNativeStyle(
     }
   }
 
+  const { scroll, clip } = takeOverflow(props);
+
   const view: Record<string, Descriptor> = {};
   const text: Record<string, Descriptor> = {};
 
@@ -193,6 +258,8 @@ export function normalizeNativeStyle(
     else view[property] = descriptor;
   }
 
+  if (clip !== undefined) view["overflow"] = clip;
+
   const themeDescriptors: Record<string, Descriptor> = {};
   for (const [name, value] of Object.entries(theme)) {
     themeDescriptors[name] = parseValue("", value);
@@ -200,6 +267,7 @@ export function normalizeNativeStyle(
 
   return {
     flex,
+    scroll,
     view,
     text,
     theme: themeDescriptors,

@@ -34,9 +34,31 @@ type Fetched = { payload?: RscPayload; redirect?: string };
 const SNAPSHOT_LIMIT = 24;
 const PAYLOAD_LIMIT = 24;
 
+type ScrollPositions = readonly (readonly [number, number])[];
+
 const snapshots = new Map<string, Snapshot>();
-const scrolls = new Map<string, number>();
+const scrolls = new Map<string, ScrollPositions>();
 const prefetched = new Map<string, Promise<Fetched>>();
+
+function scrollers(): Element[] {
+  const root = document.scrollingElement;
+  return [
+    ...(root === null ? [] : [root]),
+    ...document.querySelectorAll("[data-fp-scroll]"),
+  ];
+}
+
+function captureScroll(): ScrollPositions {
+  return scrollers().map((node) => [node.scrollLeft, node.scrollTop] as const);
+}
+
+function restoreScroll(saved: ScrollPositions | undefined): void {
+  scrollers().forEach((node, index) => {
+    const [left, top] = saved?.[index] ?? [0, 0];
+    node.scrollLeft = left;
+    node.scrollTop = top;
+  });
+}
 
 function cap<T>(store: Map<string, T>, limit: number): void {
   while (store.size > limit) {
@@ -281,6 +303,10 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
     }
   }, []);
 
+  useEffect(() => {
+    restoreScroll(scrolls.get(state.key));
+  }, [state.key]);
+
   const navigate = useCallback(
     async (href: string, mode: "push" | "replace"): Promise<void> => {
       const url = new URL(href, window.location.href);
@@ -306,8 +332,9 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       if (!payload) return;
 
       const current = read?.();
+      const positions = captureScroll();
       if (current) {
-        scrolls.set(current.key, window.scrollY);
+        scrolls.set(current.key, positions);
         remember(current.key, {
           url: current.url,
           payload: current.payload,
@@ -317,6 +344,7 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       }
 
       const key = nextKey();
+      if (asModal) scrolls.set(key, positions);
       const branches = asModal
         ? (current?.branches ?? {})
         : branchesFor(route, current?.branches ?? {});
@@ -336,10 +364,7 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
         window.history.replaceState({ __flypathKey: key }, "", path);
       }
 
-      startTransition(() => {
-        setState(next);
-        if (!asModal) window.scrollTo(0, 0);
-      });
+      startTransition(() => setState(next));
     },
     [],
   );
@@ -377,7 +402,7 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
     const onPop = (): void => {
       const previous = read?.();
       if (previous) {
-        scrolls.set(previous.key, window.scrollY);
+        scrolls.set(previous.key, captureScroll());
         remember(previous.key, {
           url: previous.url,
           payload: previous.payload,
@@ -389,10 +414,7 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       const url = currentUrl();
       const snapshot = snapshots.get(key);
       if (snapshot) {
-        startTransition(() => {
-          setState({ key, ...snapshot });
-          window.scrollTo(0, scrolls.get(key) ?? 0);
-        });
+        startTransition(() => setState({ key, ...snapshot }));
         return;
       }
       void load(url, undefined).then((result) => {
@@ -411,7 +433,6 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
               current?.branches ?? {},
             ),
           });
-          window.scrollTo(0, scrolls.get(key) ?? 0);
         });
       });
     };

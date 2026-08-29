@@ -1,6 +1,5 @@
 - Release build (Phase 5 of PLAN_CLIENT.md)
 - Skew
-- Web is scrollable by default but native isn't
 - Slide to go back on iOS
 - Modal
 - Middleware

@@ -45,6 +45,7 @@ export function createIntrinsic(
   const next: Record<string, unknown> = { ...props };
   if (resolved.style === undefined) delete next["style"];
   else next["style"] = resolved.style;
+  if (resolved.scrolls) next["data-fp-scroll"] = "";
 
   if (resolved.classes.length > 0) {
     const existing = props["className"];

@@ -56,7 +56,8 @@ export const LONGHANDS = [
   "minHeight",
   "minWidth",
   "opacity",
-  "overflow",
+  "overflowX",
+  "overflowY",
   "paddingBottom",
   "paddingLeft",
   "paddingRight",
@@ -88,6 +89,7 @@ export const SHORTHANDS = [
   "gap",
   "inset",
   "margin",
+  "overflow",
   "padding",
 ] as const;
 
@@ -130,6 +132,20 @@ export const TEXT_PROPERTIES: ReadonlySet<string> = new Set([
   "textAlign",
   "textDecorationLine",
   "textTransform",
+]);
+
+export const SCROLL_CONTENT: ReadonlySet<string> = new Set([
+  "alignContent",
+  "alignItems",
+  "columnGap",
+  "flexDirection",
+  "flexWrap",
+  "justifyContent",
+  "paddingBottom",
+  "paddingLeft",
+  "paddingRight",
+  "paddingTop",
+  "rowGap",
 ]);
 
 const UNITLESS: ReadonlySet<string> = new Set([

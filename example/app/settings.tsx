@@ -14,6 +14,7 @@ export default function Settings() {
           flexDirection: "column",
           flexGrow: 1,
           gap: 12,
+          overflow: "auto",
           padding: 20,
         }}
       >

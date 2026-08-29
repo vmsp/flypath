@@ -19,6 +19,7 @@ export default async function PostPage() {
           flexDirection: "column",
           flexGrow: 1,
           gap: 12,
+          overflow: "auto",
           padding: 20,
         }}
       >

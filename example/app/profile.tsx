@@ -16,7 +16,9 @@ export default async function Profile() {
         style={{
           display: "flex",
           flexDirection: "column",
+          flexGrow: 1,
           gap: 16,
+          overflow: "auto",
           padding: { default: 8, "@media (min-width: 600px)": 32 },
         }}
       >

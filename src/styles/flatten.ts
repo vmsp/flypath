@@ -20,6 +20,24 @@ export function isClassRef(value: unknown): value is ClassRef {
   );
 }
 
+const SCROLLABLE: ReadonlySet<Scalar> = new Set(["auto", "scroll"]);
+
+export function conditionValues(
+  value: FlatValue | undefined,
+): ConditionValues | undefined {
+  if (value === null || value === undefined || typeof value !== "object") {
+    return undefined;
+  }
+  return isClassRef(value) ? value.map : value;
+}
+
+export function isScrollValue(value: FlatValue | undefined): boolean {
+  if (value === undefined) return false;
+  const map = conditionValues(value);
+  if (!map) return SCROLLABLE.has(value as Scalar);
+  return Object.values(map).some((entry) => SCROLLABLE.has(entry));
+}
+
 function visit(input: unknown, out: Flattened): void {
   if (input === null || input === undefined || input === false) return;
   if (Array.isArray(input)) {

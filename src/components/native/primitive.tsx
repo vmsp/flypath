@@ -15,6 +15,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -23,7 +24,8 @@ import {
 import type { Edge } from "../../router/types.ts";
 import type { Tag } from "../../styles/defaults.ts";
 import { TAG_DEFAULTS } from "../../styles/defaults.ts";
-import type { Animation } from "../../styles/native.ts";
+import type { Animation, Scroll } from "../../styles/native.ts";
+import { SCROLL_CONTENT } from "../../styles/properties.ts";
 import { useAnimation } from "./animation.ts";
 import type { FormControl, FormField } from "./context.ts";
 import {
@@ -41,6 +43,7 @@ import { nativeRouter } from "./router-store.ts";
 
 export type PrimitiveProps = {
   $flex?: boolean;
+  $scroll?: Scroll;
   $style?: Style;
   $text?: Style;
   $theme?: Style;
@@ -85,6 +88,16 @@ function wrapRawText(children: ReactNode, style: Style): ReactNode {
   flush();
 
   return changed ? out : children;
+}
+
+function splitScroll(style: Style): { frame: Style; content: Style } {
+  const frame: Style = {};
+  const content: Style = { flexGrow: 1 };
+  for (const [property, value] of Object.entries(style)) {
+    if (SCROLL_CONTENT.has(property)) content[property] = value;
+    else frame[property] = value;
+  }
+  return { frame, content };
 }
 
 function usesPseudo(style: Style | undefined): boolean {
@@ -296,7 +309,8 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
   const IS_FIELD = tag === "input" || tag === "textarea";
 
   function Primitive(props: PrimitiveProps): ReactNode {
-    const { $flex, $style, $text, $theme, $anim, children, ...rest } = props;
+    const { $flex, $scroll, $style, $text, $theme, $anim, children, ...rest } =
+      props;
     const blockLink = tag === "a" && $flex === true;
 
     const parentTheme = useContext(ThemeContext);
@@ -409,6 +423,24 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
       () => ({ ...inherited, ...text }),
       [inherited, text],
     );
+
+    const scrolls =
+      $scroll !== undefined &&
+      !defaults.text &&
+      tag !== "img" &&
+      onClick === undefined;
+
+    const scroll = useMemo(
+      () => (scrolls ? splitScroll(view) : undefined),
+      [scrolls, view],
+    );
+
+    if (DEV && $scroll !== undefined && !scrolls) {
+      throw new Error(
+        `flypath: <${tag}> cannot scroll on native — "overflow: auto" needs a ` +
+          "container element without a press handler",
+      );
+    }
 
     const style =
       defaults.text && !blockLink
@@ -536,6 +568,25 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
             {wrapRawText(children, inheritable)}
           </InheritedTextContext.Provider>
         </AnimatedPressable>
+      );
+    } else if (scroll && $scroll) {
+      const Component = animated ? Animated.ScrollView : ScrollView;
+      node = (
+        <Component
+          {...attributes}
+          {...handlers}
+          contentContainerStyle={[scroll.content, safeArea] as never}
+          horizontal={$scroll.axis === "horizontal"}
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled={true}
+          role={defaults.role as never}
+          scrollEnabled={resolve($scroll.enabled, env) !== false}
+          style={[scroll.frame, animated?.style] as never}
+        >
+          <InheritedTextContext.Provider value={inheritable}>
+            {wrapRawText(children, inheritable)}
+          </InheritedTextContext.Provider>
+        </Component>
       );
     } else {
       const Component = animated ? Animated.View : View;

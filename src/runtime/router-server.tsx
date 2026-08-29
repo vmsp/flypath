@@ -12,6 +12,7 @@ import type {
   Params,
   RouteTree,
 } from "../router/types.ts";
+import type { StrictStyles } from "../styles/types.ts";
 
 type Wrapper = ComponentType<{ children: ReactNode }>;
 
@@ -122,11 +123,16 @@ export function fallbackRoute(resolved: Resolved): FlatRoute | undefined {
   return resolved.routes.find((route) => route.pattern.includes("*"));
 }
 
+const ROOT: StrictStyles = {
+  display: "flex",
+  flex: 1,
+  flexDirection: "column",
+};
+
 export function withSafeArea(route: FlatRoute, node: ReactNode): ReactNode {
-  const { safeArea } = route.options;
-  if (safeArea === false) return node;
   return createElement(SafeAreaView, {
-    edges: safeArea ?? true,
+    edges: route.options.safeArea ?? true,
+    style: ROOT,
     children: node,
   });
 }

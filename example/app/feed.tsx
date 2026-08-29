@@ -13,7 +13,9 @@ export default async function Feed() {
         style={{
           display: "flex",
           flexDirection: "column",
+          flexGrow: 1,
           gap: 12,
+          overflow: "auto",
           padding: 16,
         }}
       >

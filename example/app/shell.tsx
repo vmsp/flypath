@@ -10,7 +10,6 @@ export default function Shell({ children }: { children: ReactNode }) {
         display: "flex",
         flexDirection: "column",
         flexGrow: 1,
-        minHeight: "100vh",
       }}
     >
       {children}

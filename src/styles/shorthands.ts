@@ -211,6 +211,11 @@ export function expandProperty(name: string, value: Scalar): Entry[] {
         ["left", left],
       ];
     }
+    case "overflow":
+      return [
+        ["overflowX", value],
+        ["overflowY", value],
+      ];
     default: {
       const prefix = name === "margin" ? "margin" : "padding";
       const [top, right, bottom, left] = sides(value);

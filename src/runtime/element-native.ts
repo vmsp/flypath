@@ -17,6 +17,7 @@ function nativeProps(
   return {
     ...rest,
     $flex: normalized.flex,
+    $scroll: normalized.scroll,
     $style: normalized.view,
     $text: normalized.text,
     $theme: normalized.theme,
