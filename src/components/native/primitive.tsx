@@ -114,7 +114,7 @@ const AnimatedTextInput: ComponentType<Record<string, unknown>> =
     TextInput as never,
   ) as never as ComponentType<Record<string, unknown>>;
 
-const DEV = process.env["NODE_ENV"] !== "production";
+const DEV = process.env.NODE_ENV !== "production";
 
 const GENERIC_FONTS: Record<string, string | undefined> = {
   monospace: Platform.select({ ios: "Menlo", default: "monospace" }),

@@ -12,7 +12,7 @@ export type WebStyle = {
 
 const cache = new WeakMap<object, WebStyle>();
 
-const DEV = process.env["NODE_ENV"] !== "production";
+const DEV = process.env.NODE_ENV !== "production";
 const DYNAMIC_LIMIT = 256;
 const minted = new Set<string>();
 let warned = false;

@@ -10,7 +10,7 @@ import { IDLE_INTERACTION, useStyleEnv } from "./env.ts";
 import type { Style } from "./resolve.ts";
 import { resolveStyle, resolveTheme } from "./resolve.ts";
 
-const DEV = process.env["NODE_ENV"] !== "production";
+const DEV = process.env.NODE_ENV !== "production";
 
 export type NativeComponentProps = {
   style?: unknown;

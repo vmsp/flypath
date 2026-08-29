@@ -5,7 +5,7 @@ import { nativeStyle } from "../styles/native.ts";
 import type { JsxFn } from "./element.ts";
 import { isMetadata, resolveIntrinsic } from "./intrinsics.ts";
 
-const DEV = process.env["NODE_ENV"] !== "production";
+const DEV = process.env.NODE_ENV !== "production";
 
 function nativeProps(
   tag: string,

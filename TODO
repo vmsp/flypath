@@ -4,6 +4,8 @@
 - Slide to go back on iOS
 - Modal
 - Middleware
+- Simplify useParams, usePathname, useSearchParams?
+- Run on device
 - DB, Migrations
 - Jobs, Crons
 - Email
