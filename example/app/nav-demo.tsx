@@ -1,17 +1,16 @@
 "use client";
 
-import { href, useParams, usePathname } from "flypath";
+import { href, useParams } from "flypath";
 
 import { colors } from "./vars.css.ts";
 
 export default function NavDemo() {
-  const pathname = usePathname();
   const params = useParams();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <span style={{ color: colors.muted }}>
-        at {pathname} {JSON.stringify(params)}
+        params {JSON.stringify(params)}
       </span>
       <a
         href={href("/p/:id", { id: "1" })}

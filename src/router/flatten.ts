@@ -30,6 +30,7 @@ export type FlatRoute = {
 
 export type Flattened = {
   routes: readonly FlatRoute[];
+  fallback: FlatRoute | undefined;
   containers: ReadonlyMap<string, ContainerInfo>;
 };
 
@@ -38,6 +39,7 @@ export function flatten(tree: RouteTree): Flattened {
   const containers = new Map<string, ContainerInfo>();
   const ids = new Set<string>();
   const rooted = new Set<string>();
+  let fallback: FlatRoute | undefined;
   let counter = 0;
 
   containers.set(ROOT_CONTAINER, {
@@ -101,6 +103,21 @@ export function flatten(tree: RouteTree): Flattened {
         continue;
       }
 
+      if (node.kind === "not-found") {
+        if (fallback) {
+          throw new Error("flypath: only one notFound() route may be declared");
+        }
+        fallback = {
+          id: "not-found",
+          pattern: "",
+          options: node.options,
+          chain,
+          leaf: node,
+          placement: of(),
+        };
+        continue;
+      }
+
       if (node.kind === "layout") {
         walk(node.children, base, [...chain, node], placement, shared);
         continue;
@@ -157,7 +174,7 @@ export function flatten(tree: RouteTree): Flattened {
     if (branch) info.root = branch.root;
   }
 
-  return { routes, containers };
+  return { routes, fallback, containers };
 }
 
 export function hasChrome(

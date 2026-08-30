@@ -1,4 +1,10 @@
-import type { IndexNode, Loader, RouteOptions, RouteTree } from "./types.ts";
+import type {
+  IndexNode,
+  Loader,
+  NotFoundNode,
+  RouteOptions,
+  RouteTree,
+} from "./types.ts";
 
 export function routes<const C extends readonly unknown[]>(
   children: C,
@@ -32,6 +38,10 @@ export function route<
 
 export function index(load: Loader, options?: RouteOptions): IndexNode {
   return { kind: "index", load, options: options ?? {} };
+}
+
+export function notFound(load: Loader, options?: RouteOptions): NotFoundNode {
+  return { kind: "not-found", load, options: options ?? {} };
 }
 
 export function layout<const C extends readonly unknown[]>(

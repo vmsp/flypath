@@ -18,7 +18,6 @@ import { runWithRequest } from "./platform-store.ts";
 import { parsePlatform } from "./platform.ts";
 import type { ScreenRender } from "./router-server.tsx";
 import {
-  fallbackRoute,
   renderFragment,
   renderMatch,
   renderScreen,
@@ -231,17 +230,12 @@ export default async function handler(request: Request): Promise<Response> {
       return redirectResponse(rendered.signal, !wantsFlight);
     }
 
-    let status = match?.route.pattern === "/*" ? 404 : 200;
+    let status = 200;
     if (!match || rendered?.signal?.kind === "not-found") {
       status = 404;
-      const fallback = fallbackRoute(resolved);
+      const fallback = resolved.fallback;
       if (!fallback || fallback === match?.route) return plainNotFound();
-      match = await renderMatch(
-        resolved,
-        fallback,
-        { "*": pathname.replace(/^\//, "") },
-        container,
-      );
+      match = await renderMatch(resolved, fallback, {}, container);
       rendered = await compose(match);
       if (rendered.signal?.kind === "not-found") return plainNotFound();
     }

@@ -1,4 +1,12 @@
-import { branches, index, layout, route, routes, stack } from "flypath/router";
+import {
+  branches,
+  index,
+  layout,
+  notFound,
+  route,
+  routes,
+  stack,
+} from "flypath/router";
 
 // prettier-ignore
 const config = routes([
@@ -13,7 +21,7 @@ const config = routes([
       route("settings", () => import("./settings.tsx"), { safeArea: ["top"] }),
       route("compose", () => import("./compose.tsx"), { presentation: "modal", safeArea: ["top"] }),
     ]),
-    route("*", () => import("./not-found.tsx")),
+    notFound(() => import("./not-found.tsx")),
   ]),
 ]);
 

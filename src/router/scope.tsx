@@ -4,7 +4,7 @@ import type { Context, ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
 import { manifest } from "virtual:flypath/route-manifest";
 
-import { usePathname } from "./client.ts";
+import { useNavigation } from "./client.ts";
 import type { ContainerKind, ManifestContainer } from "./manifest.ts";
 import {
   containerById,
@@ -74,7 +74,7 @@ function declaredBranch(
 export function useBranches(): readonly Branch[] {
   const scope = useContext(ContainerScopeContext);
   const runtime = useContext(ContainerRuntimeContext);
-  const pathname = usePathname();
+  const { pathname } = useNavigation();
   const container = enclosing(scope, "branches");
   const active = container ? runtime?.activeBranch(container.id) : undefined;
 

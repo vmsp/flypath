@@ -1,7 +1,8 @@
 import { parseSync } from "oxc-parser";
 
+import type { FlatRoute } from "../router/flatten.ts";
 import { flatten, hasChrome } from "../router/flatten.ts";
-import type { RouteManifest } from "../router/manifest.ts";
+import type { ManifestRoute, RouteManifest } from "../router/manifest.ts";
 import type {
   AnyNode,
   Loader,
@@ -15,6 +16,7 @@ const BUILDERS = new Set([
   "routes",
   "route",
   "index",
+  "notFound",
   "layout",
   "stack",
   "branches",
@@ -140,6 +142,12 @@ function interpret(input: Node, context: Context): AnyNode {
   switch (builder) {
     case "index":
       return { kind: "index", load: NOOP, options: options(args[1], context) };
+    case "notFound":
+      return {
+        kind: "not-found",
+        load: NOOP,
+        options: options(args[1], context),
+      };
     case "layout":
       return {
         kind: "layout",
@@ -204,16 +212,21 @@ export function parseRouteTree(id: string, code: string): RouteTree {
   };
 }
 
+function manifestRoute(route: FlatRoute): ManifestRoute {
+  return {
+    id: route.id,
+    pattern: route.pattern,
+    options: route.options,
+    placement: [...route.placement],
+  };
+}
+
 export function routeManifest(tree: RouteTree): RouteManifest {
-  const { routes, containers } = flatten(tree);
+  const { routes, fallback, containers } = flatten(tree);
 
   return {
-    routes: routes.map((route) => ({
-      id: route.id,
-      pattern: route.pattern,
-      options: route.options,
-      placement: [...route.placement],
-    })),
+    routes: routes.map(manifestRoute),
+    ...(fallback === undefined ? {} : { fallback: manifestRoute(fallback) }),
     containers: [...containers.values()].map((container) => ({
       id: container.id,
       kind: container.kind,

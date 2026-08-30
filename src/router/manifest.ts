@@ -25,6 +25,7 @@ export type ManifestRoute = {
 
 export type RouteManifest = {
   routes: ManifestRoute[];
+  fallback?: ManifestRoute;
   containers: ManifestContainer[];
 };
 
@@ -41,7 +42,8 @@ export function matchManifest(
     const params = matchPattern(route.pattern, pathname);
     if (params) return { route, params };
   }
-  return undefined;
+  const fallback = manifest.fallback;
+  return fallback ? { route: fallback, params: {} } : undefined;
 }
 
 export function containerById(

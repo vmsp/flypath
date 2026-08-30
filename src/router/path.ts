@@ -27,10 +27,6 @@ export function matchPattern(
   const params: Params = {};
 
   for (const [position, part] of expected.entries()) {
-    if (part === "*") {
-      params["*"] = actual.slice(position).join("/");
-      return params;
-    }
     const value = actual[position];
     if (value === undefined) return undefined;
     if (part.startsWith(":")) {

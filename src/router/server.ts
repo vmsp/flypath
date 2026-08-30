@@ -19,10 +19,6 @@ function navigation(): Navigation {
   return info;
 }
 
-export function usePathname(): string {
-  return navigation().pathname;
-}
-
 export function useParams<P extends Pattern = never>(): RouteParams<P> {
   return navigation().params as RouteParams<P>;
 }

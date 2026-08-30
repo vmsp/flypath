@@ -28,6 +28,12 @@ export type IndexNode = {
   readonly options: RouteOptions;
 };
 
+export type NotFoundNode = {
+  readonly kind: "not-found";
+  readonly load: Loader;
+  readonly options: RouteOptions;
+};
+
 export type LayoutNode = {
   readonly kind: "layout";
   readonly load: Loader;
@@ -48,6 +54,7 @@ export type BranchesNode = {
 export type AnyNode =
   | RouteNode
   | IndexNode
+  | NotFoundNode
   | LayoutNode
   | StackNode
   | BranchesNode;
@@ -71,16 +78,13 @@ type Fill<S extends string> = S extends `${infer H}/${infer T}`
 
 type Segment<S extends string> = S extends `:${string}` ? string : S;
 
-type Splat<S extends string> = S extends `${string}*${string}` ? true : false;
-
 type Item<C> = C extends readonly unknown[] ? C[number] : never;
 
 type Root<Base extends string> = Base extends "" ? "/" : Base;
 
 type Branch<S extends string, Base extends string, C> =
-  Splat<S> extends true
-    ? never
-    : `${Base}/${S}` | Under<Item<C>, `${Base}/${S}`>;
+  | `${Base}/${S}`
+  | Under<Item<C>, `${Base}/${S}`>;
 
 type Container = "layout" | "stack" | "branches";
 
@@ -133,11 +137,7 @@ export type ExternalHref =
   | `tel:${string}`
   | `#${string}`;
 
-type NameOf<S extends string> = S extends `:${infer N}`
-  ? N
-  : S extends "*"
-    ? "*"
-    : never;
+type NameOf<S extends string> = S extends `:${infer N}` ? N : never;
 
 type ParamNames<P> = P extends `${infer H}/${infer T}`
   ? NameOf<H> | ParamNames<T>
@@ -145,9 +145,7 @@ type ParamNames<P> = P extends `${infer H}/${infer T}`
     ? NameOf<P>
     : never;
 
-type ParamValues<P> = {
-  [K in ParamNames<P>]: K extends "*" ? string | readonly string[] : string;
-};
+type ParamValues<P> = { [K in ParamNames<P>]: string };
 
 export type HrefArgs<P> = [ParamNames<P>] extends [never]
   ? []

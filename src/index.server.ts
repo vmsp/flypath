@@ -3,6 +3,5 @@ export {
   notFound,
   redirect,
   useParams,
-  usePathname,
   useSearchParams,
 } from "./router/server.ts";

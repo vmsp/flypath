@@ -20,6 +20,7 @@ type Page = ComponentType<Record<string, never>>;
 
 export type Resolved = {
   routes: readonly FlatRoute[];
+  fallback: FlatRoute | undefined;
   containers: ReadonlyMap<string, ContainerInfo>;
   scopes: ReadonlyMap<AnyNode, string>;
 };
@@ -30,13 +31,13 @@ export function resolveTree(tree: RouteTree): Resolved {
   const cached = cache.get(tree);
   if (cached) return cached;
 
-  const { routes, containers } = flatten(tree);
+  const { routes, fallback, containers } = flatten(tree);
   const scopes = new Map<AnyNode, string>();
   for (const container of containers.values()) {
     if (container.node) scopes.set(container.node, container.id);
   }
 
-  const resolved: Resolved = { routes, containers, scopes };
+  const resolved: Resolved = { routes, fallback, containers, scopes };
   cache.set(tree, resolved);
   return resolved;
 }
@@ -117,10 +118,6 @@ export async function renderFragment(
     id,
     children: await wrap(resolved, above, createElement(Host, { id })),
   });
-}
-
-export function fallbackRoute(resolved: Resolved): FlatRoute | undefined {
-  return resolved.routes.find((route) => route.pattern.includes("*"));
 }
 
 const ROOT: StrictStyles = {

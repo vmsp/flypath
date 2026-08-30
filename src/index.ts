@@ -5,7 +5,6 @@ export {
   notFound,
   redirect,
   useParams,
-  usePathname,
   useSearchParams,
 } from "./router/client.ts";
 export { useBranches } from "./router/scope.tsx";

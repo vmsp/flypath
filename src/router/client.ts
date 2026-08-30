@@ -25,7 +25,7 @@ export function back(): void {
   handler?.();
 }
 
-function useNavigation(): Navigation {
+export function useNavigation(): Navigation {
   const value = useContext(NavigationContext);
   if (!value) {
     throw new Error(
@@ -34,10 +34,6 @@ function useNavigation(): Navigation {
     );
   }
   return value;
-}
-
-export function usePathname(): string {
-  return useNavigation().pathname;
 }
 
 export function useParams<P extends Pattern = never>(): RouteParams<P> {
