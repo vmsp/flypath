@@ -32,8 +32,7 @@ function replacements(context: ProjectContext): Array<[string, string]> {
     ["__FLYPATH_RN_ROOT__", context.reactNativeRoot],
     ["__FLYPATH_RN_DIR__", context.reactNativeDir],
     ["__FLYPATH_GRADLE_PLUGIN_DIR__", context.gradlePluginDir],
-    ["__FLYPATH_KIT_DIR__", path.join(packageRoot, "android", "kit")],
-    ["__FLYPATH_REACT_KIT_DIR__", path.join(packageRoot, "android", "react")],
+    ["__FLYPATH_ANDROID_DIR__", path.join(packageRoot, "android")],
   ];
 }
 

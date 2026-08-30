@@ -1,6 +1,6 @@
 import android.content.Context
 import android.os.BatteryManager
-import dev.flypath.kit.FlypathApp
+import dev.flypath.FlypathApp
 
 fun printHello() {
     println("Hello from Kotlin!")

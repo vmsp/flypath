@@ -8,14 +8,13 @@ let package = Package(
     .library(name: "ExampleNative", targets: ["ExampleNative"])
   ],
   dependencies: [
-    .package(name: "FlypathKit", path: "../..")
+    .package(name: "Flypath", path: "../..")
   ],
   targets: [
     .target(
       name: "ExampleNative",
-      dependencies: [.product(name: "FlypathKit", package: "FlypathKit")],
-      path: "Sources",
-      swiftSettings: [.swiftLanguageMode(.v5)]
+      dependencies: [.product(name: "Flypath", package: "Flypath")],
+      path: "Sources"
     )
   ]
 )

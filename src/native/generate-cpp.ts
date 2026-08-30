@@ -42,7 +42,7 @@ function declarations(manifest: NativeManifest): string[] {
     ...manifest.modules.flatMap((module) =>
       module.components.map(
         (entry) =>
-          `void* ${viewSymbolFor(module.slug, entry.name)}(FlypathValueRef props, void* view);`,
+          `FlypathHostRef ${viewSymbolFor(module.slug, entry.name)}(FlypathValueRef props, FlypathViewRef view);`,
       ),
     ),
   ];

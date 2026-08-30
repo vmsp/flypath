@@ -12,7 +12,7 @@ using namespace facebook::react;
 @end
 
 @implementation FlypathComponentView {
-  void* _host;
+  FlypathHostRef _host;
   UIViewController* _controller;
 }
 
@@ -44,7 +44,7 @@ using namespace facebook::react;
       [super updateProps:props oldProps:oldProps];
       return;
     }
-    _host = create(values, (__bridge void*)self);
+    _host = create(values, (__bridge FlypathViewRef)self);
     _controller = (__bridge UIViewController*)flypath_host_controller(_host);
     _controller.view.frame = self.bounds;
     _controller.view.autoresizingMask =
@@ -64,12 +64,12 @@ using namespace facebook::react;
 
 @end
 
-extern "C" FlypathOutRef flypath_event_begin(void* view) {
+extern "C" FlypathOutRef flypath_event_begin(FlypathViewRef view) {
   (void)view;
   return reinterpret_cast<FlypathOutRef>(new flypath::Out());
 }
 
-extern "C" void flypath_event_end(void* view, const char* name, FlypathOutRef payload) {
+extern "C" void flypath_event_end(FlypathViewRef view, const char* name, FlypathOutRef payload) {
   flypath::Out* out = reinterpret_cast<flypath::Out*>(payload);
   FlypathComponentView* self = (__bridge FlypathComponentView*)view;
   [self flypathEmit:name payload:*out];

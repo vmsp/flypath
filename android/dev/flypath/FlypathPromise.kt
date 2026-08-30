@@ -1,4 +1,4 @@
-package dev.flypath.kit
+package dev.flypath
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -7,7 +7,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 
 @JvmInline
-public value class FlypathPromise(public val ref: Long) {
+public value class FlypathPromise(private val ref: Long) {
     public fun out(): FlypathOut = FlypathOut(FlypathAbi.promiseOut(ref))
 
     public fun resolve(): Unit = FlypathAbi.promiseResolve(ref)

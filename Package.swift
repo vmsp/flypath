@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-  name: "FlypathKit",
+  name: "Flypath",
   platforms: [.iOS(.v15)],
   products: [
-    .library(name: "FlypathKit", targets: ["FlypathKit", "FlypathAbi"])
+    .library(name: "Flypath", targets: ["Flypath", "FlypathAbi"])
   ],
   targets: [
     .target(
@@ -14,10 +14,10 @@ let package = Package(
       publicHeadersPath: "include"
     ),
     .target(
-      name: "FlypathKit",
+      name: "Flypath",
       dependencies: ["FlypathAbi"],
-      path: "apple/kit",
-      swiftSettings: [.swiftLanguageMode(.v5)]
+      path: "apple",
+      exclude: ["core"]
     ),
   ]
 )

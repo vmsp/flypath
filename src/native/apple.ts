@@ -5,7 +5,7 @@ import { link, list } from "./link.ts";
 import { packageRoot } from "./template.ts";
 
 const CORE_NAME = "FlypathCore";
-const KIT_NAME = "FlypathKit";
+const KIT_NAME = "Flypath";
 
 const REACT_PRODUCTS = [
   '.product(name: "ReactHeaders", package: "ReactNative")',

@@ -39,7 +39,7 @@ function resetGenerated(dir: string): void {
 }
 
 function applePackage(root: string, target: string): string {
-  const kit = posix(path.relative(nativeDir(root, "apple"), packageRoot));
+  const flypath = posix(path.relative(nativeDir(root, "apple"), packageRoot));
 
   return `// swift-tools-version: 6.0
 import PackageDescription
@@ -51,14 +51,13 @@ let package = Package(
     .library(name: ${JSON.stringify(target)}, targets: [${JSON.stringify(target)}]),
   ],
   dependencies: [
-    .package(name: "FlypathKit", path: ${JSON.stringify(kit)}),
+    .package(name: "Flypath", path: ${JSON.stringify(flypath)}),
   ],
   targets: [
     .target(
       name: ${JSON.stringify(target)},
-      dependencies: [.product(name: "FlypathKit", package: "FlypathKit")],
-      path: "Sources",
-      swiftSettings: [.swiftLanguageMode(.v5)]
+      dependencies: [.product(name: "Flypath", package: "Flypath")],
+      path: "Sources"
     ),
   ]
 )

@@ -1,4 +1,4 @@
-package dev.flypath.kit
+package dev.flypath
 
 public class FlypathProps(private val values: Map<String, Any?>) {
     public fun isNull(name: String): Boolean = values[name] == null

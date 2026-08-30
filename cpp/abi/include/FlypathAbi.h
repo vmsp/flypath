@@ -4,18 +4,31 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __has_attribute
+#if __has_attribute(swift_newtype)
+#define FLYPATH_REF __attribute__((swift_newtype(struct)))
+#endif
+#endif
+#ifndef FLYPATH_REF
+#define FLYPATH_REF
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef const struct FlypathValueOpaque* FlypathValueRef;
-typedef struct FlypathOutOpaque* FlypathOutRef;
-typedef struct FlypathPromiseOpaque* FlypathPromiseRef;
+typedef const struct FlypathValueOpaque* FLYPATH_REF FlypathValueRef;
+typedef struct FlypathOutOpaque* FLYPATH_REF FlypathOutRef;
+typedef struct FlypathPromiseOpaque* FLYPATH_REF FlypathPromiseRef;
+typedef struct FlypathViewOpaque* FLYPATH_REF FlypathViewRef;
+typedef struct FlypathHostOpaque* FLYPATH_REF FlypathHostRef;
+typedef struct FlypathControllerOpaque* FLYPATH_REF FlypathControllerRef;
 
 typedef void (*FlypathCall)(FlypathValueRef args, FlypathOutRef result);
 typedef void (*FlypathAsyncCall)(FlypathValueRef args,
                                  FlypathPromiseRef promise);
-typedef void* (*FlypathViewCreate)(FlypathValueRef props, void* view);
+typedef FlypathHostRef (*FlypathViewCreate)(FlypathValueRef props,
+                                            FlypathViewRef view);
 
 int flypath_abi_version(void);
 
@@ -52,12 +65,13 @@ void flypath_register_view(const char* name, FlypathViewCreate create);
 
 FlypathViewCreate flypath_view_create(const char* name);
 
-FlypathOutRef flypath_event_begin(void* view);
-void flypath_event_end(void* view, const char* name, FlypathOutRef payload);
+FlypathOutRef flypath_event_begin(FlypathViewRef view);
+void flypath_event_end(FlypathViewRef view, const char* name,
+                       FlypathOutRef payload);
 
-void* flypath_host_controller(void* host);
-void flypath_host_update(void* host, FlypathValueRef props);
-void flypath_host_release(void* host);
+FlypathControllerRef flypath_host_controller(FlypathHostRef host);
+void flypath_host_update(FlypathHostRef host, FlypathValueRef props);
+void flypath_host_release(FlypathHostRef host);
 
 #ifdef __cplusplus
 }

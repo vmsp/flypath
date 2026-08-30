@@ -15,8 +15,7 @@ class FlypathHermesInstance
     : public facebook::jni::HybridClass<FlypathHermesInstance,
                                         facebook::react::JJSRuntimeFactory> {
  public:
-  static constexpr auto kJavaDescriptor =
-      "Ldev/flypath/kit/FlypathHermesInstance;";
+  static constexpr auto kJavaDescriptor = "Ldev/flypath/FlypathHermesInstance;";
 
   static facebook::jni::local_ref<jhybriddata> initHybrid(
       facebook::jni::alias_ref<jclass>);

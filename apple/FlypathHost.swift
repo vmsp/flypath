@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 
+@MainActor
 public final class FlypathHost {
   private let build: (FlypathValue) -> AnyView
   private let controller: UIHostingController<AnyView>
@@ -18,32 +19,38 @@ public final class FlypathHost {
   }
 }
 
+@MainActor
 @_cdecl("flypath_host_controller")
 public func flypathHostController(
-  _ host: UnsafeMutableRawPointer
-) -> UnsafeMutableRawPointer {
-  let value = Unmanaged<FlypathHost>.fromOpaque(host).takeUnretainedValue()
-  return Unmanaged.passUnretained(value.viewController).toOpaque()
+  _ host: FlypathHostRef
+) -> FlypathControllerRef {
+  let value = Unmanaged<FlypathHost>.fromOpaque(UnsafeRawPointer(host.rawValue))
+    .takeUnretainedValue()
+  return FlypathControllerRef(
+    OpaquePointer(Unmanaged.passUnretained(value.viewController).toOpaque())
+  )
 }
 
+@MainActor
 @_cdecl("flypath_host_update")
 public func flypathHostUpdate(
-  _ host: UnsafeMutableRawPointer,
+  _ host: FlypathHostRef,
   _ props: FlypathValueRef
 ) {
-  Unmanaged<FlypathHost>.fromOpaque(host).takeUnretainedValue()
+  Unmanaged<FlypathHost>.fromOpaque(UnsafeRawPointer(host.rawValue))
+    .takeUnretainedValue()
     .update(FlypathValue(props))
 }
 
 @_cdecl("flypath_host_release")
-public func flypathHostRelease(_ host: UnsafeMutableRawPointer) {
-  Unmanaged<FlypathHost>.fromOpaque(host).release()
+public func flypathHostRelease(_ host: FlypathHostRef) {
+  Unmanaged<FlypathHost>.fromOpaque(UnsafeRawPointer(host.rawValue)).release()
 }
 
 public struct FlypathEvents: @unchecked Sendable {
-  public let view: UnsafeMutableRawPointer
+  public let view: FlypathViewRef
 
-  public init(_ view: UnsafeMutableRawPointer) {
+  public init(_ view: FlypathViewRef) {
     self.view = view
   }
 

@@ -1,6 +1,6 @@
-package dev.flypath.kit
+package dev.flypath
 
-public object FlypathAbi {
+internal object FlypathAbi {
     init {
         runCatching { System.loadLibrary("appmodules") }
     }

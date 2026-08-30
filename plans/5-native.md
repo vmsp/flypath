@@ -200,9 +200,10 @@ Rules:
   compiler finds it wherever the user put it. Exported names must therefore
   be unique across all `"use native"` modules — a manifest error otherwise.
 - **The user-facing projects are React-free.** They depend only on the
-  platform SDK plus `FlypathKit`, a tiny support target (prop accessors,
-  promise/`Promise<T>` helpers, the view/function registries) with no React
-  Native dependency. Everything that touches JSI, Fabric, or RN headers is
+  platform SDK plus flypath's support layer — the `Flypath` Swift module,
+  the `dev.flypath` Kotlin package — with prop accessors,
+  promise/`Promise<T>` helpers, and the view/function registries, and no
+  React Native dependency. Everything that touches JSI, Fabric, or RN headers is
   generated into the materialized shell, where it consumes the registries.
   This is the load-bearing trick for LSP:
   - `swift build` succeeds standalone in `apple` (path dependency on
@@ -376,7 +377,7 @@ and `templates`), the only hand-written native code in the system, living
 at the root of the package:
 
 ```
-Package.swift               targets: FlypathKit (React-free Swift),
+Package.swift               targets: Flypath (React-free Swift),
                             FlypathAbi (the extern "C" surface)
 cpp/                        shared core, compiled into both shells
   FlypathHermesRuntime.h    moves here unchanged
@@ -386,13 +387,13 @@ cpp/                        shared core, compiled into both shells
   FlypathModule.{h,cpp}     the C++ TurboModule exposing install()
   abi/                      extern "C" surface Swift/Kotlin bind against
 apple/
-  kit/                      FlypathKit: React-free Swift
+  *.swift                   the Flypath module: React-free Swift
   core/                     C++/ObjC++: FlypathAppDelegate, component view,
                             generic Fabric Props/ShadowNode/Descriptor
 android/
-  kit/                      FlypathKit: React-free Kotlin (registries,
-                            FlypathArgs, promise helpers)
-  react/                    Kotlin that touches React Native
+  dev/flypath/              the dev.flypath package: registries, FlypathArgs,
+                            promise helpers, and the RN-facing view manager
+                            and Hermes factory
   jni/                      fbjni glue: Hermes factory, ABI bridge,
                             OnLoad.cpp
 ```
@@ -418,7 +419,7 @@ and the per-project `FlypathHermes.{h,mm}` shim plus the header copy in
 `runIos` are deleted.
 
 **Android** (closing the `CreateHermesRuntimeFactory on Android` TODO):
-`FlypathKit` ships
+`dev.flypath` ships
 
 ```kotlin
 class FlypathHermesInstance : JSRuntimeFactory(initHybrid())
@@ -496,7 +497,7 @@ compiler diagnostics inside `.generated/` to point at the declaration.
 
 Registration is compiled, not reflected: generation emits one
 `@_cdecl("FlypathRegisterAll")` / `@JvmStatic fun registerAll()` per app
-that fills the `FlypathKit` registries with function pointers and view
+that fills the flypath registries with function pointers and view
 factories; `FlypathCore` calls it during `install()`.
 
 ### Threading and promises
@@ -597,8 +598,8 @@ Additions to the materialized Gradle project:
    `ReactAndroid::jsi`, `fbjni`, and the hermes prefab (the Hermes factory
    needs `hermes-engine` headers), plus the one raw RN include dir noted
    above.
-2. Kotlin sources via `android.sourceSets` on the app module: `FlypathKit`
-   from `node_modules/flypath/android/kit`, the consumer's
+2. Kotlin sources via `android.sourceSets` on the app module: `dev.flypath`
+   from `node_modules/flypath/android`, the consumer's
    `src/main/kotlin` (including `.generated/`). Non-Kotlin files in those
    trees are ignored by the Kotlin compiler.
 3. Compose on the app module: `buildFeatures.compose = true`, the Compose
@@ -635,7 +636,7 @@ here is making that boundary obvious:
 Verified as part of acceptance, per platform:
 
 - `example/apple`: `swift build` passes standalone; in VS Code/Zed
-  (sourcekit-lsp) and Xcode: autocomplete on `FlypathKit` helpers and
+  (sourcekit-lsp) and Xcode: autocomplete on `Flypath` helpers and
   generated structs, Go to Definition from `WebView` usage in generated
   registration into the user's struct, live diagnostics on a signature
   mismatch.
@@ -675,7 +676,7 @@ each verified on web, iOS simulator, and Android emulator:
 3. **A SwiftUI view and a `@Composable`** mounted through one generic,
    per-name-registered Fabric component with dynamic props.
 4. **Standalone LSP**: a mock `apple` package resolves in sourcekit-lsp with
-   a path dependency on a mock FlypathKit target.
+   a path dependency on a mock Flypath target.
 
 Acceptance: all four run on simulator + emulator (4: in the editor); the
 Compose answer is written down before Phase 3.
@@ -761,9 +762,28 @@ builds of the example pass the full test matrix.
   gives users a normal place for platform dependencies. Specs and web
   implementations stay colocated in `app/`.
 - **User-facing native projects are React-free** (depend only on
-  FlypathKit), which is what makes standalone `swift build`/Gradle sync —
+  `Flypath`/`dev.flypath`), which is what makes standalone `swift build`/Gradle sync —
   and therefore full LSP — possible. All React coupling lives in generated
   shell code and flypath's own libraries.
+- **Swift 6 language mode, no opt-out.** `swift-tools-version: 6.0`
+  already defaults to it, so no target sets `swiftLanguageMode`. The C ABI
+  entry points stay nonisolated — they run on whichever thread called into
+  the runtime — except the view surface: `FlypathHost` and the generated
+  `flypath_view_*` factories are `@MainActor`, since they touch UIKit and
+  are only ever called from the Fabric component view on the main thread.
+  A user function that reaches for main-actor state from the JS thread is
+  then a compile error rather than a race. The Xcode shell target is
+  `SWIFT_VERSION = 6.0` too — its `AppDelegate` overrides `RCTAppDelegate`,
+  whose headers are not Sendable-audited, but nothing in those overrides
+  crosses an isolation boundary, so it compiles clean.
+- **`apple/core/` is a directory because SwiftPM forces it.** A target
+  cannot mix Swift and ObjC++ sources, and `core/` is never compiled in
+  place: its files are symlinked, flattened, into the generated
+  `FlypathCore` package that links React headers, with `core/include/`
+  marking that package's public headers. The Swift module sits at `apple/`
+  and excludes `core/`. Android has no such constraint — every Kotlin file
+  compiles into the app module, so `android/dev/flypath/` is one flat
+  package and only the fbjni C++ in `android/jni/` is split out.
 - **Binding is by symbol name.** No file-name pairing, no registration:
   the generated call site makes the compiler do discovery and type
   checking. Uniqueness across modules is enforced by the manifest.

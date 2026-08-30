@@ -16,7 +16,7 @@ namespace {
 void installInsetsSource() {
   facebook::jni::ThreadScope scope;
   static const auto clazz =
-      facebook::jni::findClassStatic("dev/flypath/kit/FlypathInsets");
+      facebook::jni::findClassStatic("dev/flypath/FlypathInsets");
   static const auto method = clazz->getStaticMethod<void()>("install");
   method(clazz);
 }

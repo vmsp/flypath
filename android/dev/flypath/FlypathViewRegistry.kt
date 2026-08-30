@@ -1,4 +1,4 @@
-package dev.flypath.kit
+package dev.flypath
 
 import androidx.compose.runtime.Composable
 

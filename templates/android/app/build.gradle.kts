@@ -47,8 +47,7 @@ android {
 
   sourceSets {
     getByName("main") {
-      kotlin.directories.add("__FLYPATH_KIT_DIR__")
-      kotlin.directories.add("__FLYPATH_REACT_KIT_DIR__")
+      kotlin.directories.add("__FLYPATH_ANDROID_DIR__")
 __FLYPATH_KOTLIN_SRC_DIRS__
     }
   }

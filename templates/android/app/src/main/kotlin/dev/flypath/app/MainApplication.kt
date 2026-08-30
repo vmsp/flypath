@@ -8,9 +8,9 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
-import dev.flypath.kit.FlypathApp
-import dev.flypath.kit.FlypathPackage
-import dev.flypath.kit.FlypathHermesInstance
+import dev.flypath.FlypathApp
+import dev.flypath.FlypathPackage
+import dev.flypath.FlypathHermesInstance
 
 class MainApplication : Application(), ReactApplication {
     override val reactHost: ReactHost

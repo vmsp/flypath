@@ -1,4 +1,4 @@
-package dev.flypath.kit
+package dev.flypath
 
 import android.app.Activity
 import android.app.Application

@@ -1,4 +1,4 @@
-package dev.flypath.kit
+package dev.flypath
 
 import android.content.Context
 import androidx.compose.runtime.getValue

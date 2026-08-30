@@ -1,4 +1,4 @@
-package dev.flypath.kit
+package dev.flypath
 
 import com.facebook.jni.HybridData
 import com.facebook.jni.annotations.DoNotStrip

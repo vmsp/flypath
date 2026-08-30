@@ -1,7 +1,7 @@
-package dev.flypath.kit
+package dev.flypath
 
 @JvmInline
-public value class FlypathValue(public val ref: Long) {
+public value class FlypathValue(private val ref: Long) {
     public val count: Int
         get() = FlypathAbi.count(ref)
 
@@ -30,7 +30,7 @@ public value class FlypathValue(public val ref: Long) {
 }
 
 @JvmInline
-public value class FlypathOut(public val ref: Long) {
+public value class FlypathOut(private val ref: Long) {
     public fun setNull(): Unit = FlypathAbi.outNull(ref)
 
     public fun set(value: Boolean): Unit = FlypathAbi.outBool(ref, value)
