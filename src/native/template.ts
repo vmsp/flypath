@@ -1,10 +1,9 @@
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 export const packageRoot: string = path.dirname(
-  path.dirname(path.dirname(fileURLToPath(import.meta.url))),
+  path.dirname(import.meta.dirname),
 );
 
 const templatesDir: string = path.join(packageRoot, "templates");

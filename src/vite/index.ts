@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import react from "@vitejs/plugin-react";
 import rsc from "@vitejs/plugin-rsc";
@@ -20,7 +19,7 @@ import { nativeRefresh } from "./native-refresh.ts";
 import { routes } from "./routes.ts";
 import { styles } from "./styles.ts";
 
-const distDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const distDir = path.dirname(import.meta.dirname);
 
 export type FlypathOptions = {
   port?: number;
