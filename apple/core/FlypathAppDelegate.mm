@@ -13,7 +13,7 @@ extern "C" NSDictionary* FlypathFabricComponents(void);
 @implementation FlypathAppDelegate
 
 - (JSRuntimeFactoryRef)createJSRuntimeFactory {
-  return static_cast<JSRuntimeFactoryRef>(flypath::CreateHermesRuntimeFactory());
+  return static_cast<JSRuntimeFactoryRef>(flypath::createHermesRuntimeFactory());
 }
 
 - (NSDictionary<NSString*, Class<RCTComponentViewProtocol>>*)thirdPartyFabricComponents {

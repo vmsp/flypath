@@ -405,7 +405,7 @@ flypath runtime through one line each.
 
 **iOS**: `FlypathCore` ships an ObjC++ `FlypathAppDelegate : RCTAppDelegate`
 that overrides `createJSRuntimeFactory` (returning
-`flypath::CreateHermesRuntimeFactory()`), `getTurboModule:jsInvoker:`
+`flypath::createHermesRuntimeFactory()`), `getTurboModule:jsInvoker:`
 (returning the `Flypath` C++ TurboModule — this selector traffics in
 `std::shared_ptr`, which Swift cannot override, hence the ObjC++ base
 class), and `thirdPartyFabricComponents`. The app template becomes:
@@ -418,7 +418,7 @@ class AppDelegate: FlypathAppDelegate { ... }
 and the per-project `FlypathHermes.{h,mm}` shim plus the header copy in
 `runIos` are deleted.
 
-**Android** (closing the `CreateHermesRuntimeFactory on Android` TODO):
+**Android** (closing the `createHermesRuntimeFactory on Android` TODO):
 `dev.flypath` ships
 
 ```kotlin

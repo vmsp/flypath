@@ -13,6 +13,6 @@ class HermesRuntimeFactory : public facebook::react::JSRuntimeFactory {
           msgQueueThread) noexcept override;
 };
 
-facebook::react::JSRuntimeFactory* CreateHermesRuntimeFactory();
+facebook::react::JSRuntimeFactory* createHermesRuntimeFactory();
 
 }  // namespace flypath

@@ -73,7 +73,7 @@ HermesRuntimeFactory::createJSRuntime(
   return std::make_unique<HermesJSRuntime>(std::move(runtime), ref);
 }
 
-facebook::react::JSRuntimeFactory* CreateHermesRuntimeFactory() {
+facebook::react::JSRuntimeFactory* createHermesRuntimeFactory() {
   return new HermesRuntimeFactory();
 }
 
