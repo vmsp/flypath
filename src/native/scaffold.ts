@@ -9,7 +9,7 @@ import type { NativeManifest } from "./manifest.ts";
 import { buildManifest } from "./manifest.ts";
 import { packageRoot } from "./template.ts";
 
-export const GENERATED = "generated";
+const GENERATED = "generated";
 
 export function nativeDir(root: string, platform: string): string {
   return path.join(root, platform);

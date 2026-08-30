@@ -138,7 +138,7 @@ function resolveChain(
   return chain.length === 0 ? [ROOT_CONTAINER] : chain;
 }
 
-export function focusChain(router: Router): readonly string[] {
+function focusChain(router: Router): readonly string[] {
   const chain: string[] = [];
   let id: string | undefined = ROOT_CONTAINER;
 

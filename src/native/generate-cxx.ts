@@ -6,7 +6,7 @@ import type {
 } from "./manifest.ts";
 import { symbolFor } from "./manifest.ts";
 
-export function namespaceFor(slug: string): string {
+function namespaceFor(slug: string): string {
   return `flypath::${slug}`;
 }
 

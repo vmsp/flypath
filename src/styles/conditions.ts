@@ -20,7 +20,7 @@ export function isMedia(key: string): boolean {
   return key.startsWith("@media ");
 }
 
-export function isCondition(key: string): boolean {
+function isCondition(key: string): boolean {
   return key === "default" || isPseudo(key) || isMedia(key);
 }
 

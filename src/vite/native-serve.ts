@@ -29,7 +29,7 @@ export type ChunkBundle = {
   map: NativeSourceMap;
 };
 
-export function referenceToId(root: string, reference: string): string {
+function referenceToId(root: string, reference: string): string {
   if (reference.startsWith("/@id/")) {
     const value = reference.slice("/@id/".length);
     return value.startsWith("__x00__") ? `\0${value.slice(7)}` : value;

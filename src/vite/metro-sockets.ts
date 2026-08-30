@@ -11,7 +11,7 @@ export type Upgrade = (
   head: Buffer,
 ) => void;
 
-export class SocketEndpoint {
+class SocketEndpoint {
   protected wss: WebSocketServer;
 
   protected clients: Set<WebSocket> = new Set<WebSocket>();

@@ -5,12 +5,14 @@ export type Frames = Record<string, Record<string, Scalar>>;
 const vars = new Map<string, Scalar | Record<string, Scalar>>();
 const keyframes = new Map<string, Frames>();
 
+/** @lintignore */
 export function registerVars(
   entries: Record<string, Scalar | Record<string, Scalar>>,
 ): void {
   for (const [name, value] of Object.entries(entries)) vars.set(name, value);
 }
 
+/** @lintignore */
 export function registerKeyframes(entries: Record<string, Frames>): void {
   for (const [name, frames] of Object.entries(entries)) {
     keyframes.set(name, frames);

@@ -11,7 +11,7 @@ import { expandProperty } from "../styles/shorthands.ts";
 import type { Node } from "./eval.ts";
 import { evaluate, StaticError, unwrap } from "./eval.ts";
 
-export type VarValue = Scalar | Record<string, Scalar>;
+type VarValue = Scalar | Record<string, Scalar>;
 
 export type Compiled = {
   code: string;

@@ -25,7 +25,7 @@ export type ContainerRuntime = {
   activeBranch: (id: string) => string | undefined;
 };
 
-export const ContainerScopeContext: Context<string | null> = createContext<
+const ContainerScopeContext: Context<string | null> = createContext<
   string | null
 >(null);
 

@@ -9,7 +9,7 @@ export type AtomicRule = {
   css: string;
 };
 
-export function atomicClassName(
+function atomicClassName(
   property: string,
   map: Record<string, Scalar>,
 ): string {

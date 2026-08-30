@@ -9,8 +9,6 @@ import type {
   RouteTree,
 } from "./types.ts";
 
-export { ROOT_CONTAINER, SHARED } from "./manifest.ts";
-
 export type ContainerInfo = {
   id: string;
   kind: ContainerKind;

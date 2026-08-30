@@ -14,7 +14,7 @@ const MANIFEST_ID = `\0${MANIFEST}`;
 
 const CANDIDATES = ["app/routes.ts", "app/routes.tsx"];
 
-export function findRoutesFile(root: string): string {
+function findRoutesFile(root: string): string {
   for (const candidate of CANDIDATES) {
     const file = path.join(root, candidate);
     if (fs.existsSync(file)) return file;

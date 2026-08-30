@@ -1,7 +1,7 @@
 import type { TurboModule } from "react-native";
 import { TurboModuleRegistry } from "react-native";
 
-export type NativeBinding = (...args: never[]) => unknown;
+type NativeBinding = (...args: never[]) => unknown;
 
 export type NativeRegistry = {
   hash: string;
@@ -72,6 +72,7 @@ export function nativeRegistry(): NativeRegistry {
   return registry;
 }
 
+/** @lintignore */
 export function nativeModule(
   id: string,
   source: string,

@@ -139,13 +139,13 @@ type NameOf<S extends string> = S extends `:${infer N}`
     ? "*"
     : never;
 
-export type ParamNames<P> = P extends `${infer H}/${infer T}`
+type ParamNames<P> = P extends `${infer H}/${infer T}`
   ? NameOf<H> | ParamNames<T>
   : P extends string
     ? NameOf<P>
     : never;
 
-export type ParamValues<P> = {
+type ParamValues<P> = {
   [K in ParamNames<P>]: K extends "*" ? string | readonly string[] : string;
 };
 

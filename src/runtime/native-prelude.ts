@@ -10,7 +10,7 @@ export type PreludeOptions = {
   manifestHash: string;
 };
 
-export function metroRequirePolyfill(root: string): string {
+function metroRequirePolyfill(root: string): string {
   const require = createRequire(path.join(root, "index.js"));
   const entry = require.resolve("metro-runtime/package.json");
   const file = path.join(path.dirname(entry), "src", "polyfills", "require.js");

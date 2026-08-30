@@ -16,7 +16,7 @@ export type SafeAreaViewProps = {
 
 const ALL_EDGES: readonly Edge[] = ["top", "bottom", "left", "right"];
 
-export function edgeList(
+function edgeList(
   edges: boolean | readonly Edge[] | undefined,
 ): readonly Edge[] {
   if (edges === undefined || edges === true) return ALL_EDGES;

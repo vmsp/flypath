@@ -4,8 +4,8 @@ import path from "node:path";
 import { link, list } from "./link.ts";
 import { packageRoot } from "./template.ts";
 
-export const CORE_NAME = "FlypathCore";
-export const KIT_NAME = "FlypathKit";
+const CORE_NAME = "FlypathCore";
+const KIT_NAME = "FlypathKit";
 
 const REACT_PRODUCTS = [
   '.product(name: "ReactHeaders", package: "ReactNative")',
@@ -36,7 +36,7 @@ function quote(value: string): string {
   return JSON.stringify(value);
 }
 
-export function corePackageManifest(options: AppleOptions): string {
+function corePackageManifest(options: AppleOptions): string {
   const consumer = options.consumer;
 
   const packages = [

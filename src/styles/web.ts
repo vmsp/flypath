@@ -1,6 +1,6 @@
 import type { AtomicRule } from "./atomic.ts";
 import { atomicRule } from "./atomic.ts";
-import type { ConditionValues, FlatValue } from "./flatten.ts";
+import type { ConditionValues } from "./flatten.ts";
 import { flattenStyle, isClassRef, isScrollValue } from "./flatten.ts";
 import type { Scalar } from "./shorthands.ts";
 
@@ -73,5 +73,3 @@ export function webStyle(input: unknown): WebStyle {
   cache.set(input as object, result);
   return result;
 }
-
-export type { FlatValue };

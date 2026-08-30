@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "tags": ["-lintignore"],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/native/spm-config.ts",
+        "src/runtime/jsx-runtime.{client,native,server}.ts",
+        "src/runtime/jsx-dev-runtime.{client,native,server}.ts",
+        "src/runtime/{server,ssr,web,native}-entry.tsx",
+        "src/components/native/*.{ts,tsx}"
+      ],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": [
+        "@babel/preset-flow",
+        "@babel/preset-react",
+        "@react-native/babel-plugin-codegen",
+        "@react-native/js-polyfills",
+        "babel-plugin-syntax-hermes-parser"
+      ]
+    },
+    "example": {
+      "entry": ["app/routes.ts", "app/*.web.{ts,tsx}"],
+      "project": ["app/**/*.{ts,tsx}"]
+    }
+  }
+}

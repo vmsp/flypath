@@ -22,14 +22,14 @@ function config(): Config {
   return scope.__FLYPATH__;
 }
 
-export function stripReferenceTag(id: string): string {
+function stripReferenceTag(id: string): string {
   let value = id.split("$$")[0] ?? id;
   const query = value.indexOf("?");
   if (query !== -1) value = value.slice(0, query);
   return value;
 }
 
-export function normalizeReferenceId(id: string): string {
+function normalizeReferenceId(id: string): string {
   const value = stripReferenceTag(id);
   return value.startsWith("/@fs") ? value.slice("/@fs".length) : value;
 }

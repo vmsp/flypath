@@ -7,7 +7,7 @@ export const packageRoot: string = path.dirname(
   path.dirname(path.dirname(fileURLToPath(import.meta.url))),
 );
 
-export const templatesDir: string = path.join(packageRoot, "templates");
+const templatesDir: string = path.join(packageRoot, "templates");
 
 export type ProjectContext = {
   root: string;

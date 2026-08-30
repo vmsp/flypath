@@ -51,7 +51,7 @@ export type BuildOptions = {
   manifestHash: string;
 };
 
-export const WRAPPER_HEADER_LINES = 11;
+const WRAPPER_HEADER_LINES = 11;
 
 function numericId(key: string): number {
   return Number.parseInt(hash(key).slice(-8), 36) % 0x7fffffff;

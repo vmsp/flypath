@@ -7,7 +7,7 @@ export function normalizePath(pathname: string): string {
   return trimmed === "" ? "/" : trimmed;
 }
 
-export function segments(pattern: string): string[] {
+function segments(pattern: string): string[] {
   return normalizePath(pattern)
     .split("/")
     .filter((part) => part !== "");

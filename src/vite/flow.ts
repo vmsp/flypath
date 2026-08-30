@@ -20,7 +20,7 @@ const PRESET_FLOW = localRequire.resolve("@babel/preset-flow");
 const PRESET_REACT = localRequire.resolve("@babel/preset-react");
 const CODEGEN = localRequire.resolve("@react-native/babel-plugin-codegen");
 
-export function needsFlowStrip(id: string): boolean {
+function needsFlowStrip(id: string): boolean {
   if (!id.endsWith(".js") && !id.endsWith(".jsx")) return false;
   const parts = id.split("node_modules/");
   const tail = parts[parts.length - 1];

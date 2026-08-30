@@ -34,11 +34,11 @@ export type NativeComponentEntry = {
   events: NativeEvent[];
 };
 
-export type NativeStruct = { name: string; fields: NativeParam[] };
+type NativeStruct = { name: string; fields: NativeParam[] };
 
-export type NativeEnum = { name: string; values: string[] };
+type NativeEnum = { name: string; values: string[] };
 
-export type NativeInline = {
+type NativeInline = {
   name: string;
   start: number;
   end: number;
@@ -117,7 +117,7 @@ function scan(dir: string, out: string[]): void {
   }
 }
 
-export function hasDirective(code: string): boolean {
+function hasDirective(code: string): boolean {
   return /^\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/\s*)*["']use native["']/.test(
     code,
   );
@@ -127,14 +127,8 @@ function posix(value: string): string {
   return value.split(path.sep).join("/");
 }
 
-export function slugFor(source: string): string {
+function slugFor(source: string): string {
   return source.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9]+/g, "_");
-}
-
-function pascal(value: string): string {
-  return value.replace(/(^|_)([a-z])/g, (_, __, letter: string) =>
-    letter.toUpperCase(),
-  );
 }
 
 export function componentName(slug: string, name: string): string {
@@ -152,10 +146,6 @@ export function viewSymbolFor(slug: string, name: string): string {
 export function eventType(name: string): string {
   const base = name.startsWith("on") ? name.slice(2) : name;
   return `top${base[0]?.toUpperCase() ?? ""}${base.slice(1)}`;
-}
-
-export function typeName(slug: string, name: string): string {
-  return `${pascal(slug)}${name}`;
 }
 
 type Names = { structs: Set<string>; enums: Set<string> };
@@ -443,7 +433,7 @@ function cppSibling(root: string, file: string): string | undefined {
   return fs.existsSync(candidate) ? candidate : undefined;
 }
 
-export function parseModule(
+function parseModule(
   file: string,
   code: string,
   root: string,
@@ -749,7 +739,7 @@ function assertNoCaptures(
   });
 }
 
-export function parseInlineModule(
+function parseInlineModule(
   file: string,
   code: string,
   root: string,

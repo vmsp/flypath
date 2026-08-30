@@ -10,11 +10,11 @@ export type VarToken = string & { readonly [varBrand]: true };
 export type KeyframesToken = string & { readonly [keyframesBrand]: true };
 export type Theme = { readonly [themeBrand]: true };
 
-export type Pseudo = ":hover" | ":active" | ":focus";
+type Pseudo = ":hover" | ":active" | ":focus";
 
-export type Length = `${number}px` | `${number}em` | `${number}rem`;
+type Length = `${number}px` | `${number}em` | `${number}rem`;
 
-export type MediaCondition =
+type MediaCondition =
   | `@media (min-width: ${Length})`
   | `@media (max-width: ${Length})`
   | `@media (min-height: ${Length})`
@@ -41,7 +41,7 @@ export type StyleProp =
 
 export type VarValue = string | number | ConditionMap<string | number>;
 
-export type Keyframe = {
+type Keyframe = {
   [K in keyof Base]?: Base[K];
 };
 

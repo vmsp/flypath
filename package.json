@@ -56,7 +56,10 @@
     "build": "tsc -b",
     "dev": "tsc -b --watch",
     "fmt": "oxfmt && git ls-files -co --exclude-standard -z '*.c' '*.h' '*.cpp' '*.hpp' '*.m' '*.mm' | xargs -0 clang-format -i && git ls-files -co --exclude-standard -z '*.swift' | xargs -0 swift format --in-place --parallel",
-    "fmt:check": "oxfmt --check && git ls-files -co --exclude-standard -z '*.c' '*.h' '*.cpp' '*.hpp' '*.m' '*.mm' | xargs -0 clang-format --dry-run -Werror && git ls-files -co --exclude-standard -z '*.swift' | xargs -0 swift format lint --strict --parallel"
+    "fmt:check": "oxfmt --check && git ls-files -co --exclude-standard -z '*.c' '*.h' '*.cpp' '*.hpp' '*.m' '*.mm' | xargs -0 clang-format --dry-run -Werror && git ls-files -co --exclude-standard -z '*.swift' | xargs -0 swift format lint --strict --parallel",
+    "lint": "knip",
+    "lint:fix": "knip --fix",
+    "knip": "knip"
   },
   "dependencies": {
     "@babel/core": "^7.28.4",
@@ -88,6 +91,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@types/ws": "^8.18.1",
+    "knip": "^6.33.0",
     "oxfmt": "^0.64.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

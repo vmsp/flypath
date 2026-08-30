@@ -39,10 +39,6 @@ export function getPlatform(): Platform {
   );
 }
 
-export function getPathname(): string {
-  return getRequest()?.pathname ?? "/";
-}
-
 export function isNative(): boolean {
   return getPlatform() !== "web";
 }

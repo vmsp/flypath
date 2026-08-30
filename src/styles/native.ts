@@ -13,14 +13,14 @@ import type { Frames } from "./registry.ts";
 import { lookupKeyframes, lookupVar } from "./registry.ts";
 import type { Scalar } from "./shorthands.ts";
 
-export type Descriptor =
+type Descriptor =
   | Scalar
   | { $var: string; d?: Descriptor }
   | { $rem: number }
   | { $em: number }
   | { $cond: { d?: Descriptor; c: [Predicate, Descriptor][] } };
 
-export type FrameDescriptor = {
+type FrameDescriptor = {
   at: number;
   style: Record<string, Descriptor>;
 };
@@ -35,9 +35,7 @@ export type Animation = {
   fill: string;
 };
 
-export type Flag =
-  | boolean
-  | { $cond: { d: boolean; c: [Predicate, boolean][] } };
+type Flag = boolean | { $cond: { d: boolean; c: [Predicate, boolean][] } };
 
 export type Scroll = {
   axis: "horizontal" | "vertical";
@@ -65,7 +63,7 @@ function parseVar(name: string, fallback: string | undefined): Descriptor {
   return { $var: name, d: parseValue("", fallback) };
 }
 
-export function parseValue(property: string, value: Scalar): Descriptor {
+function parseValue(property: string, value: Scalar): Descriptor {
   if (typeof value === "number") {
     if (property === "lineHeight") return { $em: value };
     if (property === "fontWeight") return String(value);
@@ -207,7 +205,7 @@ function buildAnimation(props: Map<string, Scalar>): Animation | undefined {
   };
 }
 
-export function normalizeNativeStyle(
+function normalizeNativeStyle(
   tag: string,
   input: unknown,
   dev: boolean,

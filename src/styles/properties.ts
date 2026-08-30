@@ -1,4 +1,4 @@
-export const LONGHANDS = [
+const LONGHANDS = [
   "alignContent",
   "alignItems",
   "alignSelf",
@@ -78,7 +78,7 @@ export const LONGHANDS = [
   "zIndex",
 ] as const;
 
-export const SHORTHANDS = [
+const SHORTHANDS = [
   "animation",
   "border",
   "borderColor",
@@ -93,16 +93,12 @@ export const SHORTHANDS = [
   "padding",
 ] as const;
 
-export type Longhand = (typeof LONGHANDS)[number];
+type Longhand = (typeof LONGHANDS)[number];
 export type Shorthand = (typeof SHORTHANDS)[number];
 export type SupportedProperty = Longhand | Shorthand;
 
 const longhandSet: ReadonlySet<string> = new Set<string>(LONGHANDS);
 const shorthandSet: ReadonlySet<string> = new Set<string>(SHORTHANDS);
-
-export function isLonghand(name: string): name is Longhand {
-  return longhandSet.has(name);
-}
 
 export function isShorthand(name: string): name is Shorthand {
   return shorthandSet.has(name);

@@ -127,7 +127,7 @@ function load(url: string, container: string | undefined): Promise<Fetched> {
   return task;
 }
 
-export function invalidatePayloads(): void {
+function invalidatePayloads(): void {
   prefetched.clear();
   snapshots.clear();
 }

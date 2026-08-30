@@ -17,7 +17,7 @@ type Mutable = Record<string, unknown>;
 
 type Entry = [string, string];
 
-export class FlypathFormData {
+class FlypathFormData {
   #entries: Entry[] = [];
 
   append(name: string, value: unknown): void {
@@ -94,7 +94,7 @@ function escapeFieldName(name: string): string {
     .replaceAll('"', "%22");
 }
 
-export function serializeMultipart(form: FlypathFormData): {
+function serializeMultipart(form: FlypathFormData): {
   body: string;
   contentType: string;
 } {

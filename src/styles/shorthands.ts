@@ -3,7 +3,7 @@ import { isShorthand } from "./properties.ts";
 export type Scalar = string | number;
 export type Entry = [string, Scalar];
 
-export function splitTop(value: string): string[] {
+function splitTop(value: string): string[] {
   const parts: string[] = [];
   let depth = 0;
   let current = "";
