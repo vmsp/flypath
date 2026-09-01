@@ -10,11 +10,13 @@ export {
 } from "./config.ts";
 export type {
   AnyNode,
+  Edge,
   IndexNode,
   LayoutNode,
   Loader,
   NotFoundNode,
   BranchesNode,
+  Presentation,
   RouteNode,
   RouteOptions,
   RouteTree,

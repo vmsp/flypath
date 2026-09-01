@@ -34,7 +34,7 @@ export function getRequest(): RequestInfo | undefined {
   return holder[KEY]?.get();
 }
 
-export function getPlatform(): Platform {
+export function platform(): Platform {
   return (
     getRequest()?.platform ??
     parsePlatform(holder.__FLYPATH__?.platform) ??
@@ -43,13 +43,13 @@ export function getPlatform(): Platform {
 }
 
 export function isNative(): boolean {
-  return getPlatform() !== "web";
+  return platform() !== "web";
 }
 
 export function isIos(): boolean {
-  return getPlatform() === "ios";
+  return platform() === "ios";
 }
 
 export function isAndroid(): boolean {
-  return getPlatform() === "android";
+  return platform() === "android";
 }

@@ -145,13 +145,13 @@ type ParamNames<P> = P extends `${infer H}/${infer T}`
     ? NameOf<P>
     : never;
 
-export type ParamValue = string | number | boolean | null | undefined;
+type ParamValue = string | number | boolean | null | undefined;
 
 type ParamInput = ParamValue | readonly ParamValue[];
 
 type Filled<P> = { [K in ParamNames<P>]: string | number | boolean };
 
-export type ParamBag<P> = Filled<P> & { readonly [key: string]: ParamInput };
+type ParamBag<P> = Filled<P> & { readonly [key: string]: ParamInput };
 
 export type HrefArgs<P> = [ParamNames<P>] extends [never]
   ? [params?: ParamBag<P>]
