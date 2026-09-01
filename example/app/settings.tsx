@@ -1,6 +1,6 @@
 "use client";
 
-import { back } from "flypath";
+import { navigate } from "flypath";
 
 import { colors } from "./vars.css.ts";
 
@@ -24,7 +24,7 @@ export default function Settings() {
           and on native.
         </p>
         <button
-          onClick={back}
+          onClick={() => navigate("back")}
           style={{
             backgroundColor: colors.primary,
             borderRadius: 8,

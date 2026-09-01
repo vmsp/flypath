@@ -1,7 +1,10 @@
+import { listNotes, postNote } from "./actions.ts";
 import BackLink from "./back-link.tsx";
 import { colors } from "./vars.css.ts";
 
-export default function Compose() {
+export default async function Compose() {
+  const notes = await listNotes();
+
   return (
     <>
       <title>Compose</title>
@@ -19,6 +22,40 @@ export default function Compose() {
         <p style={{ color: colors.muted }}>
           Presented above the outer stack, so it covers the tab bar too.
         </p>
+        <form
+          action={postNote}
+          style={{ display: "flex", flexDirection: "column", gap: 8 }}
+        >
+          <input
+            name="note"
+            placeholder="say something"
+            style={{
+              borderColor: colors.primary,
+              borderRadius: 6,
+              borderStyle: "solid",
+              borderWidth: 1,
+              padding: 8,
+            }}
+          />
+          <button
+            style={{
+              backgroundColor: colors.primary,
+              borderRadius: 8,
+              color: "white",
+              padding: 12,
+            }}
+            type="submit"
+          >
+            post and close
+          </button>
+        </form>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {notes.map((note, index) => (
+            <span key={`${note}-${index}`} style={{ color: colors.secondary }}>
+              {note}
+            </span>
+          ))}
+        </div>
         <BackLink>close</BackLink>
       </main>
     </>

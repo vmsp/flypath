@@ -9,9 +9,10 @@ import {
 import { hydrateRoot } from "react-dom/client";
 import { rscStream } from "rsc-html-stream/client";
 
+import { NAVIGATE_HEADER, parseCommand } from "../router/navigation.ts";
 import type { RscPayload } from "./payload.ts";
 import {
-  followRedirect,
+  applyCommand,
   refreshPayload,
   swapPayload,
   WebRouter,
@@ -26,10 +27,10 @@ async function callServer(id: string, args: unknown[]): Promise<unknown> {
     headers: { "x-rsc-action": id },
   });
 
-  const redirect = response.headers.get("x-flypath-redirect");
-  if (redirect !== null) {
+  const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
+  if (command) {
     void response.body?.cancel();
-    followRedirect(redirect);
+    applyCommand(command);
     return undefined;
   }
 

@@ -1,5 +1,5 @@
 import { matchPattern } from "./path.ts";
-import type { Params, RouteOptions } from "./types.ts";
+import type { RouteOptions } from "./types.ts";
 
 export const ROOT_CONTAINER = "root";
 
@@ -29,21 +29,14 @@ export type RouteManifest = {
   containers: ManifestContainer[];
 };
 
-export type RouteMatch = {
-  route: ManifestRoute;
-  params: Params;
-};
-
 export function matchManifest(
   manifest: RouteManifest,
   pathname: string,
-): RouteMatch | undefined {
+): ManifestRoute | undefined {
   for (const route of manifest.routes) {
-    const params = matchPattern(route.pattern, pathname);
-    if (params) return { route, params };
+    if (matchPattern(route.pattern, pathname)) return route;
   }
-  const fallback = manifest.fallback;
-  return fallback ? { route: fallback, params: {} } : undefined;
+  return manifest.fallback;
 }
 
 export function containerById(

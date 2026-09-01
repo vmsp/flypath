@@ -1,6 +1,6 @@
 "use client";
 
-import { back } from "flypath";
+import { navigate } from "flypath";
 import type { ReactNode } from "react";
 
 import { colors } from "./vars.css.ts";
@@ -8,7 +8,7 @@ import { colors } from "./vars.css.ts";
 export default function BackLink({ children }: { children: ReactNode }) {
   return (
     <a
-      onClick={back}
+      onClick={() => navigate("back")}
       style={{ color: colors.primary, textDecorationLine: "none" }}
     >
       {children}

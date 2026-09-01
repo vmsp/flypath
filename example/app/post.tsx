@@ -1,13 +1,14 @@
-import { notFound, useParams } from "flypath";
+import { navigate, params } from "flypath";
 
 import BackLink from "./back-link.tsx";
+import PostParams from "./post-params.tsx";
 import { getPost } from "./posts.ts";
 import { colors } from "./vars.css.ts";
 
 export default async function PostPage() {
-  const { id } = useParams<"/p/:id">();
+  const id = params("id");
   const post = await getPost(id);
-  if (!post) notFound();
+  if (!post) navigate("not-found");
 
   return (
     <>
@@ -27,6 +28,7 @@ export default async function PostPage() {
         <h1 style={{ color: colors.text, fontSize: 22 }}>@{post.author}</h1>
         <p style={{ color: colors.text, fontSize: 18 }}>{post.body}</p>
         <span style={{ color: colors.muted }}>{post.likes} likes</span>
+        <PostParams />
       </article>
     </>
   );

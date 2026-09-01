@@ -1,10 +1,6 @@
 import type { RscPayload } from "../../runtime/payload.ts";
 
 export type NativeRouterApi = {
-  push: (href: string) => void;
-  replace: (href: string) => void;
-  back: () => void;
-  refresh: () => void;
   currentUrl: () => string;
   currentContainer: () => string;
   applyPayload: (payload: Promise<RscPayload>) => void;

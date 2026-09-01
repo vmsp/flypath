@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 
+import { getRouter } from "../../router/dispatch.ts";
 import type { Edge } from "../../router/types.ts";
 import type { Tag } from "../../styles/defaults.ts";
 import { TAG_DEFAULTS } from "../../styles/defaults.ts";
@@ -39,7 +40,6 @@ import { useStyleEnv } from "./env.ts";
 import { insetPadding, useInsets } from "./insets.ts";
 import type { Env, Style } from "./resolve.ts";
 import { resolve, resolveStyle, resolveTheme } from "./resolve.ts";
-import { nativeRouter } from "./router-store.ts";
 
 export type PrimitiveProps = {
   $flex?: boolean;
@@ -291,7 +291,7 @@ function openHref(href: unknown): void {
     void Linking.openURL(href);
     return;
   }
-  const router = nativeRouter();
+  const router = getRouter();
   if (!router) {
     if (DEV) {
       console.error(
@@ -301,7 +301,7 @@ function openHref(href: unknown): void {
     }
     return;
   }
-  router.push(href);
+  router.go(href, "push");
 }
 
 export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {

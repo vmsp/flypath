@@ -6,7 +6,9 @@ import {
 } from "@vitejs/plugin-rsc/react/browser";
 
 import { nativeRouter } from "../components/native/router-store.ts";
+import { getRouter } from "../router/dispatch.ts";
 import { ROOT_CONTAINER } from "../router/manifest.ts";
+import { NAVIGATE_HEADER, parseCommand } from "../router/navigation.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import type { RscPayload } from "./payload.ts";
 
@@ -27,9 +29,11 @@ export function installServerCallback(): void {
       },
     });
 
-    const redirect = response.headers.get("x-flypath-redirect");
-    if (redirect !== null) {
-      router?.replace(redirect);
+    const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
+    if (command) {
+      const api = getRouter();
+      if (command.kind === "back") api?.back();
+      else api?.go(command.to, command.mode);
       return undefined;
     }
 

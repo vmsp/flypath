@@ -1,10 +1,9 @@
 "use client";
 
 import type { Context, ReactNode } from "react";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, use, useContext, useMemo } from "react";
 import { manifest } from "virtual:flypath/route-manifest";
 
-import { useNavigation } from "./client.ts";
 import type { ContainerKind, ManifestContainer } from "./manifest.ts";
 import {
   containerById,
@@ -13,7 +12,8 @@ import {
   SHARED,
 } from "./manifest.ts";
 import { normalizePath } from "./path.ts";
-import type { Href } from "./types.ts";
+import { makeParams, makeQuery } from "./read.ts";
+import type { Href, ParamsReader, QueryReader, RouteInfo } from "./types.ts";
 
 export type Branch = {
   key: string;
@@ -28,6 +28,9 @@ export type ContainerRuntime = {
 const ContainerScopeContext: Context<string | null> = createContext<
   string | null
 >(null);
+
+const RouteScopeContext: Context<RouteInfo | null> =
+  createContext<RouteInfo | null>(null);
 
 export const ContainerRuntimeContext: Context<ContainerRuntime | null> =
   createContext<ContainerRuntime | null>(null);
@@ -46,11 +49,41 @@ export function ContainerScope({
   );
 }
 
+export function RouteScope({
+  value,
+  children,
+}: {
+  value: RouteInfo;
+  children: ReactNode;
+}): ReactNode {
+  return (
+    <RouteScopeContext.Provider value={value}>
+      {children}
+    </RouteScopeContext.Provider>
+  );
+}
+
+function scope(): RouteInfo {
+  const value = use(RouteScopeContext);
+  if (!value) {
+    throw new Error(
+      "flypath: params() and query() read the route that rendered the " +
+        "component, so they only work while a component rendered by the " +
+        "flypath router is rendering",
+    );
+  }
+  return value;
+}
+
+export const params: ParamsReader = makeParams(scope);
+
+export const query: QueryReader = makeQuery(scope);
+
 function enclosing(
-  scope: string | null,
+  scopeId: string | null,
   kind: ContainerKind,
 ): ManifestContainer | undefined {
-  let current: string | undefined = scope ?? ROOT_CONTAINER;
+  let current: string | undefined = scopeId ?? ROOT_CONTAINER;
   while (current !== undefined) {
     const info = containerById(manifest, current);
     if (!info) return undefined;
@@ -64,7 +97,7 @@ function declaredBranch(
   pathname: string,
   container: string,
 ): string | undefined {
-  const placement = matchManifest(manifest, pathname)?.route.placement;
+  const placement = matchManifest(manifest, pathname)?.placement;
   const position = placement?.indexOf(container) ?? -1;
   if (!placement || position === -1) return undefined;
   const branch = placement[position + 1];
@@ -72,10 +105,10 @@ function declaredBranch(
 }
 
 export function useBranches(): readonly Branch[] {
-  const scope = useContext(ContainerScopeContext);
+  const scopeId = useContext(ContainerScopeContext);
   const runtime = useContext(ContainerRuntimeContext);
-  const { pathname } = useNavigation();
-  const container = enclosing(scope, "branches");
+  const { pathname } = scope();
+  const container = enclosing(scopeId, "branches");
   const active = container ? runtime?.activeBranch(container.id) : undefined;
 
   return useMemo(() => {

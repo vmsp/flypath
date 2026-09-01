@@ -1,13 +1,6 @@
 export * from "./index.shared.ts";
-export {
-  back,
-  NavigationContext,
-  notFound,
-  redirect,
-  useParams,
-  useSearchParams,
-} from "./router/client.ts";
-export { useBranches } from "./router/scope.tsx";
+export { navigate } from "./router/navigate-client.ts";
+export { params, query, useBranches } from "./router/scope.tsx";
 export type { Branch } from "./router/scope.tsx";
 
 export interface Register {}

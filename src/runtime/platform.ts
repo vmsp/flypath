@@ -1,10 +1,13 @@
-import type { Navigation } from "../router/types.ts";
+import type { RouteInfo } from "../router/types.ts";
 
 export type Platform = "web" | "ios" | "android";
 
 const KEY = "__flypathRequest";
 
-export type RequestInfo = Navigation & { platform: Platform };
+export type RequestInfo = RouteInfo & {
+  platform: Platform;
+  phase: "render" | "action";
+};
 
 export type RequestStore = { get: () => RequestInfo | undefined };
 

@@ -3,12 +3,11 @@
 - Slide to go back on iOS
 - Modal
 - Middleware
-- useParams and useSearchParams? go on router? go on component? how on native?
 - Run on device
 - DB, Migrations
 - Jobs, Crons
 - Email
-- I18N - https://github.com/facebook/fbt
+- I18N - https://github.com/facebook/fbt, https://generaltranslation.com/
 - A11Y
 - LSP on consumer Kotlin code
 

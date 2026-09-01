@@ -1,28 +1,18 @@
 import { getRequest } from "../runtime/platform.ts";
-import type {
-  Navigation,
-  Pattern,
-  RouteParams,
-  SearchParams,
-} from "./types.ts";
+import { makeParams, makeQuery } from "./read.ts";
+import type { ParamsReader, QueryReader, RouteInfo } from "./types.ts";
 
-export { notFound, redirect } from "./navigation.ts";
-
-function navigation(): Navigation {
-  const info = getRequest();
-  if (!info) {
+function info(): RouteInfo {
+  const value = getRequest();
+  if (!value) {
     throw new Error(
-      "flypath: navigation hooks are only available while the flypath " +
-        "router is rendering a request",
+      "flypath: params() and query() are only available while the flypath " +
+        "router is handling a request",
     );
   }
-  return info;
+  return value;
 }
 
-export function useParams<P extends Pattern = never>(): RouteParams<P> {
-  return navigation().params as RouteParams<P>;
-}
+export const params: ParamsReader = makeParams(info);
 
-export function useSearchParams(): SearchParams {
-  return navigation().searchParams;
-}
+export const query: QueryReader = makeQuery(info);

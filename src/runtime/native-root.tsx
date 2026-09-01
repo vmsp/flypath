@@ -18,19 +18,19 @@ import {
   Text,
   View,
 } from "react-native";
-import { manifest } from "virtual:flypath/route-manifest";
 
 import type { Insets } from "../components/native/insets.ts";
 import { InsetsContext } from "../components/native/insets.ts";
 import { NavigatorContext } from "../components/native/navigator-context.ts";
 import { StackHost } from "../components/native/navigator.tsx";
 import { setNativeRouter } from "../components/native/router-store.ts";
-import { NavigationContext, registerBack } from "../router/client.ts";
-import { matchManifest, ROOT_CONTAINER } from "../router/manifest.ts";
-import { normalizePath, searchParamsOf } from "../router/path.ts";
+import { setRouter } from "../router/dispatch.ts";
+import { isExternal } from "../router/href.ts";
+import { ROOT_CONTAINER } from "../router/manifest.ts";
+import { NAVIGATE_HEADER, parseCommand } from "../router/navigation.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext, ContainerScope } from "../router/scope.tsx";
-import type { Navigation } from "../router/types.ts";
+import type { Mode } from "../router/types.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import { readInsets, watchInsets } from "./native-insets.ts";
 import type { Fetchers, Router } from "./native-router.ts";
@@ -54,8 +54,16 @@ async function fetchPayload(
     headers: { "x-flypath-platform": platform, ...headers },
   });
 
-  const redirect = response.headers.get("x-flypath-redirect");
-  if (redirect !== null) return fetchPayload(redirect, headers);
+  const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
+  if (command) {
+    if (command.kind === "back") {
+      throw new Error(
+        'flypath: navigate("back") ran while rendering a screen; there is no ' +
+          "history to pop until the screen exists",
+      );
+    }
+    return fetchPayload(command.to, headers);
+  }
 
   return createFromFetch<RscPayload>(Promise.resolve(response), {
     findSourceMapURL,
@@ -91,7 +99,7 @@ class RootBoundary extends Component<
 }
 
 export default function Root(): ReactNode {
-  const [router, setRouter] = useState<Router>(() =>
+  const [router, setState] = useState<Router>(() =>
     initialRouter("/", fetchers),
   );
   const [insets, setInsets] = useState<Insets>(readInsets);
@@ -104,43 +112,50 @@ export default function Root(): ReactNode {
   const back = useCallback((): boolean => {
     const next = goBack(state.current);
     if (!next) return false;
-    startTransition(() => setRouter(next));
+    startTransition(() => setState(next));
     return true;
   }, []);
 
   const push = useCallback((href: string, replace: boolean) => {
     startTransition(() =>
-      setRouter((current) => navigate(current, href, replace, fetchers)),
+      setState((current) => navigate(current, href, replace, fetchers)),
     );
   }, []);
 
+  const go = useCallback(
+    (href: string, mode: Mode) => {
+      if (isExternal(href)) {
+        void Linking.openURL(href);
+        return;
+      }
+      push(href, mode === "replace");
+    },
+    [push],
+  );
+
   const refresh = useCallback(() => {
     startTransition(() =>
-      setRouter((current) => refreshRouter(current, fetchers)),
+      setState((current) => refreshRouter(current, fetchers)),
     );
   }, []);
 
   useEffect(() => {
-    registerBack(() => void back());
+    setRouter({ go, back: () => void back() });
     setNativeRouter({
-      push: (href: string) => push(href, false),
-      replace: (href: string) => push(href, true),
-      back: () => void back(),
-      refresh,
       currentUrl: () => focusedScreen(state.current)?.url ?? "/",
       currentContainer: () =>
         focusedScreen(state.current)?.container ?? ROOT_CONTAINER,
       applyPayload: (payload) => {
         startTransition(() =>
-          setRouter((current) => applyPayload(current, payload)),
+          setState((current) => applyPayload(current, payload)),
         );
       },
     });
     return () => {
-      registerBack(undefined);
+      setRouter(undefined);
       setNativeRouter(undefined);
     };
-  }, [push, back, refresh]);
+  }, [go, back]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener(
@@ -180,39 +195,25 @@ export default function Root(): ReactNode {
     [router],
   );
 
-  const url = focusedScreen(router)?.url ?? "/";
-  const pathname = normalizePath(url);
-
-  const navigation = useMemo<Navigation>(
-    () => ({
-      pathname,
-      params: matchManifest(manifest, pathname)?.params ?? {},
-      searchParams: searchParamsOf(new URL(url, "http://flypath.local")),
-    }),
-    [url, pathname],
-  );
-
   return (
     <InsetsContext.Provider value={insets}>
       <NavigatorContext.Provider value={router}>
         <ContainerRuntimeContext.Provider value={runtime}>
-          <NavigationContext.Provider value={navigation}>
-            <View style={styles.container}>
-              <RootBoundary>
-                <Suspense
-                  fallback={
-                    <View style={styles.center}>
-                      <ActivityIndicator />
-                    </View>
-                  }
-                >
-                  <ContainerScope id={ROOT_CONTAINER}>
-                    <StackHost id={ROOT_CONTAINER} />
-                  </ContainerScope>
-                </Suspense>
-              </RootBoundary>
-            </View>
-          </NavigationContext.Provider>
+          <View style={styles.container}>
+            <RootBoundary>
+              <Suspense
+                fallback={
+                  <View style={styles.center}>
+                    <ActivityIndicator />
+                  </View>
+                }
+              >
+                <ContainerScope id={ROOT_CONTAINER}>
+                  <StackHost id={ROOT_CONTAINER} />
+                </ContainerScope>
+              </Suspense>
+            </RootBoundary>
+          </View>
         </ContainerRuntimeContext.Provider>
       </NavigatorContext.Provider>
     </InsetsContext.Provider>

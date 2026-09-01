@@ -145,24 +145,52 @@ type ParamNames<P> = P extends `${infer H}/${infer T}`
     ? NameOf<P>
     : never;
 
-type ParamValues<P> = { [K in ParamNames<P>]: string };
+export type ParamValue = string | number | boolean | null | undefined;
+
+type ParamInput = ParamValue | readonly ParamValue[];
+
+type Filled<P> = { [K in ParamNames<P>]: string | number | boolean };
+
+export type ParamBag<P> = Filled<P> & { readonly [key: string]: ParamInput };
 
 export type HrefArgs<P> = [ParamNames<P>] extends [never]
-  ? []
-  : [params: ParamValues<P>];
+  ? [params?: ParamBag<P>]
+  : [params: ParamBag<P>];
 
 export type Params = Record<string, string>;
 
-export type SearchParams = Record<string, string | string[]>;
+export type SearchParams = Record<string, string>;
 
-export type Navigation = {
-  pathname: string;
-  params: Params;
-  searchParams: SearchParams;
+export type Search = Readonly<Record<string, readonly string[]>>;
+
+export type RouteInfo = {
+  readonly pathname: string;
+  readonly params: Params;
+  readonly search: Search;
 };
 
-export type RouteParams<P> = [P] extends [never]
-  ? Params
-  : string extends P
-    ? Params
-    : { [K in ParamNames<P>]: string };
+export type Destination = Href | Pattern | ExternalHref | "back" | "not-found";
+
+export type Mode = "push" | "replace";
+
+export type Navigate = {
+  (to: "not-found"): never;
+  <const P extends Destination>(to: P, ...args: HrefArgs<P>): void;
+  push: <const P extends Destination>(to: P, ...args: HrefArgs<P>) => void;
+  replace: <const P extends Destination>(to: P, ...args: HrefArgs<P>) => void;
+  permanent: <const P extends Destination>(
+    to: P,
+    ...args: HrefArgs<P>
+  ) => never;
+};
+
+export type ParamsReader = {
+  (name: string): string;
+  (): Params;
+};
+
+export type QueryReader = {
+  (name: string): string | undefined;
+  (): SearchParams;
+  all: (name: string) => readonly string[];
+};

@@ -42,8 +42,8 @@ function makeScreen(
     key: nextKey(),
     url,
     container,
-    safeArea: matched?.route.options.safeArea,
-    presentation: matched?.route.options.presentation ?? "push",
+    safeArea: matched?.options.safeArea,
+    presentation: matched?.options.presentation ?? "push",
     payload: fetchers.screen(url, container),
   };
 }
@@ -171,8 +171,9 @@ export function navigate(
   replace: boolean,
   fetchers: Fetchers,
 ): Router {
-  const matched = matchManifest(manifest, normalizePath(url));
-  const placement = matched?.route.placement ?? [ROOT_CONTAINER];
+  const placement = matchManifest(manifest, normalizePath(url))?.placement ?? [
+    ROOT_CONTAINER,
+  ];
   const chain = resolveChain(router, placement);
   const focused = focusChain(router).at(-1);
 

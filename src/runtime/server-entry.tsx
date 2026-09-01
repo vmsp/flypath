@@ -11,8 +11,13 @@ import { tree } from "virtual:flypath/routes";
 
 import { matchRoutes } from "../router/flatten.ts";
 import type { NavigationSignal } from "../router/navigation.ts";
-import { navigationSignal } from "../router/navigation.ts";
-import { normalizePath, searchParamsOf } from "../router/path.ts";
+import {
+  encodeCommand,
+  NAVIGATE_HEADER,
+  navigationSignal,
+} from "../router/navigation.ts";
+import { normalizePath, searchOf } from "../router/path.ts";
+import type { RouteInfo } from "../router/types.ts";
 import type { RscPayload } from "./payload.ts";
 import { runWithRequest } from "./platform-store.ts";
 import { parsePlatform } from "./platform.ts";
@@ -42,7 +47,11 @@ function documentShell(children: ReactNode): ReactNode {
   );
 }
 
-type ActionResult = { returnValue?: unknown; formState?: unknown };
+type ActionResult = {
+  returnValue?: unknown;
+  formState?: unknown;
+  signal?: NavigationSignal;
+};
 
 function deferred(error: unknown): Promise<never> {
   const rejected = Promise.reject(error);
@@ -79,8 +88,14 @@ async function runAction(
 
   const formData = (await request.formData()) as unknown as FormData;
   const action = await decodeAction(formData);
-  const result = await (action as () => Promise<unknown>)();
-  return { formState: await decodeFormState(result, formData) };
+  try {
+    const result = await (action as () => Promise<unknown>)();
+    return { formState: await decodeFormState(result, formData) };
+  } catch (error) {
+    const signal = navigationSignal(error);
+    if (!signal) throw error;
+    return { signal };
+  }
 }
 
 async function collect(
@@ -132,15 +147,25 @@ async function toFlight(
   return { bytes: await collect(stream), signal };
 }
 
-function redirectResponse(
-  signal: Extract<NavigationSignal, { kind: "redirect" }>,
+function navigateResponse(
+  signal: Exclude<NavigationSignal, { kind: "not-found" }>,
   document: boolean,
+  request: Request,
 ): Response {
+  if (!document) {
+    return new Response(null, {
+      status: 204,
+      headers: { [NAVIGATE_HEADER]: encodeCommand(signal) },
+    });
+  }
+
+  const to =
+    signal.kind === "back"
+      ? (request.headers.get("referer") ?? "/")
+      : signal.to;
   return new Response(null, {
-    status: signal.status,
-    headers: document
-      ? { location: signal.to }
-      : { "x-flypath-redirect": signal.to },
+    status: signal.kind === "go" && signal.permanent ? 308 : 307,
+    headers: { location: to },
   });
 }
 
@@ -159,16 +184,12 @@ export default async function handler(request: Request): Promise<Response> {
     "web";
 
   const pathname = normalizePath(url.pathname);
-  const searchParams = searchParamsOf(url);
+  const search = searchOf(url);
   const resolved = resolveTree(tree);
   const matched = matchRoutes(resolved.routes, pathname);
 
-  const info = {
-    platform,
-    pathname,
-    params: matched?.params ?? {},
-    searchParams,
-  };
+  const base: RouteInfo = { pathname, params: matched?.params ?? {}, search };
+  const info = { ...base, platform, phase: "render" as const };
 
   return runWithRequest(info, async () => {
     const screen =
@@ -178,7 +199,9 @@ export default async function handler(request: Request): Promise<Response> {
     const temporaryReferences = createTemporaryReferenceSet();
     const action: ActionResult =
       request.method === "POST"
-        ? await runAction(request, temporaryReferences)
+        ? await runWithRequest({ ...info, phase: "action" }, () =>
+            runAction(request, temporaryReferences),
+          )
         : {};
 
     const wantsFlight =
@@ -193,12 +216,16 @@ export default async function handler(request: Request): Promise<Response> {
 
     if (fragment !== null) {
       const rendering = await toFlight(
-        { root: await renderFragment(resolved, fragment) },
+        { root: await renderFragment(resolved, fragment, base) },
         temporaryReferences,
       );
       return new Response(replay(rendering.bytes), {
         headers: { "content-type": FLIGHT_CONTENT_TYPE },
       });
+    }
+
+    if (action.signal && action.signal.kind !== "not-found") {
+      return navigateResponse(action.signal, !wantsFlight, request);
     }
 
     const container = screen === null ? undefined : screen;
@@ -208,7 +235,7 @@ export default async function handler(request: Request): Promise<Response> {
         platform === "web"
           ? withSafeArea(rendering.route, rendering.node)
           : rendering.node;
-      return runWithRequest({ ...info, params: rendering.params }, () =>
+      return runWithRequest({ ...info, ...rendering.info }, () =>
         toFlight(
           {
             root:
@@ -223,19 +250,29 @@ export default async function handler(request: Request): Promise<Response> {
       );
     };
 
-    let match = await renderScreen(resolved, pathname, container);
+    let match = await renderScreen(resolved, base, container);
     let rendered = match ? await compose(match) : undefined;
+    const signal = rendered?.signal;
 
-    if (rendered?.signal?.kind === "redirect") {
-      return redirectResponse(rendered.signal, !wantsFlight);
+    if (signal && signal.kind !== "not-found") {
+      return navigateResponse(signal, !wantsFlight, request);
     }
 
     let status = 200;
-    if (!match || rendered?.signal?.kind === "not-found") {
+    if (
+      !match ||
+      signal?.kind === "not-found" ||
+      action.signal?.kind === "not-found"
+    ) {
       status = 404;
       const fallback = resolved.fallback;
       if (!fallback || fallback === match?.route) return plainNotFound();
-      match = await renderMatch(resolved, fallback, {}, container);
+      match = await renderMatch(
+        resolved,
+        fallback,
+        { ...base, params: {} },
+        container,
+      );
       rendered = await compose(match);
       if (rendered.signal?.kind === "not-found") return plainNotFound();
     }
@@ -245,7 +282,7 @@ export default async function handler(request: Request): Promise<Response> {
     const headers: Record<string, string> = {
       "x-flypath-route": JSON.stringify({
         id: match.route.id,
-        params: match.params,
+        params: match.info.params,
       }),
     };
 
@@ -263,9 +300,6 @@ export default async function handler(request: Request): Promise<Response> {
     return new Response(
       await ssr.handleSsr(replay(rendered.bytes), {
         formState: action.formState,
-        pathname,
-        params: match.params,
-        searchParams,
       }),
       {
         status,

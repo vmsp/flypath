@@ -1,4 +1,4 @@
-import type { Params } from "./types.ts";
+import type { Params, Search } from "./types.ts";
 
 export function normalizePath(pathname: string): string {
   const value = pathname.split("?")[0]?.split("#")[0] ?? "";
@@ -39,12 +39,11 @@ export function matchPattern(
   return expected.length === actual.length ? params : undefined;
 }
 
-export function searchParamsOf(url: URL): Record<string, string | string[]> {
-  const out: Record<string, string | string[]> = {};
+export function searchOf(url: URL): Search {
+  const out: Record<string, readonly string[]> = {};
   for (const key of new Set(url.searchParams.keys())) {
     if (key === "__flight" || key.startsWith("__flypath")) continue;
-    const values = url.searchParams.getAll(key);
-    out[key] = values.length === 1 ? (values[0] as string) : values;
+    out[key] = url.searchParams.getAll(key);
   }
   return out;
 }

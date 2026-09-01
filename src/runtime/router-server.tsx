@@ -5,11 +5,11 @@ import { BranchesHost, StackHost } from "../components/native/navigator.tsx";
 import { SafeAreaView } from "../components/safe-area.ts";
 import type { ContainerInfo, FlatRoute } from "../router/flatten.ts";
 import { flatten, matchRoutes } from "../router/flatten.ts";
-import { ContainerScope } from "../router/scope.tsx";
+import { ContainerScope, RouteScope } from "../router/scope.tsx";
 import type {
   AnyNode,
   LoadedNode,
-  Params,
+  RouteInfo,
   RouteTree,
 } from "../router/types.ts";
 import type { StrictStyles } from "../styles/types.ts";
@@ -65,14 +65,18 @@ async function wrap(
 
 export type ScreenRender = {
   route: FlatRoute;
-  params: Params;
+  info: RouteInfo;
   node: ReactNode;
 };
+
+function scoped(info: RouteInfo, node: ReactNode): ReactNode {
+  return createElement(RouteScope, { value: info, children: node });
+}
 
 export async function renderMatch(
   resolved: Resolved,
   route: FlatRoute,
-  params: Params,
+  info: RouteInfo,
   container: string | undefined,
 ): Promise<ScreenRender> {
   const skip = new Set<AnyNode>(
@@ -85,22 +89,28 @@ export async function renderMatch(
   const page = createElement(Leaf);
   const chain = route.chain.filter((node) => !skip.has(node));
 
-  return { route, params, node: await wrap(resolved, chain, page) };
+  return { route, info, node: scoped(info, await wrap(resolved, chain, page)) };
 }
 
 export async function renderScreen(
   resolved: Resolved,
-  pathname: string,
+  info: RouteInfo,
   container: string | undefined,
 ): Promise<ScreenRender | undefined> {
-  const matched = matchRoutes(resolved.routes, pathname);
+  const matched = matchRoutes(resolved.routes, info.pathname);
   if (!matched) return undefined;
-  return renderMatch(resolved, matched.route, matched.params, container);
+  return renderMatch(
+    resolved,
+    matched.route,
+    { ...info, params: matched.params },
+    container,
+  );
 }
 
 export async function renderFragment(
   resolved: Resolved,
   id: string,
+  info: RouteInfo,
 ): Promise<ReactNode> {
   const container = resolved.containers.get(id);
   if (!container) {
@@ -114,10 +124,13 @@ export async function renderFragment(
   const above = container.ancestors.slice(parent?.ancestors.length ?? 0);
   const Host = container.kind === "branches" ? BranchesHost : StackHost;
 
-  return createElement(ContainerScope, {
-    id,
-    children: await wrap(resolved, above, createElement(Host, { id })),
-  });
+  return scoped(
+    info,
+    createElement(ContainerScope, {
+      id,
+      children: await wrap(resolved, above, createElement(Host, { id })),
+    }),
+  );
 }
 
 const ROOT: StrictStyles = {
