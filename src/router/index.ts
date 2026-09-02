@@ -23,5 +23,6 @@ export type {
   RouteNode,
   RouteOptions,
   RouteTree,
+  Revalidation,
   StackNode,
 } from "./types.ts";

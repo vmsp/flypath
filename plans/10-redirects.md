@@ -81,7 +81,7 @@ expressible on either platform.
 - **Inertia.js** is the exact shape flypath needs, and has shipped it for
   years. Every response is a page object, and `url` is one of the four
   fields present on **every** one of them: `{ component, props, url,
-  version }`. The client's history entry comes from `page.url`, never
+version }`. The client's history entry comes from `page.url`, never
   from what it requested. Redirects are followed **on the server** — the
   adapter re-dispatches internally — so a guard costs one round trip and
   the client learns the destination from the payload it already has. The
@@ -94,9 +94,9 @@ expressible on either platform.
   redirect and the destination's render arrive in one Flight stream. For
   document navigations it emits a real 3xx and lets the browser follow —
   the split flypath should copy.
-- **Turbo Drive** resolves a redirect into a visit to the *final* URL:
+- **Turbo Drive** resolves a redirect into a visit to the _final_ URL:
   a form POST that 303s becomes `Turbo.visit("/redirected_to_here",
-  { action: "advance" })`. The history entry is the destination's, and
+{ action: "advance" })`. The history entry is the destination's, and
   the mechanism the app sees is an ordinary visit.
 - **React Router 7 / Single Fetch** converts 3xx into a 202 carrying the
   redirect in a turbo-stream body, and the client performs a real
@@ -151,12 +151,12 @@ already carried. Nothing reads the header today, so the rename is free.
 
 `x-flypath-navigate` — unchanged in shape, changed in company:
 
-| response                       | meaning                                    |
-| ------------------------------ | ------------------------------------------ |
-| 200 + flight body, no navigate | you got the URL you asked for              |
+| response                       | meaning                                     |
+| ------------------------------ | ------------------------------------------- |
+| 200 + flight body, no navigate | you got the URL you asked for               |
 | 200 + flight body + navigate   | go to `to` with `mode`; here is its payload |
-| 204 + navigate, no body        | go to `to`; you will have to fetch it      |
-| 307 / 308 + `location`         | web document — the browser follows         |
+| 204 + navigate, no body        | go to `to`; you will have to fetch it       |
+| 307 / 308 + `location`         | web document — the browser follows          |
 
 The 204 stops being the redirect mechanism and becomes the degenerate
 form of it, kept for the three cases that genuinely have no payload:
@@ -180,7 +180,7 @@ Six details carry the weight:
 
 **The destination's own chain runs.** A hop is a full re-dispatch:
 re-match, re-`runMiddleware`, re-render. Rendering `/login` inline
-*without* re-running the chain would let a redirect land on a route
+_without_ re-running the chain would let a redirect land on a route
 whose guards never fired, which is an auth hole rather than an
 optimization. It is the same reason middleware follows the URL rather
 than the rendered subtree (plan 9).
@@ -234,7 +234,7 @@ cache**, and then the client performs an ordinary navigation, which hits
 it. Nothing about navigation learns that redirects exist.
 
 That framing is what keeps this honest rather than clever: the seeded
-payload is a *hint*, exactly like a hover prefetch. If the client's own
+payload is a _hint_, exactly like a hover prefetch. If the client's own
 placement resolves to a different container than the one the header
 names — possible when a placement ends in `SHARED` and the live branch
 differs from the declared one — the key misses and it fetches normally.
@@ -295,15 +295,15 @@ reads becomes correct.
 
 ## What runs when
 
-| request                             | on redirect                                  |
-| ----------------------------------- | -------------------------------------------- |
-| web document `GET`                  | 307, browser follows, one extra RTT           |
-| web flight (`__flight=1`)           | 200 + payload + navigate, seeded, one RTT     |
-| web action `POST`                   | same, plus `returnValue` on the payload       |
-| native screen fetch                 | 200 + payload + navigate, entry relocated     |
-| native action `POST`                | same, plus `api.go` and `returnValue`         |
-| native fragment fetch               | dev error — chrome must not redirect the app  |
-| hover prefetch                      | 200 + payload + navigate, both cached         |
+| request                   | on redirect                                  |
+| ------------------------- | -------------------------------------------- |
+| web document `GET`        | 307, browser follows, one extra RTT          |
+| web flight (`__flight=1`) | 200 + payload + navigate, seeded, one RTT    |
+| web action `POST`         | same, plus `returnValue` on the payload      |
+| native screen fetch       | 200 + payload + navigate, entry relocated    |
+| native action `POST`      | same, plus `api.go` and `returnValue`        |
+| native fragment fetch     | dev error — chrome must not redirect the app |
+| hover prefetch            | 200 + payload + navigate, both cached        |
 
 The fragment row is the one new restriction. A fragment renders a
 container's chrome for the URL the user is already standing on, whose
@@ -312,7 +312,7 @@ idempotent, and following it would have the tab bar navigating the app.
 Dev throws with the offending container named.
 
 The prefetch row is a quiet improvement: hovering a guarded link now
-caches the redirect *and* its destination, so the click is instant
+caches the redirect _and_ its destination, so the click is instant
 instead of costing two round trips at the worst possible moment.
 
 ## What changes
@@ -321,7 +321,7 @@ instead of costing two round trips at the worst possible moment.
   the hop loop; cookie merge between hops; `x-flypath-route` becomes
   `x-flypath-location` with `url` and `container`; `navigateResponse`
   reduced to the no-payload cases.
-- `runtime/router-web.tsx` — `request` returns command *and* payload;
+- `runtime/router-web.tsx` — `request` returns command _and_ payload;
   the caller seeds `prefetched` before recursing.
 - `runtime/native-root.tsx` — `fetchPayload` stops following; `relocate`;
   the seeded payload map.
@@ -393,7 +393,7 @@ over from plan 9 phase 4.
   free. Only flight requests take the internal path.
 - **A screen-fetch redirect replaces the pending entry; an action
   redirect honours `mode`.** The user was never on the guarded URL, so
-  there is nothing to go back to; the user *was* on the page that ran the
+  there is nothing to go back to; the user _was_ on the page that ran the
   action, so there is.
 - **The 204 stays, for the three cases with no payload:** `back`,
   cross-origin, and budget exhausted.
@@ -417,7 +417,7 @@ over from plan 9 phase 4.
   redirect resolving, the user can press back, switch tabs, or push
   again. Step 1 drops the payload when the key is gone, which is correct
   for back and for tab switches, but a second push onto the same stack
-  leaves the stale entry *underneath* the new one — patched in place by
+  leaves the stale entry _underneath_ the new one — patched in place by
   step 2, which is right, but it means a screen the user has already
   moved past changes its URL and options after the fact. Probably fine,
   possibly surprising in a slide-back gesture.
@@ -444,6 +444,6 @@ over from plan 9 phase 4.
   whole payload into bytes first (`server-entry.tsx`). When flypath
   streams, the location must still be known at header time — it is,
   since the hop loop resolves before rendering starts — but a redirect
-  thrown *mid-render* would already have flushed headers. That is the
+  thrown _mid-render_ would already have flushed headers. That is the
   same caveat plan 9 names for the after-phase, and it argues for
   keeping render-time `navigate()` rare.

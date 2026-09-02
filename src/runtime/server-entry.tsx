@@ -11,17 +11,19 @@ import { tree } from "virtual:flypath/routes";
 
 import {
   ACTION_HEADER,
+  CHROME_HEADER,
   FRAGMENT_HEADER,
   LOCATION_HEADER,
   NAVIGATE_HEADER,
   PLATFORM_HEADER,
   PREFETCH_HEADER,
+  REVALIDATE_HEADER,
   SCREEN_HEADER,
 } from "../protocol/headers.ts";
 import { FLIGHT_PARAM } from "../protocol/params.ts";
 import { createContextStore } from "../router/context.ts";
 import type { FlatRoute } from "../router/flatten.ts";
-import { matchRoutes } from "../router/flatten.ts";
+import { hasChrome, matchRoutes } from "../router/flatten.ts";
 import { declaredContainer, ROOT_CONTAINER } from "../router/manifest.ts";
 import { runMiddleware } from "../router/middleware.ts";
 import type { NavigationSignal } from "../router/navigation.ts";
@@ -31,6 +33,7 @@ import {
   navigationSignal,
 } from "../router/navigation.ts";
 import { hrefOf, normalizePath, searchOf } from "../router/path.ts";
+import { parseRevalidate } from "../router/revalidate.ts";
 import type { RouteInfo } from "../router/types.ts";
 import { mergeCookies } from "./cookies.ts";
 import type { RscPayload } from "./payload.ts";
@@ -51,6 +54,14 @@ import "virtual:flypath/styles.css";
 const FLIGHT_CONTENT_TYPE = "text/x-component;charset=utf-8";
 
 const REDIRECT_BUDGET = 5;
+
+function requestedChrome(value: string | null): readonly string[] {
+  if (value === null) return [];
+  return value
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id !== "");
+}
 
 function documentShell(children: ReactNode): ReactNode {
   return (
@@ -241,6 +252,8 @@ export default async function handler(request: Request): Promise<Response> {
 
   const fragment = request.headers.get(FRAGMENT_HEADER);
 
+  const chrome = requestedChrome(request.headers.get(CHROME_HEADER));
+
   const wantsFlight =
     platform !== "web" ||
     screen !== null ||
@@ -283,11 +296,31 @@ export default async function handler(request: Request): Promise<Response> {
     let signal: Redirect | undefined;
 
     return runWithRequest(info, async () => {
-      const compose = (rendering: ScreenRender): Promise<Rendered> => {
+      const fragments = async (
+        rendering: ScreenRender,
+      ): Promise<Record<string, ReactNode> | undefined> => {
+        if (chrome.length === 0 || !wantsFlight || fragment !== null) {
+          return undefined;
+        }
+        const allowed = new Set(rendering.route.placement);
+        const out: Record<string, ReactNode> = {};
+        for (const id of chrome) {
+          if (!allowed.has(id)) continue;
+          const container = resolved.containers.get(id);
+          if (!container || !hasChrome(resolved.containers, container)) {
+            continue;
+          }
+          out[id] = await renderFragment(resolved, id, rendering.info);
+        }
+        return Object.keys(out).length === 0 ? undefined : out;
+      };
+
+      const compose = async (rendering: ScreenRender): Promise<Rendered> => {
         const content =
           platform === "web"
             ? withSafeArea(rendering.route, rendering.node)
             : rendering.node;
+        const around = await fragments(rendering);
         return runWithRequest({ ...info, ...rendering.info }, () =>
           toFlight(
             {
@@ -295,6 +328,7 @@ export default async function handler(request: Request): Promise<Response> {
                 platform === "web" && screen === null
                   ? documentShell(content)
                   : content,
+              ...(around === undefined ? {} : { fragments: around }),
               returnValue: action.returnValue,
               formState: action.formState,
             },
@@ -381,8 +415,34 @@ export default async function handler(request: Request): Promise<Response> {
           });
         }
 
+        const invalidation = parseRevalidate(outgoing.get(REVALIDATE_HEADER));
+
         if (action.signal && action.signal.kind !== "not-found") {
+          if (invalidation === "none") {
+            outgoing.delete(REVALIDATE_HEADER);
+            if (import.meta.env.DEV) {
+              console.warn(
+                "flypath: revalidate.none() ran in an action that also " +
+                  "navigated; the destination is rendered fresh either way, " +
+                  "so the opt-out is ignored",
+              );
+            }
+          }
           return redirect(action.signal);
+        }
+
+        if (invalidation === "none" && wantsFlight) {
+          const rendering = await toFlight(
+            {
+              root: null,
+              returnValue: action.returnValue,
+              formState: action.formState,
+            },
+            temporaryReferences,
+          );
+          return new Response(replay(rendering.bytes), {
+            headers: { "content-type": FLIGHT_CONTENT_TYPE },
+          });
         }
 
         const match = await renderScreen(resolved, base, container);

@@ -1,7 +1,8 @@
 "use server";
 
-import { cookies, navigate } from "flypath";
+import { cookies, navigate, revalidate } from "flypath";
 
+import { addLike } from "./posts.ts";
 import type { User } from "./session.ts";
 import { findUser, session, SESSION_COOKIE } from "./session.ts";
 
@@ -58,5 +59,11 @@ export async function signIn(formData: FormData): Promise<void> {
 
 export async function signOut(): Promise<void> {
   cookies.clear(SESSION_COOKIE, { path: "/" });
+  revalidate.reset();
   navigate("/");
+}
+
+export async function likePost(id: string): Promise<number> {
+  revalidate.none();
+  return addLike(id);
 }

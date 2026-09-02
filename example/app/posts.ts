@@ -39,3 +39,10 @@ export async function listPosts(): Promise<Post[]> {
 export async function getPost(id: string): Promise<Post | undefined> {
   return POSTS.find((post) => post.id === id);
 }
+
+export function addLike(id: string): number {
+  const post = POSTS.find((entry) => entry.id === id);
+  if (!post) return 0;
+  post.likes += 1;
+  return post.likes;
+}

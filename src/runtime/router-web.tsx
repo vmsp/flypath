@@ -22,6 +22,7 @@ import {
 import type { Location, NavigationCommand } from "../router/navigation.ts";
 import { parseCommand, parseLocation } from "../router/navigation.ts";
 import { normalizePath } from "../router/path.ts";
+import type { RevalidateMode } from "../router/revalidate.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext } from "../router/scope.tsx";
 import type { Mode } from "../router/types.ts";
@@ -34,6 +35,7 @@ type Snapshot = {
   payload: RscPayload;
   modal: { url: string; payload: RscPayload } | undefined;
   branches: Branches;
+  epoch: number;
 };
 
 type State = Snapshot & { key: string };
@@ -52,6 +54,8 @@ type ScrollPositions = readonly (readonly [number, number])[];
 const snapshots = new Map<string, Snapshot>();
 const scrolls = new Map<string, ScrollPositions>();
 const prefetched = new Map<string, Promise<Fetched>>();
+
+let epoch = 0;
 
 function scrollers(): Element[] {
   const root = document.scrollingElement;
@@ -162,9 +166,21 @@ function load(
   return task;
 }
 
-function invalidatePayloads(): void {
+export function bump(mode: RevalidateMode): void {
+  if (mode === "none") return;
+  epoch += 1;
   prefetched.clear();
-  snapshots.clear();
+  if (mode === "reset") snapshots.clear();
+}
+
+function keep(state: State): Snapshot {
+  return {
+    url: state.url,
+    payload: state.payload,
+    modal: state.modal,
+    branches: state.branches,
+    epoch: state.epoch,
+  };
 }
 
 function optionsFor(pathname: string): {
@@ -223,12 +239,12 @@ let go: ((href: string, mode: Mode) => Promise<void>) | null = null;
 export function swapPayload(payload: RscPayload): void {
   const state = read?.();
   if (!state) return;
-  invalidatePayloads();
-  startTransition(() => dispatch?.({ ...state, payload, modal: undefined }));
+  startTransition(() =>
+    dispatch?.({ ...state, payload, modal: undefined, epoch }),
+  );
 }
 
 export function applyCommand(command: NavigationCommand, seed?: Fetched): void {
-  invalidatePayloads();
   if (seed?.payload && seed.location) seedPayload(seed.location, seed.payload);
   if (command.kind === "back") {
     window.history.back();
@@ -244,7 +260,7 @@ export function applyCommand(command: NavigationCommand, seed?: Fetched): void {
 export function refreshPayload(): void {
   const state = read?.();
   if (!state) return;
-  invalidatePayloads();
+  const at = epoch;
   void load(state.url, undefined).then((result) => {
     if (result.command) {
       applyCommand(result.command, result);
@@ -255,9 +271,16 @@ export function refreshPayload(): void {
       dispatch?.({
         ...(read?.() ?? state),
         payload: result.payload as RscPayload,
+        epoch: at,
       }),
     );
   });
+}
+
+function revalidatePayload(mode: RevalidateMode): void {
+  if (mode === "none") return;
+  bump(mode);
+  refreshPayload();
 }
 
 const BACKDROP: CSSProperties = {
@@ -322,6 +345,7 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
           .route,
         {},
       ),
+      epoch,
     };
   });
 
@@ -329,15 +353,16 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
     dispatch = (next) => setState(next);
     read = () => state;
     go = navigate;
-    setRouter({
+    const detach = setRouter({
       go: (href, mode) => void navigate(href, mode),
       back: () => window.history.back(),
+      revalidate: revalidatePayload,
     });
     return () => {
       dispatch = null;
       read = null;
       go = null;
-      setRouter(undefined);
+      detach();
     };
   });
 
@@ -364,12 +389,12 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       const previous = read?.();
       const asModal = presentation === "modal" && previous !== undefined;
 
+      const at = epoch;
       const result = await load(
         path,
         asModal && route ? declaredContainer(route.placement) : undefined,
       );
       if (result.command) {
-        invalidatePayloads();
         if (result.command.kind === "back") {
           window.history.back();
           return;
@@ -397,12 +422,7 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       const positions = captureScroll();
       if (current) {
         scrolls.set(current.key, positions);
-        remember(current.key, {
-          url: current.url,
-          payload: current.payload,
-          modal: current.modal,
-          branches: current.branches,
-        });
+        remember(current.key, keep(current));
       }
 
       const key = nextKey();
@@ -417,8 +437,16 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
             payload: current?.payload ?? payload,
             modal: { url: committed, payload },
             branches,
+            epoch: current?.epoch ?? at,
           }
-        : { key, url: committed, payload, modal: undefined, branches };
+        : {
+            key,
+            url: committed,
+            payload,
+            modal: undefined,
+            branches,
+            epoch: at,
+          };
 
       if (mode === "push") {
         window.history.pushState({ __flypathKey: key }, "", committed);
@@ -461,25 +489,9 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       void load(href, undefined, true);
     };
 
-    const onPop = (): void => {
-      const previous = read?.();
-      if (previous) {
-        scrolls.set(previous.key, captureScroll());
-        remember(previous.key, {
-          url: previous.url,
-          payload: previous.payload,
-          modal: previous.modal,
-          branches: previous.branches,
-        });
-      }
-      const key = historyKey();
-      const url = currentUrl();
-      const snapshot = snapshots.get(key);
-      if (snapshot) {
-        startTransition(() => setState({ key, ...snapshot }));
-        return;
-      }
+    const settle = (key: string, url: string, at: number): void => {
       void load(url, undefined).then((result) => {
+        if (historyKey() !== key) return;
         if (result.command) {
           applyCommand(result.command, result);
           return;
@@ -488,6 +500,7 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
         const committed = result.location?.url ?? url;
         startTransition(() => {
           const current = read?.();
+          if (current && current.key !== key) return;
           setState({
             key,
             url: committed,
@@ -501,9 +514,28 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
               ).route,
               current?.branches ?? {},
             ),
+            epoch: at,
           });
         });
       });
+    };
+
+    const onPop = (): void => {
+      const previous = read?.();
+      if (previous) {
+        scrolls.set(previous.key, captureScroll());
+        remember(previous.key, keep(previous));
+      }
+      const key = historyKey();
+      const url = currentUrl();
+      const at = epoch;
+      const snapshot = snapshots.get(key);
+      if (snapshot) {
+        startTransition(() => setState({ key, ...snapshot }));
+        if (snapshot.epoch < at) settle(key, snapshot.url, at);
+        return;
+      }
+      settle(key, url, at);
     };
 
     document.addEventListener("click", onClick);

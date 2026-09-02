@@ -13,11 +13,14 @@ import {
   ACTION_HEADER,
   LOCATION_HEADER,
   NAVIGATE_HEADER,
+  REVALIDATE_HEADER,
 } from "../protocol/headers.ts";
 import { parseCommand, parseLocation } from "../router/navigation.ts";
+import { parseRevalidate } from "../router/revalidate.ts";
 import type { RscPayload } from "./payload.ts";
 import {
   applyCommand,
+  bump,
   refreshPayload,
   swapPayload,
   WebRouter,
@@ -34,9 +37,12 @@ async function callServer(id: string, args: unknown[]): Promise<unknown> {
 
   const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
   const location = parseLocation(response.headers.get(LOCATION_HEADER));
+  const mode =
+    parseRevalidate(response.headers.get(REVALIDATE_HEADER)) ?? "stale";
 
   if (command && (response.status === 204 || !response.body)) {
     void response.body?.cancel();
+    bump(mode);
     applyCommand(command);
     return undefined;
   }
@@ -45,12 +51,14 @@ async function callServer(id: string, args: unknown[]): Promise<unknown> {
     temporaryReferences,
   });
 
+  bump(mode);
+
   if (command) {
     applyCommand(command, { command, location, payload });
     return payload.returnValue;
   }
 
-  swapPayload(payload);
+  if (mode !== "none") swapPayload(payload);
   return payload.returnValue;
 }
 
@@ -63,7 +71,10 @@ async function main(): Promise<void> {
   } as never);
 
   if (import.meta.hot) {
-    import.meta.hot.on("rsc:update", refreshPayload);
+    import.meta.hot.on("rsc:update", () => {
+      bump("reset");
+      refreshPayload();
+    });
   }
 }
 

@@ -25,7 +25,9 @@ const config = routes({ middleware: [request] }, [
               }),
             ]),
             stack({ middleware: [auth] }, [
-              route("me", () => import("./profile.tsx")),
+              route("me", () => import("./profile.tsx"), {
+                revalidate: "blocking",
+              }),
             ]),
             route("p/:id", () => import("./post.tsx"), { safeArea: ["top"] }),
           ],

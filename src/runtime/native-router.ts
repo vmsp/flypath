@@ -12,35 +12,17 @@ import {
   ROOT_CONTAINER,
   SHARED,
 } from "../router/manifest.ts";
-import type { Location, NavigationCommand } from "../router/navigation.ts";
 import { normalizePath } from "../router/path.ts";
-import type { RscPayload } from "./payload.ts";
+import type { Fetched } from "./native-content.ts";
 
 export type Router = RouterTree;
 
-export type Fetched = {
-  payload?: RscPayload;
-  command?: NavigationCommand;
-  location?: Location;
+export type Visible = {
+  screens: readonly ScreenEntry[];
+  chrome: readonly string[];
 };
 
-export type Fetchers = {
-  screen: (url: string, container: string) => Promise<Fetched>;
-  fragment: (url: string, container: string) => Promise<RscPayload>;
-  settle: (key: string, result: Fetched) => void;
-};
-
-const EMPTY: Router = { tree: {}, fragments: {} };
-
-const SEED_LIMIT = 8;
-
-const PENDING: Promise<RscPayload> = new Promise<RscPayload>(() => {});
-
-const SEED_TTL = 5000;
-
-type Seed = { payload: RscPayload; at: number };
-
-const seeds = new Map<string, Seed>();
+const EMPTY: Router = { tree: {}, epoch: 0 };
 
 let counter = 0;
 
@@ -49,61 +31,8 @@ function nextKey(): string {
   return `entry-${counter}`;
 }
 
-function seedKey(container: string, url: string): string {
-  const [path = "", query] = url.split("?");
-  const search = query === undefined ? "" : `?${query}`;
-  return `${container}:${normalizePath(path)}${search}`;
-}
-
-export function seedPayload(location: Location, payload: RscPayload): void {
-  if (location.container === undefined) return;
-  seeds.set(seedKey(location.container, location.url), {
-    payload,
-    at: Date.now(),
-  });
-  while (seeds.size > SEED_LIMIT) {
-    const oldest = seeds.keys().next();
-    if (oldest.done) break;
-    seeds.delete(oldest.value);
-  }
-}
-
-function takePayload(container: string, url: string): RscPayload | undefined {
-  const key = seedKey(container, url);
-  const hit = seeds.get(key);
-  if (!hit) return undefined;
-  seeds.delete(key);
-  return Date.now() - hit.at > SEED_TTL ? undefined : hit.payload;
-}
-
-function rejected(message: string): Promise<RscPayload> {
-  const promise = Promise.reject<RscPayload>(new Error(message));
-  promise.catch(() => {});
-  return promise;
-}
-
-function screenAt(
-  key: string,
-  url: string,
-  container: string,
-  fetchers: Fetchers,
-): ScreenEntry {
+function screenAt(key: string, url: string, container: string): ScreenEntry {
   const matched = matchManifest(manifest, normalizePath(url));
-  const seeded = takePayload(container, url);
-
-  let payload: Promise<RscPayload>;
-  if (seeded) {
-    payload = Promise.resolve(seeded);
-  } else {
-    const pending = fetchers.screen(url, container);
-    void pending.then(
-      (result) => {
-        fetchers.settle(key, result);
-      },
-      () => {},
-    );
-    payload = pending.then((result) => result.payload ?? PENDING);
-  }
 
   return {
     kind: "screen",
@@ -112,16 +41,11 @@ function screenAt(
     container,
     safeArea: matched?.options.safeArea,
     presentation: matched?.options.presentation ?? "push",
-    payload,
   };
 }
 
-function makeScreen(
-  url: string,
-  container: string,
-  fetchers: Fetchers,
-): ScreenEntry {
-  return screenAt(nextKey(), url, container, fetchers);
+function makeScreen(url: string, container: string): ScreenEntry {
+  return screenAt(nextKey(), url, container);
 }
 
 function makeContainer(id: string): Entry {
@@ -146,39 +70,23 @@ function setActive(router: Router, id: string, active: string): Router {
   };
 }
 
-function ensure(
-  router: Router,
-  id: string,
-  url: string,
-  fetchers: Fetchers,
-): Router {
+function ensure(router: Router, id: string): Router {
   if (router.tree[id]) return router;
 
   const info = containerById(manifest, id);
   if (!info) return router;
 
-  let next =
-    info.chrome && !router.fragments[id]
-      ? {
-          ...router,
-          fragments: { ...router.fragments, [id]: fetchers.fragment(url, id) },
-        }
-      : router;
-
   const child = info.branches[0];
 
   if (info.kind === "branches") {
-    if (child === undefined) return next;
-    next = setActive(next, id, child);
-    return ensure(next, child, url, fetchers);
+    if (child === undefined) return router;
+    return ensure(setActive(router, id, child), child);
   }
 
-  next = setStack(next, id, [
-    child === undefined
-      ? makeScreen(info.root, id, fetchers)
-      : makeContainer(child),
+  const next = setStack(router, id, [
+    child === undefined ? makeScreen(info.root, id) : makeContainer(child),
   ]);
-  return child === undefined ? next : ensure(next, child, url, fetchers);
+  return child === undefined ? next : ensure(next, child);
 }
 
 export function activeBranch(router: Router, id: string): string | undefined {
@@ -241,11 +149,56 @@ export function focusedScreen(router: Router): ScreenEntry | undefined {
   return top?.kind === "screen" ? top : undefined;
 }
 
+export function visible(router: Router): Visible {
+  const screens: ScreenEntry[] = [];
+  const chrome: string[] = [];
+
+  const walkStack = (id: string): void => {
+    const state = router.tree[id];
+    if (state?.kind !== "stack") return;
+    for (let at = state.entries.length - 1; at >= 0; at -= 1) {
+      const entry = state.entries[at];
+      if (entry === undefined) return;
+      if (entry.kind === "container") {
+        walkContainer(entry.id);
+        return;
+      }
+      screens.push(entry);
+      if (entry.presentation !== "modal") return;
+    }
+  };
+
+  const walkContainer = (id: string): void => {
+    const info = containerById(manifest, id);
+    if (!info) return;
+    if (info.chrome) chrome.push(id);
+    if (info.kind !== "branches") {
+      walkStack(id);
+      return;
+    }
+    const active = activeBranch(router, id);
+    if (active !== undefined && router.tree[active]) walkContainer(active);
+  };
+
+  walkContainer(ROOT_CONTAINER);
+  return { screens, chrome };
+}
+
+export function liveKeys(router: Router): ReadonlySet<string> {
+  const keys = new Set<string>();
+  for (const state of Object.values(router.tree)) {
+    if (state.kind !== "stack") continue;
+    for (const entry of state.entries) {
+      if (entry.kind === "screen") keys.add(entry.key);
+    }
+  }
+  return keys;
+}
+
 export function navigate(
   router: Router,
   url: string,
   replace: boolean,
-  fetchers: Fetchers,
 ): Router {
   const placement = matchManifest(manifest, normalizePath(url))?.placement ?? [
     ROOT_CONTAINER,
@@ -256,10 +209,10 @@ export function navigate(
   let next = router;
 
   for (const [position, id] of chain.entries()) {
-    next = ensure(next, id, url, fetchers);
+    next = ensure(next, id);
     const child = chain[position + 1];
     if (child === undefined) break;
-    next = ensure(next, child, url, fetchers);
+    next = ensure(next, child);
 
     const state = next.tree[id];
     if (!state) continue;
@@ -295,11 +248,11 @@ export function navigate(
       ? state.entries.slice(0, -1)
       : state.entries;
 
-  return setStack(next, target, [...kept, makeScreen(url, target, fetchers)]);
+  return setStack(next, target, [...kept, makeScreen(url, target)]);
 }
 
-export function initialRouter(url: string, fetchers: Fetchers): Router {
-  return navigate(EMPTY, url, false, fetchers);
+export function initialRouter(url: string): Router {
+  return navigate(EMPTY, url, false);
 }
 
 export function goBack(router: Router): Router | undefined {
@@ -335,6 +288,13 @@ function locate(router: Router, key: string): Located | undefined {
     if (entry?.kind === "screen") return { id, index, entry };
   }
   return undefined;
+}
+
+export function entryOf(
+  router: Router,
+  key: string | undefined,
+): ScreenEntry | undefined {
+  return key === undefined ? undefined : locate(router, key)?.entry;
 }
 
 function withEntry(
@@ -387,16 +347,11 @@ function targetOf(router: Router, url: string): string {
   return resolveChain(router, placement).at(-1) ?? ROOT_CONTAINER;
 }
 
-export function relocate(
-  router: Router,
-  key: string,
-  result: Fetched,
-  fetchers: Fetchers,
-): Router {
+export function relocate(router: Router, key: string, result: Fetched): Router {
   const found = locate(router, key);
   if (!found) return router;
 
-  const { command, location, payload } = result;
+  const { command, location } = result;
 
   if (!command) {
     if (
@@ -405,26 +360,15 @@ export function relocate(
     ) {
       return router;
     }
-    if (payload) seedPayload(location, payload);
     return withEntry(
       router,
       found.id,
       found.index,
-      screenAt(key, location.url, found.entry.container, fetchers),
+      screenAt(key, location.url, found.entry.container),
     );
   }
 
-  if (command.kind === "back") {
-    return withEntry(router, found.id, found.index, {
-      ...found.entry,
-      payload: rejected(
-        'flypath: navigate("back") ran while rendering a screen; there is ' +
-          "no history to pop until the screen exists",
-      ),
-    });
-  }
-
-  if (payload && location) seedPayload(location, payload);
+  if (command.kind === "back") return router;
 
   const target = targetOf(router, command.to);
   if (target === found.entry.container) {
@@ -432,7 +376,7 @@ export function relocate(
       router,
       found.id,
       found.index,
-      screenAt(key, command.to, target, fetchers),
+      screenAt(key, command.to, target),
     );
   }
 
@@ -440,47 +384,5 @@ export function relocate(
     withoutEntry(router, found.id, found.index),
     command.to,
     true,
-    fetchers,
   );
-}
-
-export function applyPayload(
-  router: Router,
-  payload: Promise<RscPayload>,
-): Router {
-  const id = focusChain(router).at(-1);
-  const state = id === undefined ? undefined : router.tree[id];
-  if (id === undefined || state?.kind !== "stack") return router;
-  const top = state.entries.at(-1);
-  if (top?.kind !== "screen") return router;
-  return setStack(router, id, [
-    ...state.entries.slice(0, -1),
-    { ...top, payload },
-  ]);
-}
-
-export function refresh(router: Router, fetchers: Fetchers): Router {
-  const url = focusedScreen(router)?.url ?? "/";
-  const tree: Record<string, ContainerState> = {};
-
-  for (const [id, state] of Object.entries(router.tree)) {
-    tree[id] =
-      state.kind === "stack"
-        ? {
-            kind: "stack",
-            entries: state.entries.map((entry) =>
-              entry.kind === "screen"
-                ? screenAt(entry.key, entry.url, entry.container, fetchers)
-                : entry,
-            ),
-          }
-        : state;
-  }
-
-  const fragments: Record<string, Promise<RscPayload>> = {};
-  for (const id of Object.keys(router.fragments)) {
-    fragments[id] = fetchers.fragment(url, id);
-  }
-
-  return { tree, fragments };
 }

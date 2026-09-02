@@ -1,4 +1,4 @@
-import type { Context } from "react";
+import type { Context, ReactNode } from "react";
 import { createContext, useContext } from "react";
 
 import type { Edge } from "../../router/types.ts";
@@ -11,7 +11,6 @@ export type ScreenEntry = {
   container: string;
   safeArea: boolean | readonly Edge[] | undefined;
   presentation: "push" | "modal";
-  payload: Promise<RscPayload>;
 };
 
 export type ContainerEntry = {
@@ -28,13 +27,53 @@ export type ContainerState =
 
 export type RouterTree = {
   tree: Readonly<Record<string, ContainerState>>;
-  fragments: Readonly<Record<string, Promise<RscPayload>>>;
+  epoch: number;
 };
 
-export const NavigatorContext: Context<RouterTree | null> =
-  createContext<RouterTree | null>(null);
+export type Content =
+  | {
+      status: "loading";
+      url: string;
+      epoch: number;
+      at: number;
+      promise: Promise<RscPayload>;
+    }
+  | {
+      status: "ready";
+      url: string;
+      epoch: number;
+      at: number;
+      node: ReactNode;
+      busy: boolean;
+    }
+  | {
+      status: "error";
+      url: string;
+      epoch: number;
+      at: number;
+      error: unknown;
+    };
 
-export function useNavigator(): RouterTree {
+export type ContentMap = Readonly<Record<string, Content>>;
+
+export const ABSENT: Content = {
+  status: "loading",
+  url: "",
+  epoch: -1,
+  at: 0,
+  promise: new Promise<RscPayload>(() => {}),
+};
+
+export function chromeKey(id: string): string {
+  return `chrome:${id}`;
+}
+
+export type NavigatorValue = RouterTree & { content: ContentMap };
+
+export const NavigatorContext: Context<NavigatorValue | null> =
+  createContext<NavigatorValue | null>(null);
+
+export function useNavigator(): NavigatorValue {
   const value = useContext(NavigatorContext);
   if (!value) {
     throw new Error("flypath: navigator rendered outside the flypath root");

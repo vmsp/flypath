@@ -1,8 +1,9 @@
 - Release build (Phase 5 of PLAN_CLIENT.md)
 - Skew
 - Slide to go back on iOS
+- Access to Response in middleware?
+- Unify logging on the framework
 - Modal
-- Middleware
 - Run on device
 - DB, Migrations
 - Jobs, Crons
@@ -14,7 +15,3 @@
 
 Deep links are wired but unexercisable. Linking.getInitialURL() and the url listener are in native-root.tsx, but no URL scheme is registered in templates/ios/App/Info.plist or the Android manifest — so nothing can deliver one. Written, never run.
 
-Native does not invalidate screens after an action. signOut() redirects to /,
-but the /me entry in the profile tab keeps its pre-signout payload, so tapping
-the tab shows a stale signed-in screen until a refresh. Web calls
-invalidatePayloads() on every command; native has no equivalent.

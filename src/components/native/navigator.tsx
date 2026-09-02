@@ -14,10 +14,9 @@ import { manifest } from "virtual:flypath/route-manifest";
 
 import { containerById } from "../../router/manifest.ts";
 import { ContainerScope } from "../../router/scope.tsx";
-import type { RscPayload } from "../../runtime/payload.ts";
 import { edgesOf, insetPadding, useInsets } from "./insets.ts";
-import type { Entry, ScreenEntry } from "./navigator-context.ts";
-import { useNavigator } from "./navigator-context.ts";
+import type { Content, Entry, ScreenEntry } from "./navigator-context.ts";
+import { ABSENT, chromeKey, useNavigator } from "./navigator-context.ts";
 
 const EMPTY: readonly Entry[] = [];
 
@@ -42,8 +41,9 @@ class ScreenBoundary extends Component<
   }
 }
 
-function Payload({ payload }: { payload: Promise<RscPayload> }): ReactNode {
-  return use(payload).root;
+function Payload({ content }: { content: Content }): ReactNode {
+  if (content.status === "error") throw content.error;
+  return content.status === "ready" ? content.node : use(content.promise).root;
 }
 
 function Loading(): ReactNode {
@@ -63,10 +63,9 @@ function Host({ id }: { id: string }): ReactNode {
 }
 
 function Container({ id }: { id: string }): ReactNode {
-  const { fragments } = useNavigator();
-  const fragment = fragments[id];
+  const { content } = useNavigator();
 
-  if (!fragment) {
+  if (containerById(manifest, id)?.chrome !== true) {
     return (
       <ContainerScope id={id}>
         <Host id={id} />
@@ -77,7 +76,7 @@ function Container({ id }: { id: string }): ReactNode {
   return (
     <ScreenBoundary>
       <Suspense fallback={<Loading />}>
-        <Payload payload={fragment} />
+        <Payload content={content[chromeKey(id)] ?? ABSENT} />
       </Suspense>
     </ScreenBoundary>
   );
@@ -91,6 +90,7 @@ type ScreenProps = {
 };
 
 function Screen({ entry, depth, exiting, onExited }: ScreenProps): ReactNode {
+  const { content } = useNavigator();
   const insets = useInsets();
   const progress = useRef(new Animated.Value(depth === 0 ? 0 : 1)).current;
 
@@ -148,7 +148,7 @@ function Screen({ entry, depth, exiting, onExited }: ScreenProps): ReactNode {
     >
       <ScreenBoundary>
         <Suspense fallback={<Loading />}>
-          <Payload payload={entry.payload} />
+          <Payload content={content[entry.key] ?? ABSENT} />
         </Suspense>
       </ScreenBoundary>
     </Animated.View>

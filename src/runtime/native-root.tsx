@@ -12,6 +12,7 @@ import {
 } from "react";
 import {
   ActivityIndicator,
+  AppState,
   BackHandler,
   Linking,
   StyleSheet,
@@ -21,10 +22,15 @@ import {
 
 import type { Insets } from "../components/native/insets.ts";
 import { InsetsContext } from "../components/native/insets.ts";
+import type {
+  ContentMap,
+  NavigatorValue,
+} from "../components/native/navigator-context.ts";
 import { NavigatorContext } from "../components/native/navigator-context.ts";
 import { StackHost } from "../components/native/navigator.tsx";
 import { setNativeRouter } from "../components/native/router-store.ts";
 import {
+  CHROME_HEADER,
   FRAGMENT_HEADER,
   LOCATION_HEADER,
   NAVIGATE_HEADER,
@@ -39,17 +45,29 @@ import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext, ContainerScope } from "../router/scope.tsx";
 import type { Mode } from "../router/types.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
+import type { Fetched } from "./native-content.ts";
+import {
+  apply,
+  attach,
+  bumpEpoch,
+  contentMap,
+  currentEpoch,
+  fail,
+  seedPayload,
+  staleTimeOf,
+  sync,
+} from "./native-content.ts";
 import { readInsets, watchInsets } from "./native-insets.ts";
-import type { Fetched, Fetchers, Router } from "./native-router.ts";
+import type { Router } from "./native-router.ts";
 import {
   activeBranch,
-  applyPayload,
+  entryOf,
   focusedScreen,
   goBack,
   initialRouter,
   navigate,
-  refresh as refreshRouter,
   relocate,
+  visible,
 } from "./native-router.ts";
 import type { RscPayload } from "./payload.ts";
 
@@ -69,8 +87,15 @@ function decode(response: Response): Promise<RscPayload> {
   } as Parameters<typeof createFromFetch>[1]);
 }
 
-async function fetchScreen(url: string, container: string): Promise<Fetched> {
-  const response = await flight(url, { [SCREEN_HEADER]: container });
+async function fetchScreen(
+  url: string,
+  container: string,
+  chrome: readonly string[],
+): Promise<Fetched> {
+  const response = await flight(url, {
+    [SCREEN_HEADER]: container,
+    ...(chrome.length === 0 ? {} : { [CHROME_HEADER]: chrome.join(",") }),
+  });
   const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
   const location = parseLocation(response.headers.get(LOCATION_HEADER));
 
@@ -93,18 +118,9 @@ async function fetchFragment(
   return decode(response);
 }
 
-let settled: ((key: string, result: Fetched) => void) | undefined;
-
-const pending: [string, Fetched][] = [];
-
-const fetchers: Fetchers = {
-  screen: fetchScreen,
-  fragment: fetchFragment,
-  settle: (key, result) => {
-    if (settled) settled(key, result);
-    else pending.push([key, result]);
-  },
-};
+const NO_HISTORY =
+  'flypath: navigate("back") ran while rendering a screen; there is no ' +
+  "history to pop until the screen exists";
 
 class RootBoundary extends Component<
   { children: ReactNode },
@@ -128,32 +144,50 @@ class RootBoundary extends Component<
 }
 
 export default function Root(): ReactNode {
-  const [router, setState] = useState<Router>(() =>
-    initialRouter("/", fetchers),
-  );
+  const [router, setState] = useState<Router>(() => ({
+    ...initialRouter("/"),
+    epoch: currentEpoch(),
+  }));
+  const [content, setContent] = useState<ContentMap>(contentMap);
   const [insets, setInsets] = useState<Insets>(readInsets);
 
   const state = useRef(router);
   state.current = router;
 
+  const away = useRef(0);
+
   useEffect(() => watchInsets(setInsets), []);
 
   useEffect(() => {
-    settled = (key, result) => {
-      const command = result.command;
-      if (command?.kind === "go" && isExternal(command.to)) {
-        void Linking.openURL(command.to);
-        return;
-      }
-      startTransition(() =>
-        setState((current) => relocate(current, key, result, fetchers)),
-      );
-    };
-    for (const [key, result] of pending.splice(0)) settled(key, result);
-    return () => {
-      settled = undefined;
-    };
+    const detach = attach({
+      screen: fetchScreen,
+      fragment: fetchFragment,
+      dev: nativeConfig().dev,
+      router: () => state.current,
+      publish: (map) => {
+        startTransition(() => setContent(map));
+      },
+      settle: (key, result) => {
+        const command = result.command;
+        if (command?.kind === "go" && isExternal(command.to)) {
+          void Linking.openURL(command.to);
+          return;
+        }
+        if (command?.kind === "back") {
+          fail(key, new Error(NO_HISTORY));
+          return;
+        }
+        startTransition(() =>
+          setState((current) => relocate(current, key, result)),
+        );
+      },
+    });
+    return detach;
   }, []);
+
+  useEffect(() => {
+    sync(router);
+  }, [router]);
 
   const back = useCallback((): boolean => {
     const next = goBack(state.current);
@@ -164,7 +198,7 @@ export default function Root(): ReactNode {
 
   const push = useCallback((href: string, replace: boolean) => {
     startTransition(() =>
-      setState((current) => navigate(current, href, replace, fetchers)),
+      setState((current) => navigate(current, href, replace)),
     );
   }, []);
 
@@ -179,29 +213,55 @@ export default function Root(): ReactNode {
     [push],
   );
 
-  const refresh = useCallback(() => {
-    startTransition(() =>
-      setState((current) => refreshRouter(current, fetchers)),
-    );
+  const invalidate = useCallback((force: boolean): number => {
+    const epoch = bumpEpoch(force);
+    startTransition(() => setState((current) => ({ ...current, epoch })));
+    return epoch;
   }, []);
 
   useEffect(() => {
-    setRouter({ go, back: () => void back() });
-    setNativeRouter({
+    const detachRouter = setRouter({
+      go,
+      back: () => void back(),
+      revalidate: (mode) => {
+        if (mode === "none") return;
+        const epoch = invalidate(false);
+        apply({
+          epoch,
+          mode,
+          key: undefined,
+          url: undefined,
+          payload: undefined,
+        });
+      },
+    });
+    const detachNative = setNativeRouter({
       currentUrl: () => focusedScreen(state.current)?.url ?? "/",
       currentContainer: () =>
         focusedScreen(state.current)?.container ?? ROOT_CONTAINER,
-      applyPayload: (payload) => {
-        startTransition(() =>
-          setState((current) => applyPayload(current, payload)),
-        );
+      currentKey: () => focusedScreen(state.current)?.key,
+      chromeIds: () => visible(state.current).chrome,
+      commit: ({ key, mode, payload, command, location }) => {
+        if (mode === "none") return;
+        const epoch = bumpEpoch(false);
+        if (command && payload && location) {
+          seedPayload(location, payload, epoch);
+        }
+        apply({
+          epoch,
+          mode,
+          key: command ? undefined : key,
+          url: command ? undefined : entryOf(state.current, key)?.url,
+          payload,
+        });
+        startTransition(() => setState((current) => ({ ...current, epoch })));
       },
     });
     return () => {
-      setRouter(undefined);
-      setNativeRouter(undefined);
+      detachRouter();
+      detachNative();
     };
-  }, [go, back]);
+  }, [go, back, invalidate]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener(
@@ -210,6 +270,22 @@ export default function Root(): ReactNode {
     );
     return () => subscription.remove();
   }, [back]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (status) => {
+      if (status !== "active") {
+        away.current = Date.now();
+        return;
+      }
+      if (away.current === 0) return;
+      const idle = Date.now() - away.current;
+      away.current = 0;
+      const url = focusedScreen(state.current)?.url ?? "/";
+      if (idle < staleTimeOf(url)) return;
+      invalidate(false);
+    });
+    return () => subscription.remove();
+  }, [invalidate]);
 
   useEffect(() => {
     const open = (url: string | null | undefined) => {
@@ -231,10 +307,15 @@ export default function Root(): ReactNode {
     const socket = new WebSocket(`${serverUrl.replace(/^http/, "ws")}/flypath`);
     socket.onmessage = (event: { data: unknown }) => {
       const data = JSON.parse(String(event.data)) as { type?: string };
-      if (data.type === "rsc-update") refresh();
+      if (data.type === "rsc-update") invalidate(true);
     };
     return () => socket.close();
-  }, [refresh]);
+  }, [invalidate]);
+
+  const value = useMemo<NavigatorValue>(
+    () => ({ ...router, content }),
+    [router, content],
+  );
 
   const runtime = useMemo<ContainerRuntime>(
     () => ({ activeBranch: (id) => activeBranch(router, id) }),
@@ -243,7 +324,7 @@ export default function Root(): ReactNode {
 
   return (
     <InsetsContext.Provider value={insets}>
-      <NavigatorContext.Provider value={router}>
+      <NavigatorContext.Provider value={value}>
         <ContainerRuntimeContext.Provider value={runtime}>
           <View style={styles.container}>
             <RootBoundary>

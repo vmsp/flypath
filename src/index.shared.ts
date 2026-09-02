@@ -36,6 +36,7 @@ export type {
   ParamsReader,
   Pattern,
   QueryReader,
+  Revalidate,
   SearchParams,
 } from "./router/types.ts";
 

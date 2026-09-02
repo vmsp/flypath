@@ -7,6 +7,9 @@ export const SCREEN_HEADER = "x-flypath-screen";
 /** Container whose surrounding chrome is being fetched. */
 export const FRAGMENT_HEADER = "x-flypath-fragment";
 
+/** Chrome fragments the client wants rendered into this response. */
+export const CHROME_HEADER = "x-flypath-chrome";
+
 /** Marks a speculative fetch that must not be treated as a visit. */
 export const PREFETCH_HEADER = "x-flypath-prefetch";
 
@@ -15,6 +18,9 @@ export const NAVIGATE_HEADER = "x-flypath-navigate";
 
 /** Carries the encoded resolved location of a flight response. */
 export const LOCATION_HEADER = "x-flypath-location";
+
+/** How a flight response asks the client to invalidate what it holds. */
+export const REVALIDATE_HEADER = "x-flypath-revalidate";
 
 /** Server action id on an action POST, for a client-invoked action. */
 export const ACTION_HEADER = "x-flypath-action";

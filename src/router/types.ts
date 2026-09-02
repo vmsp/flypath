@@ -7,10 +7,14 @@ export type Edge = "top" | "bottom" | "left" | "right";
 
 export type Presentation = "push" | "modal";
 
+export type Revalidation = "stale" | "blocking" | "never";
+
 export type RouteOptions = {
   safeArea?: boolean | readonly Edge[];
   presentation?: Presentation;
   prefetch?: "hover" | false;
+  revalidate?: Revalidation;
+  staleTime?: number;
 };
 
 export type MiddlewareOptions = {
@@ -193,6 +197,12 @@ export type Navigate = {
     to: P,
     ...args: HrefArgs<P>
   ) => never;
+};
+
+export type Revalidate = {
+  (): void;
+  reset: () => void;
+  none: () => void;
 };
 
 export type ParamsReader = {

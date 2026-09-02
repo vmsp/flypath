@@ -1,6 +1,7 @@
 import { navigate, params } from "flypath";
 
 import BackLink from "./back-link.tsx";
+import LikeButton from "./like-button.tsx";
 import PostParams from "./post-params.tsx";
 import { getPost } from "./posts.ts";
 import { colors } from "./vars.css.ts";
@@ -27,7 +28,7 @@ export default async function PostPage() {
         <BackLink>← back</BackLink>
         <h1 style={{ color: colors.text, fontSize: 22 }}>@{post.author}</h1>
         <p style={{ color: colors.text, fontSize: 18 }}>{post.body}</p>
-        <span style={{ color: colors.muted }}>{post.likes} likes</span>
+        <LikeButton id={post.id} likes={post.likes} />
         <PostParams />
       </article>
     </>

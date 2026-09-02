@@ -8,16 +8,18 @@ import {
 import { nativeRouter } from "../components/native/router-store.ts";
 import {
   ACTION_HEADER,
+  CHROME_HEADER,
   LOCATION_HEADER,
   NAVIGATE_HEADER,
   PLATFORM_HEADER,
+  REVALIDATE_HEADER,
   SCREEN_HEADER,
 } from "../protocol/headers.ts";
 import { getRouter } from "../router/dispatch.ts";
 import { ROOT_CONTAINER } from "../router/manifest.ts";
 import { parseCommand, parseLocation } from "../router/navigation.ts";
+import { parseRevalidate } from "../router/revalidate.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
-import { seedPayload } from "./native-router.ts";
 import type { RscPayload } from "./payload.ts";
 
 export function installServerCallback(): void {
@@ -27,6 +29,9 @@ export function installServerCallback(): void {
     const temporaryReferences = createTemporaryReferenceSet();
     const body = await encodeReply(args, { temporaryReferences });
 
+    const key = router?.currentKey();
+    const chrome = router?.chromeIds() ?? [];
+
     const response = await fetch(`${serverUrl}${router?.currentUrl() ?? "/"}`, {
       method: "POST",
       body: body as never,
@@ -34,11 +39,14 @@ export function installServerCallback(): void {
         [ACTION_HEADER]: id,
         [PLATFORM_HEADER]: platform,
         [SCREEN_HEADER]: router?.currentContainer() ?? ROOT_CONTAINER,
+        ...(chrome.length === 0 ? {} : { [CHROME_HEADER]: chrome.join(",") }),
       },
     });
 
     const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
     const location = parseLocation(response.headers.get(LOCATION_HEADER));
+    const mode =
+      parseRevalidate(response.headers.get(REVALIDATE_HEADER)) ?? "stale";
 
     const follow = (): void => {
       const api = getRouter();
@@ -48,6 +56,7 @@ export function installServerCallback(): void {
     };
 
     if (command && response.status === 204) {
+      router?.commit({ key, mode, payload: undefined, command, location });
       follow();
       return undefined;
     }
@@ -59,13 +68,8 @@ export function installServerCallback(): void {
       >[1],
     );
 
-    if (command) {
-      if (location) seedPayload(location, payload);
-      follow();
-      return payload.returnValue;
-    }
-
-    router?.applyPayload(Promise.resolve(payload));
+    router?.commit({ key, mode, payload, command, location });
+    follow();
     return payload.returnValue;
   });
 }
