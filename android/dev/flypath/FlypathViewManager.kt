@@ -83,5 +83,7 @@ public class FlypathViewManager(private val flypathName: String) :
 public class FlypathPackage(private val names: List<String>) : ReactPackage {
     override fun createViewManagers(
         reactContext: ReactApplicationContext
-    ): List<ViewManager<*, *>> = names.map { FlypathViewManager(it) }
+    ): List<ViewManager<*, *>> =
+        listOf(FlypathScreenStackManager(), FlypathScreenManager()) +
+                names.map { FlypathViewManager(it) }
 }

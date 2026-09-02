@@ -7,11 +7,15 @@ export type Edge = "top" | "bottom" | "left" | "right";
 
 export type Presentation = "push" | "modal";
 
+export type Transition = "platform" | "fade" | "none";
+
 export type Revalidation = "stale" | "blocking" | "never";
 
 export type RouteOptions = {
   safeArea?: boolean | readonly Edge[];
   presentation?: Presentation;
+  transition?: Transition;
+  gesture?: boolean;
   prefetch?: "hover" | false;
   revalidate?: Revalidation;
   staleTime?: number;

@@ -1,7 +1,7 @@
 import type { Context, ReactNode } from "react";
 import { createContext, useContext } from "react";
 
-import type { Edge } from "../../router/types.ts";
+import type { Edge, Presentation, Transition } from "../../router/types.ts";
 import type { RscPayload } from "../../runtime/payload.ts";
 
 export type ScreenEntry = {
@@ -10,7 +10,9 @@ export type ScreenEntry = {
   url: string;
   container: string;
   safeArea: boolean | readonly Edge[] | undefined;
-  presentation: "push" | "modal";
+  presentation: Presentation;
+  transition: Transition;
+  gesture: boolean;
 };
 
 export type ContainerEntry = {
@@ -68,7 +70,7 @@ export function chromeKey(id: string): string {
   return `chrome:${id}`;
 }
 
-export type NavigatorValue = RouterTree & { content: ContentMap };
+export type NavigatorValue = RouterTree;
 
 export const NavigatorContext: Context<NavigatorValue | null> =
   createContext<NavigatorValue | null>(null);

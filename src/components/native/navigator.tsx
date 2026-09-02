@@ -1,24 +1,31 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { Component, Suspense, use, useEffect, useRef, useState } from "react";
+import type { Context, ReactNode } from "react";
 import {
-  ActivityIndicator,
-  Animated,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  Activity,
+  Component,
+  createContext,
+  Suspense,
+  use,
+  useCallback,
+  useContext,
+} from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { manifest } from "virtual:flypath/route-manifest";
 
 import { containerById } from "../../router/manifest.ts";
 import { ContainerScope } from "../../router/scope.tsx";
+import { useContent } from "./content.ts";
 import { edgesOf, insetPadding, useInsets } from "./insets.ts";
 import type { Content, Entry, ScreenEntry } from "./navigator-context.ts";
-import { ABSENT, chromeKey, useNavigator } from "./navigator-context.ts";
+import { chromeKey, useNavigator } from "./navigator-context.ts";
+import { nativeRouter } from "./router-store.ts";
+import type { PoppedEvent } from "./screens.ts";
+import { ScreenStackView, ScreenView } from "./screens.ts";
 
 const EMPTY: readonly Entry[] = [];
+
+const ActiveContext: Context<boolean> = createContext<boolean>(true);
 
 class ScreenBoundary extends Component<
   { children: ReactNode },
@@ -63,7 +70,7 @@ function Host({ id }: { id: string }): ReactNode {
 }
 
 function Container({ id }: { id: string }): ReactNode {
-  const { content } = useNavigator();
+  const content = useContent(chromeKey(id));
 
   if (containerById(manifest, id)?.chrome !== true) {
     return (
@@ -76,7 +83,7 @@ function Container({ id }: { id: string }): ReactNode {
   return (
     <ScreenBoundary>
       <Suspense fallback={<Loading />}>
-        <Payload content={content[chromeKey(id)] ?? ABSENT} />
+        <Payload content={content} />
       </Suspense>
     </ScreenBoundary>
   );
@@ -84,150 +91,114 @@ function Container({ id }: { id: string }): ReactNode {
 
 type ScreenProps = {
   entry: ScreenEntry;
-  depth: number;
-  exiting: boolean;
-  onExited: () => void;
+  frozen: boolean;
+  covered: boolean;
 };
 
-function Screen({ entry, depth, exiting, onExited }: ScreenProps): ReactNode {
-  const { content } = useNavigator();
+function Screen({ entry, frozen, covered }: ScreenProps): ReactNode {
+  const content = useContent(entry.key);
   const insets = useInsets();
-  const progress = useRef(new Animated.Value(depth === 0 ? 0 : 1)).current;
-
-  useEffect(() => {
-    Animated.timing(progress, {
-      toValue: 0,
-      duration: 240,
-      useNativeDriver: true,
-    }).start();
-  }, [progress]);
-
-  useEffect(() => {
-    if (!exiting) return;
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(onExited);
-  }, [exiting, onExited, progress]);
-
-  const slide = Platform.OS === "ios" || entry.presentation === "modal";
-  const transform = slide
-    ? [
-        {
-          [entry.presentation === "modal" ? "translateY" : "translateX"]:
-            progress.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 600],
-            }),
-        },
-      ]
-    : [
-        {
-          scale: progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [1, 1.04],
-          }),
-        },
-      ];
 
   return (
-    <Animated.View
-      pointerEvents={exiting ? "none" : "auto"}
-      style={[
-        depth === 0 ? styles.base : styles.overlay,
-        insetPadding(insets, edgesOf(entry.safeArea)),
-        {
-          opacity: progress.interpolate({
-            inputRange: [0, 1],
-            outputRange: [1, 0],
-          }),
-        },
-        { transform },
-      ]}
+    <ScreenView
+      accessibilityElementsHidden={covered}
+      gesture={entry.gesture}
+      importantForAccessibility={covered ? "no-hide-descendants" : "auto"}
+      presentation={entry.presentation}
+      screenKey={entry.key}
+      style={[styles.screen, insetPadding(insets, edgesOf(entry.safeArea))]}
+      transition={entry.transition}
     >
-      <ScreenBoundary>
-        <Suspense fallback={<Loading />}>
-          <Payload content={content[entry.key] ?? ABSENT} />
-        </Suspense>
-      </ScreenBoundary>
-    </Animated.View>
+      <Activity mode={frozen ? "hidden" : "visible"}>
+        <ScreenBoundary>
+          <Suspense fallback={<Loading />}>
+            <Payload content={content} />
+          </Suspense>
+        </ScreenBoundary>
+      </Activity>
+    </ScreenView>
   );
 }
 
 export function StackHost({ id }: { id: string }): ReactNode {
   const { tree } = useNavigator();
+  const active = useContext(ActiveContext);
   const state = tree[id];
   const entries = state?.kind === "stack" ? state.entries : EMPTY;
+  const top = entries.length - 1;
 
-  const [exiting, setExiting] = useState<Entry | null>(null);
-  const previous = useRef(entries);
-
-  useEffect(() => {
-    const before = previous.current;
-    previous.current = entries;
-    if (entries.length < before.length) {
-      const removed = before[before.length - 1];
-      if (removed && removed.kind === "screen" && !entries.includes(removed)) {
-        setExiting(removed);
-      }
-    }
-  }, [entries]);
-
-  const rendered =
-    exiting && !entries.includes(exiting) ? [...entries, exiting] : entries;
+  const onPopped = useCallback((event: PoppedEvent) => {
+    const keys = event.nativeEvent.keys;
+    if (keys && keys.length > 0) nativeRouter()?.popped(keys);
+  }, []);
 
   return (
-    <View style={styles.stack}>
-      {rendered.map((entry, depth) =>
+    <ScreenStackView active={active} onPopped={onPopped} style={styles.stack}>
+      {entries.map((entry, depth) =>
         entry.kind === "screen" ? (
           <Screen
-            depth={depth}
+            covered={depth !== top}
             entry={entry}
-            exiting={entry === exiting}
+            frozen={!active || depth <= top - 2}
             key={entry.key}
-            onExited={() => setExiting(null)}
           />
         ) : (
-          <View
+          <ScreenView
+            accessibilityElementsHidden={depth !== top}
+            gesture={false}
+            importantForAccessibility={
+              depth === top ? "auto" : "no-hide-descendants"
+            }
             key={entry.key}
-            style={depth === 0 ? styles.base : styles.overlay}
+            presentation="push"
+            screenKey={entry.key}
+            style={styles.screen}
+            transition="platform"
           >
-            <Container id={entry.id} />
-          </View>
+            <ActiveContext.Provider value={active && depth === top}>
+              <Container id={entry.id} />
+            </ActiveContext.Provider>
+          </ScreenView>
         ),
       )}
-    </View>
+    </ScreenStackView>
   );
 }
 
 export function BranchesHost({ id }: { id: string }): ReactNode {
   const { tree } = useNavigator();
+  const active = useContext(ActiveContext);
   const state = tree[id];
   const branches = containerById(manifest, id)?.branches ?? [];
-  const active = state?.kind === "branches" ? state.active : branches[0];
+  const current = state?.kind === "branches" ? state.active : branches[0];
 
   return (
     <View style={styles.stack}>
       {branches
         .filter((branch) => tree[branch] !== undefined)
-        .map((branch) => (
-          <View
-            key={branch}
-            pointerEvents={branch === active ? "auto" : "none"}
-            style={[styles.stack, branch === active ? null : styles.hidden]}
-          >
-            <Container id={branch} />
-          </View>
-        ))}
+        .map((branch) => {
+          const shown = branch === current;
+          return (
+            <View
+              accessibilityElementsHidden={!shown}
+              importantForAccessibility={shown ? "auto" : "no-hide-descendants"}
+              key={branch}
+              pointerEvents={shown ? "auto" : "none"}
+              style={[styles.stack, shown ? null : styles.hidden]}
+            >
+              <ActiveContext.Provider value={active && shown}>
+                <Activity mode={active && shown ? "visible" : "hidden"}>
+                  <Container id={branch} />
+                </Activity>
+              </ActiveContext.Provider>
+            </View>
+          );
+        })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  base: {
-    flex: 1,
-  },
   center: {
     alignItems: "center",
     flex: 1,
@@ -240,7 +211,7 @@ const styles = StyleSheet.create({
   hidden: {
     display: "none",
   },
-  overlay: {
+  screen: {
     backgroundColor: "white",
     bottom: 0,
     left: 0,

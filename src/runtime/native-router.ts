@@ -41,6 +41,8 @@ function screenAt(key: string, url: string, container: string): ScreenEntry {
     container,
     safeArea: matched?.options.safeArea,
     presentation: matched?.options.presentation ?? "push",
+    transition: matched?.options.transition ?? "platform",
+    gesture: matched?.options.gesture ?? true,
   };
 }
 
@@ -338,6 +340,16 @@ function withoutEntry(router: Router, id: string, index: number): Router {
   }
 
   return { ...router, tree };
+}
+
+export function popKeys(router: Router, keys: readonly string[]): Router {
+  let next = router;
+  for (const key of keys) {
+    const found = locate(next, key);
+    if (!found) continue;
+    next = withoutEntry(next, found.id, found.index);
+  }
+  return next;
 }
 
 function targetOf(router: Router, url: string): string {

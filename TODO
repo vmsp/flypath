@@ -1,8 +1,6 @@
 - Release build (Phase 5 of PLAN_CLIENT.md)
 - Skew
-- Slide to go back on iOS
 - Unify logging on the framework
-- Modal
 - Run on device
 - DB, Migrations
 - Jobs, Crons
@@ -10,6 +8,7 @@
 - I18N - https://github.com/facebook/fbt, https://generaltranslation.com/
 - A11Y
 - LSP on consumer Kotlin code
+- Drop the Flypath prefix from dev.flypath classes - redundant inside the package, and only generated code imports them, never consumer Kotlin. Wholesale or not at all
 - "Engines" - i should be able to plugin-in hono for apis
 
 Deep links are wired but unexercisable. Linking.getInitialURL() and the url listener are in native-root.tsx, but no URL scheme is registered in templates/ios/App/Info.plist or the Android manifest — so nothing can deliver one. Written, never run.

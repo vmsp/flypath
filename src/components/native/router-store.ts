@@ -15,6 +15,7 @@ export type NativeRouterApi = {
   currentContainer: () => string;
   currentKey: () => string | undefined;
   chromeIds: () => readonly string[];
+  popped: (keys: readonly string[]) => void;
   commit: (commit: Commit) => void;
 };
 

@@ -9,6 +9,7 @@
 #import "FlypathModule.h"
 
 extern "C" NSDictionary* FlypathFabricComponents(void);
+extern "C" NSDictionary* FlypathCoreFabricComponents(void);
 
 @implementation FlypathAppDelegate
 
@@ -19,6 +20,7 @@ extern "C" NSDictionary* FlypathFabricComponents(void);
 - (NSDictionary<NSString*, Class<RCTComponentViewProtocol>>*)thirdPartyFabricComponents {
   NSMutableDictionary* components =
       [NSMutableDictionary dictionaryWithDictionary:[super thirdPartyFabricComponents]];
+  [components addEntriesFromDictionary:FlypathCoreFabricComponents()];
   [components addEntriesFromDictionary:FlypathFabricComponents()];
   return components;
 }

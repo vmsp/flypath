@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { startTransition } from "react";
 import { manifest } from "virtual:flypath/route-manifest";
 
 import type {
@@ -30,7 +31,6 @@ export type Bridge = {
   ) => Promise<Fetched>;
   fragment: (url: string, container: string) => Promise<RscPayload>;
   router: () => Router;
-  publish: (content: ContentMap) => void;
   settle: (key: string, result: Fetched) => void;
   dev: boolean;
 };
@@ -67,6 +67,10 @@ let requests = 0;
 
 let scheduled = false;
 
+type Listener = (value: Content | undefined) => void;
+
+const listeners = new Map<string, Set<Listener>>();
+
 const inflight = new Map<string, Running>();
 
 const seeds = new Map<string, Seed>();
@@ -80,8 +84,23 @@ function log(message: string): void {
   console.log(`flypath: ${message}`);
 }
 
-export function contentMap(): ContentMap {
-  return content;
+export function contentAt(key: string): Content | undefined {
+  return content[key];
+}
+
+export function subscribe(key: string, listener: Listener): () => void {
+  let group = listeners.get(key);
+  if (!group) {
+    group = new Set();
+    listeners.set(key, group);
+  }
+  group.add(listener);
+  return () => {
+    const current = listeners.get(key);
+    if (!current) return;
+    current.delete(listener);
+    if (current.size === 0) listeners.delete(key);
+  };
 }
 
 export function currentEpoch(): number {
@@ -110,8 +129,22 @@ export function staleTimeOf(url: string): number {
 }
 
 function publish(next: ContentMap): void {
+  const previous = content;
   content = next;
-  bridge?.publish(next);
+
+  const changed: string[] = [];
+  for (const key of listeners.keys()) {
+    if (previous[key] !== next[key]) changed.push(key);
+  }
+  if (changed.length === 0) return;
+
+  startTransition(() => {
+    for (const key of changed) {
+      const group = listeners.get(key);
+      if (!group) continue;
+      for (const listener of [...group]) listener(next[key]);
+    }
+  });
 }
 
 function update(change: (map: ContentMap) => ContentMap): void {
@@ -480,7 +513,6 @@ export function sync(router: Router): void {
 
 export function attach(next: Bridge): () => void {
   bridge = next;
-  next.publish(content);
   return () => {
     if (bridge === next) bridge = undefined;
   };

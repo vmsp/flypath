@@ -22,10 +22,7 @@ import {
 
 import type { Insets } from "../components/native/insets.ts";
 import { InsetsContext } from "../components/native/insets.ts";
-import type {
-  ContentMap,
-  NavigatorValue,
-} from "../components/native/navigator-context.ts";
+import type { NavigatorValue } from "../components/native/navigator-context.ts";
 import { NavigatorContext } from "../components/native/navigator-context.ts";
 import { StackHost } from "../components/native/navigator.tsx";
 import { setNativeRouter } from "../components/native/router-store.ts";
@@ -50,7 +47,6 @@ import {
   apply,
   attach,
   bumpEpoch,
-  contentMap,
   currentEpoch,
   fail,
   seedPayload,
@@ -66,6 +62,7 @@ import {
   goBack,
   initialRouter,
   navigate,
+  popKeys,
   relocate,
   visible,
 } from "./native-router.ts";
@@ -148,7 +145,6 @@ export default function Root(): ReactNode {
     ...initialRouter("/"),
     epoch: currentEpoch(),
   }));
-  const [content, setContent] = useState<ContentMap>(contentMap);
   const [insets, setInsets] = useState<Insets>(readInsets);
 
   const state = useRef(router);
@@ -164,9 +160,6 @@ export default function Root(): ReactNode {
       fragment: fetchFragment,
       dev: nativeConfig().dev,
       router: () => state.current,
-      publish: (map) => {
-        startTransition(() => setContent(map));
-      },
       settle: (key, result) => {
         const command = result.command;
         if (command?.kind === "go" && isExternal(command.to)) {
@@ -241,6 +234,9 @@ export default function Root(): ReactNode {
         focusedScreen(state.current)?.container ?? ROOT_CONTAINER,
       currentKey: () => focusedScreen(state.current)?.key,
       chromeIds: () => visible(state.current).chrome,
+      popped: (keys) => {
+        startTransition(() => setState((current) => popKeys(current, keys)));
+      },
       commit: ({ key, mode, payload, command, location }) => {
         if (mode === "none") return;
         const epoch = bumpEpoch(false);
@@ -313,8 +309,8 @@ export default function Root(): ReactNode {
   }, [invalidate]);
 
   const value = useMemo<NavigatorValue>(
-    () => ({ ...router, content }),
-    [router, content],
+    () => ({ tree: router.tree, epoch: router.epoch }),
+    [router],
   );
 
   const runtime = useMemo<ContainerRuntime>(
