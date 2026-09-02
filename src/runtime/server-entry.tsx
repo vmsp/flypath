@@ -12,15 +12,19 @@ import { tree } from "virtual:flypath/routes";
 import { createContextStore } from "../router/context.ts";
 import type { FlatRoute } from "../router/flatten.ts";
 import { matchRoutes } from "../router/flatten.ts";
+import { declaredContainer, ROOT_CONTAINER } from "../router/manifest.ts";
 import { runMiddleware } from "../router/middleware.ts";
 import type { NavigationSignal } from "../router/navigation.ts";
 import {
   encodeCommand,
+  encodeLocation,
+  LOCATION_HEADER,
   NAVIGATE_HEADER,
   navigationSignal,
 } from "../router/navigation.ts";
-import { normalizePath, searchOf } from "../router/path.ts";
+import { hrefOf, normalizePath, searchOf } from "../router/path.ts";
 import type { RouteInfo } from "../router/types.ts";
+import { mergeCookies } from "./cookies.ts";
 import type { RscPayload } from "./payload.ts";
 import { runWithRequest } from "./platform-store.ts";
 import type { RequestInfo } from "./platform.ts";
@@ -38,6 +42,8 @@ import "virtual:flypath/styles.css";
 
 const FLIGHT_CONTENT_TYPE = "text/x-component;charset=utf-8";
 
+const REDIRECT_BUDGET = 5;
+
 function documentShell(children: ReactNode): ReactNode {
   return (
     <html lang="en">
@@ -51,10 +57,19 @@ function documentShell(children: ReactNode): ReactNode {
   );
 }
 
+type Redirect = Exclude<NavigationSignal, { kind: "not-found" }>;
+
+type Go = Extract<NavigationSignal, { kind: "go" }>;
+
 type ActionResult = {
   returnValue?: unknown;
   formState?: unknown;
   signal?: NavigationSignal;
+};
+
+type Dispatched = {
+  response: Response;
+  signal: Redirect | undefined;
 };
 
 function deferred(error: unknown): Promise<never> {
@@ -86,6 +101,8 @@ async function runAction(
         returnValue: await (action as (...a: unknown[]) => unknown)(...args),
       };
     } catch (error) {
+      const signal = navigationSignal(error);
+      if (signal) return { signal };
       return { returnValue: deferred(error) };
     }
   }
@@ -152,7 +169,7 @@ async function toFlight(
 }
 
 function navigateResponse(
-  signal: Exclude<NavigationSignal, { kind: "not-found" }>,
+  signal: Redirect,
   document: boolean,
   request: Request,
 ): Response {
@@ -180,6 +197,16 @@ function plainNotFound(): Response {
   });
 }
 
+function withCommand(response: Response, signal: Redirect): Response {
+  const headers = new Headers(response.headers);
+  headers.set(NAVIGATE_HEADER, encodeCommand(signal));
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 function withOutgoing(response: Response, outgoing: Headers): Response {
   const jar = outgoing.getSetCookie();
   const entries = [...outgoing].filter(([key]) => key !== "set-cookie");
@@ -203,175 +230,268 @@ export default async function handler(request: Request): Promise<Response> {
     parsePlatform(url.searchParams.get("platform")) ??
     "web";
 
-  const pathname = normalizePath(url.pathname);
-  const search = searchOf(url);
   const resolved = resolveTree(tree);
-  const matched = matchRoutes(resolved.routes, pathname);
 
-  const base: RouteInfo = { pathname, params: matched?.params ?? {}, search };
-  const info: RequestInfo = {
-    ...base,
-    platform,
-    phase: "render",
-    headers: new Headers(request.headers),
-    outgoing: new Headers(),
-    prefetch: request.headers.has("x-flypath-prefetch"),
-    context: createContextStore(),
-  };
+  const screen =
+    request.headers.get("x-flypath-screen") ??
+    url.searchParams.get("__flypath_screen");
 
-  return runWithRequest(info, async () => {
-    const screen =
-      request.headers.get("x-flypath-screen") ??
-      url.searchParams.get("__flypath_screen");
-    const container = screen === null ? undefined : screen;
+  const fragment =
+    request.headers.get("x-flypath-fragment") ??
+    url.searchParams.get("__flypath_fragment");
 
-    const fragment =
-      request.headers.get("x-flypath-fragment") ??
-      url.searchParams.get("__flypath_fragment");
+  const wantsFlight =
+    platform !== "web" ||
+    screen !== null ||
+    url.searchParams.has("__flight") ||
+    request.headers.has("x-rsc-action");
 
-    const temporaryReferences = createTemporaryReferenceSet();
+  const document = !wantsFlight;
+  const temporaryReferences = createTemporaryReferenceSet();
+  const outgoing = new Headers();
+  const incoming = new Headers(request.headers);
+  const prefetch = request.headers.has("x-flypath-prefetch");
 
-    const wantsFlight =
-      platform !== "web" ||
-      screen !== null ||
-      url.searchParams.has("__flight") ||
-      request.headers.has("x-rsc-action");
+  let action: ActionResult = {};
 
-    let action: ActionResult = {};
+  const dispatch = (
+    href: string,
+    container: string | undefined,
+    runsAction: boolean,
+  ): Promise<Dispatched> => {
+    const at = new URL(href, url.origin);
+    const pathname = normalizePath(at.pathname);
+    const matched = matchRoutes(resolved.routes, pathname);
 
-    const compose = (rendering: ScreenRender): Promise<Rendered> => {
-      const content =
-        platform === "web"
-          ? withSafeArea(rendering.route, rendering.node)
-          : rendering.node;
-      return runWithRequest({ ...info, ...rendering.info }, () =>
-        toFlight(
-          {
-            root:
-              platform === "web" && screen === null
-                ? documentShell(content)
-                : content,
-            returnValue: action.returnValue,
-            formState: action.formState,
-          },
-          temporaryReferences,
-        ),
-      );
+    const base: RouteInfo = {
+      pathname,
+      params: matched?.params ?? {},
+      search: searchOf(at),
     };
 
-    const finish = async (
-      match: ScreenRender,
-      rendered: Rendered,
-      status: number,
-    ): Promise<Response> => {
-      const headers: Record<string, string> = {
-        "x-flypath-route": JSON.stringify({
-          id: match.route.id,
-          params: match.info.params,
-        }),
+    const info: RequestInfo = {
+      ...base,
+      platform,
+      phase: "render",
+      headers: new Headers(incoming),
+      outgoing,
+      prefetch,
+      context: createContextStore(),
+    };
+
+    let signal: Redirect | undefined;
+
+    return runWithRequest(info, async () => {
+      const compose = (rendering: ScreenRender): Promise<Rendered> => {
+        const content =
+          platform === "web"
+            ? withSafeArea(rendering.route, rendering.node)
+            : rendering.node;
+        return runWithRequest({ ...info, ...rendering.info }, () =>
+          toFlight(
+            {
+              root:
+                platform === "web" && screen === null
+                  ? documentShell(content)
+                  : content,
+              returnValue: action.returnValue,
+              formState: action.formState,
+            },
+            temporaryReferences,
+          ),
+        );
       };
 
-      if (wantsFlight) {
-        return new Response(replay(rendered.bytes), {
-          status,
-          headers: { ...headers, "content-type": FLIGHT_CONTENT_TYPE },
-        });
-      }
+      const finish = async (
+        match: ScreenRender,
+        rendered: Rendered,
+        status: number,
+      ): Promise<Response> => {
+        const headers: Record<string, string> = {
+          [LOCATION_HEADER]: encodeLocation({
+            url: href,
+            container,
+            route: match.route.id,
+            params: match.info.params,
+          }),
+        };
 
-      const ssr = await import.meta.viteRsc.loadModule<
-        typeof import("./ssr-entry.tsx")
-      >("ssr", "index");
-
-      return new Response(
-        await ssr.handleSsr(replay(rendered.bytes), {
-          formState: action.formState,
-        }),
-        {
-          status,
-          headers: { ...headers, "content-type": "text/html;charset=utf-8" },
-        },
-      );
-    };
-
-    const missing = async (
-      current: FlatRoute | undefined,
-    ): Promise<Response> => {
-      const fallback = resolved.fallback;
-      if (!fallback || fallback === current) return plainNotFound();
-
-      const match = await renderMatch(
-        resolved,
-        fallback,
-        { ...base, params: {} },
-        container,
-      );
-      const rendered = await compose(match);
-      if (rendered.signal?.kind === "not-found") return plainNotFound();
-      return finish(match, rendered, 404);
-    };
-
-    const answer = async (signal: NavigationSignal): Promise<Response> =>
-      signal.kind === "not-found"
-        ? missing(undefined)
-        : navigateResponse(signal, !wantsFlight, request);
-
-    const render = async (): Promise<Response> => {
-      action =
-        request.method === "POST"
-          ? await runWithRequest({ ...info, phase: "action" }, () =>
-              runAction(request, temporaryReferences),
-            )
-          : {};
-
-      if (fragment !== null) {
-        const rendering = await toFlight(
-          { root: await renderFragment(resolved, fragment, base) },
-          temporaryReferences,
-        );
-        return new Response(replay(rendering.bytes), {
-          headers: { "content-type": FLIGHT_CONTENT_TYPE },
-        });
-      }
-
-      if (action.signal && action.signal.kind !== "not-found") {
-        return navigateResponse(action.signal, !wantsFlight, request);
-      }
-
-      const match = await renderScreen(resolved, base, container);
-      const rendered = match ? await compose(match) : undefined;
-      const signal = rendered?.signal;
-
-      if (signal && signal.kind !== "not-found") {
-        return navigateResponse(signal, !wantsFlight, request);
-      }
-
-      if (
-        !match ||
-        !rendered ||
-        signal?.kind === "not-found" ||
-        action.signal?.kind === "not-found"
-      ) {
-        return missing(match?.route);
-      }
-
-      return finish(match, rendered, 200);
-    };
-
-    const chain = (matched?.route ?? resolved.fallback)?.middleware ?? [];
-
-    const response = await runMiddleware(
-      chain,
-      async () => {
-        info.context.open = false;
-        try {
-          return await render();
-        } finally {
-          info.context.open = true;
+        if (wantsFlight) {
+          return new Response(replay(rendered.bytes), {
+            status,
+            headers: { ...headers, "content-type": FLIGHT_CONTENT_TYPE },
+          });
         }
-      },
-      answer,
-    );
 
-    return withOutgoing(response, info.outgoing);
-  });
+        const ssr = await import.meta.viteRsc.loadModule<
+          typeof import("./ssr-entry.tsx")
+        >("ssr", "index");
+
+        return new Response(
+          await ssr.handleSsr(replay(rendered.bytes), {
+            formState: action.formState,
+          }),
+          {
+            status,
+            headers: { ...headers, "content-type": "text/html;charset=utf-8" },
+          },
+        );
+      };
+
+      const missing = async (
+        current: FlatRoute | undefined,
+      ): Promise<Response> => {
+        const fallback = resolved.fallback;
+        if (!fallback || fallback === current) return plainNotFound();
+
+        const match = await renderMatch(
+          resolved,
+          fallback,
+          { ...base, params: {} },
+          container,
+        );
+        const rendered = await compose(match);
+        if (rendered.signal?.kind === "not-found") return plainNotFound();
+        return finish(match, rendered, 404);
+      };
+
+      const redirect = (value: Redirect): Response => {
+        signal = value;
+        return navigateResponse(value, document, request);
+      };
+
+      const answer = async (value: NavigationSignal): Promise<Response> =>
+        value.kind === "not-found" ? missing(undefined) : redirect(value);
+
+      const render = async (): Promise<Response> => {
+        if (runsAction && request.method === "POST") {
+          action = await runWithRequest({ ...info, phase: "action" }, () =>
+            runAction(request, temporaryReferences),
+          );
+        }
+
+        if (fragment !== null) {
+          const rendering = await toFlight(
+            { root: await renderFragment(resolved, fragment, base) },
+            temporaryReferences,
+          );
+          return new Response(replay(rendering.bytes), {
+            headers: { "content-type": FLIGHT_CONTENT_TYPE },
+          });
+        }
+
+        if (action.signal && action.signal.kind !== "not-found") {
+          return redirect(action.signal);
+        }
+
+        const match = await renderScreen(resolved, base, container);
+        const rendered = match ? await compose(match) : undefined;
+        const rendering = rendered?.signal;
+
+        if (rendering && rendering.kind !== "not-found") {
+          return redirect(rendering);
+        }
+
+        if (
+          !match ||
+          !rendered ||
+          rendering?.kind === "not-found" ||
+          action.signal?.kind === "not-found"
+        ) {
+          return missing(match?.route);
+        }
+
+        return finish(match, rendered, 200);
+      };
+
+      const chain = (matched?.route ?? resolved.fallback)?.middleware ?? [];
+
+      const response = await runMiddleware(
+        chain,
+        async () => {
+          info.context.open = false;
+          try {
+            return await render();
+          } finally {
+            info.context.open = true;
+          }
+        },
+        answer,
+      );
+
+      return { response, signal };
+    });
+  };
+
+  const containerFor = (pathname: string): string => {
+    const matched = matchRoutes(resolved.routes, pathname);
+    const placement = matched?.route.placement ??
+      resolved.fallback?.placement ?? [ROOT_CONTAINER];
+    return declaredContainer(placement);
+  };
+
+  const start = hrefOf(url);
+  const trail: string[] = [start];
+
+  let href = start;
+  let container = screen === null ? undefined : screen;
+  let first: Go | undefined;
+
+  for (let hop = 0; ; hop += 1) {
+    const { response, signal } = await dispatch(href, container, hop === 0);
+
+    if (!signal) {
+      return withOutgoing(
+        first ? withCommand(response, { ...first, to: href }) : response,
+        outgoing,
+      );
+    }
+
+    action = { returnValue: action.returnValue, formState: action.formState };
+
+    if (fragment !== null) {
+      if (import.meta.env.DEV) {
+        throw new Error(
+          `flypath: the chrome of container "${fragment}" redirected while ` +
+            "rendering; a fragment renders around a URL whose guards have " +
+            "already passed, so following it would let the chrome navigate " +
+            "the app",
+        );
+      }
+      return withOutgoing(response, outgoing);
+    }
+
+    if (document || signal.kind === "back") {
+      return withOutgoing(response, outgoing);
+    }
+
+    const next = new URL(signal.to, url.origin);
+    if (next.origin !== url.origin) return withOutgoing(response, outgoing);
+
+    first ??= signal;
+    href = hrefOf(next);
+    trail.push(href);
+
+    if (trail.length > REDIRECT_BUDGET) {
+      if (import.meta.env.DEV) {
+        throw new Error(
+          `flypath: redirect budget exhausted after ${String(
+            REDIRECT_BUDGET,
+          )} hops: ${trail.join(" → ")}`,
+        );
+      }
+      return withOutgoing(response, outgoing);
+    }
+
+    const jar = mergeCookies(
+      request.headers.get("cookie"),
+      outgoing.getSetCookie(),
+    );
+    if (jar === "") incoming.delete("cookie");
+    else incoming.set("cookie", jar);
+
+    if (container !== undefined) {
+      container = containerFor(normalizePath(next.pathname));
+    }
+  }
 }

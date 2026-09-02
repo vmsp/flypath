@@ -96,6 +96,37 @@ function write(name: string, line: string): void {
   outgoing.append("set-cookie", line);
 }
 
+function expired(line: string): boolean {
+  for (const part of line.split(";").slice(1)) {
+    const at = part.indexOf("=");
+    if (at === -1) continue;
+    const name = part.slice(0, at).trim().toLowerCase();
+    const value = part.slice(at + 1).trim();
+    if (name === "max-age" && Number(value) <= 0) return true;
+    if (name === "expires" && Date.parse(value) <= Date.now()) return true;
+  }
+  return false;
+}
+
+export function mergeCookies(
+  header: string | null,
+  lines: readonly string[],
+): string {
+  const jar = parse(header);
+  for (const line of lines) {
+    const pair = line.split(";")[0] ?? "";
+    const at = pair.indexOf("=");
+    if (at === -1) continue;
+    const name = pair.slice(0, at).trim();
+    if (name === "") continue;
+    if (expired(line)) delete jar[name];
+    else jar[name] = decode(pair.slice(at + 1).trim());
+  }
+  return Object.entries(jar)
+    .map(([name, value]) => `${name}=${encodeURIComponent(value)}`)
+    .join("; ");
+}
+
 const read = (
   name?: string,
 ): string | undefined | Readonly<Record<string, string>> => {

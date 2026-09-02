@@ -9,7 +9,12 @@ import {
 import { hydrateRoot } from "react-dom/client";
 import { rscStream } from "rsc-html-stream/client";
 
-import { NAVIGATE_HEADER, parseCommand } from "../router/navigation.ts";
+import {
+  LOCATION_HEADER,
+  NAVIGATE_HEADER,
+  parseCommand,
+  parseLocation,
+} from "../router/navigation.ts";
 import type { RscPayload } from "./payload.ts";
 import {
   applyCommand,
@@ -28,7 +33,9 @@ async function callServer(id: string, args: unknown[]): Promise<unknown> {
   });
 
   const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
-  if (command) {
+  const location = parseLocation(response.headers.get(LOCATION_HEADER));
+
+  if (command && (response.status === 204 || !response.body)) {
     void response.body?.cancel();
     applyCommand(command);
     return undefined;
@@ -37,6 +44,12 @@ async function callServer(id: string, args: unknown[]): Promise<unknown> {
   const payload = await createFromFetch<RscPayload>(Promise.resolve(response), {
     temporaryReferences,
   });
+
+  if (command) {
+    applyCommand(command, { command, location, payload });
+    return payload.returnValue;
+  }
+
   swapPayload(payload);
   return payload.returnValue;
 }

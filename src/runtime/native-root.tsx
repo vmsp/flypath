@@ -27,13 +27,18 @@ import { setNativeRouter } from "../components/native/router-store.ts";
 import { setRouter } from "../router/dispatch.ts";
 import { isExternal } from "../router/href.ts";
 import { ROOT_CONTAINER } from "../router/manifest.ts";
-import { NAVIGATE_HEADER, parseCommand } from "../router/navigation.ts";
+import {
+  LOCATION_HEADER,
+  NAVIGATE_HEADER,
+  parseCommand,
+  parseLocation,
+} from "../router/navigation.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext, ContainerScope } from "../router/scope.tsx";
 import type { Mode } from "../router/types.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import { readInsets, watchInsets } from "./native-insets.ts";
-import type { Fetchers, Router } from "./native-router.ts";
+import type { Fetched, Fetchers, Router } from "./native-router.ts";
 import {
   activeBranch,
   applyPayload,
@@ -42,39 +47,61 @@ import {
   initialRouter,
   navigate,
   refresh as refreshRouter,
+  relocate,
 } from "./native-router.ts";
 import type { RscPayload } from "./payload.ts";
 
-async function fetchPayload(
+async function flight(
   url: string,
   headers: Record<string, string>,
-): Promise<RscPayload> {
+): Promise<Response> {
   const { serverUrl, platform } = nativeConfig();
-  const response = await fetch(`${serverUrl}${url}`, {
+  return fetch(`${serverUrl}${url}`, {
     headers: { "x-flypath-platform": platform, ...headers },
   });
+}
 
-  const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
-  if (command) {
-    if (command.kind === "back") {
-      throw new Error(
-        'flypath: navigate("back") ran while rendering a screen; there is no ' +
-          "history to pop until the screen exists",
-      );
-    }
-    return fetchPayload(command.to, headers);
-  }
-
+function decode(response: Response): Promise<RscPayload> {
   return createFromFetch<RscPayload>(Promise.resolve(response), {
     findSourceMapURL,
   } as Parameters<typeof createFromFetch>[1]);
 }
 
+async function fetchScreen(url: string, container: string): Promise<Fetched> {
+  const response = await flight(url, { "x-flypath-screen": container });
+  const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
+  const location = parseLocation(response.headers.get(LOCATION_HEADER));
+
+  if (response.status === 204) return { command, location };
+  return { command, location, payload: await decode(response) };
+}
+
+async function fetchFragment(
+  url: string,
+  container: string,
+): Promise<RscPayload> {
+  const response = await flight(url, { "x-flypath-fragment": container });
+  if (response.status === 204) {
+    throw new Error(
+      `flypath: the chrome of container "${container}" redirected while ` +
+        "rendering; a fragment renders around a URL whose guards have " +
+        "already passed, so following it would let the chrome navigate the app",
+    );
+  }
+  return decode(response);
+}
+
+let settled: ((key: string, result: Fetched) => void) | undefined;
+
+const pending: [string, Fetched][] = [];
+
 const fetchers: Fetchers = {
-  screen: (url, container) =>
-    fetchPayload(url, { "x-flypath-screen": container }),
-  fragment: (url, container) =>
-    fetchPayload(url, { "x-flypath-fragment": container }),
+  screen: fetchScreen,
+  fragment: fetchFragment,
+  settle: (key, result) => {
+    if (settled) settled(key, result);
+    else pending.push([key, result]);
+  },
 };
 
 class RootBoundary extends Component<
@@ -108,6 +135,23 @@ export default function Root(): ReactNode {
   state.current = router;
 
   useEffect(() => watchInsets(setInsets), []);
+
+  useEffect(() => {
+    settled = (key, result) => {
+      const command = result.command;
+      if (command?.kind === "go" && isExternal(command.to)) {
+        void Linking.openURL(command.to);
+        return;
+      }
+      startTransition(() =>
+        setState((current) => relocate(current, key, result, fetchers)),
+      );
+    };
+    for (const [key, result] of pending.splice(0)) settled(key, result);
+    return () => {
+      settled = undefined;
+    };
+  }, []);
 
   const back = useCallback((): boolean => {
     const next = goBack(state.current);

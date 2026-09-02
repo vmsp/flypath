@@ -39,10 +39,24 @@ export function matchPattern(
   return expected.length === actual.length ? params : undefined;
 }
 
+function isInternalParam(key: string): boolean {
+  return key === "__flight" || key.startsWith("__flypath");
+}
+
+export function hrefOf(url: URL): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of url.searchParams) {
+    if (isInternalParam(key)) continue;
+    params.append(key, value);
+  }
+  const query = params.toString();
+  return `${normalizePath(url.pathname)}${query === "" ? "" : `?${query}`}`;
+}
+
 export function searchOf(url: URL): Search {
   const out: Record<string, readonly string[]> = {};
   for (const key of new Set(url.searchParams.keys())) {
-    if (key === "__flight" || key.startsWith("__flypath")) continue;
+    if (isInternalParam(key)) continue;
     out[key] = url.searchParams.getAll(key);
   }
   return out;

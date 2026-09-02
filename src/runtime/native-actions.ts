@@ -8,8 +8,14 @@ import {
 import { nativeRouter } from "../components/native/router-store.ts";
 import { getRouter } from "../router/dispatch.ts";
 import { ROOT_CONTAINER } from "../router/manifest.ts";
-import { NAVIGATE_HEADER, parseCommand } from "../router/navigation.ts";
+import {
+  LOCATION_HEADER,
+  NAVIGATE_HEADER,
+  parseCommand,
+  parseLocation,
+} from "../router/navigation.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
+import { seedPayload } from "./native-router.ts";
 import type { RscPayload } from "./payload.ts";
 
 export function installServerCallback(): void {
@@ -30,10 +36,17 @@ export function installServerCallback(): void {
     });
 
     const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
-    if (command) {
+    const location = parseLocation(response.headers.get(LOCATION_HEADER));
+
+    const follow = (): void => {
       const api = getRouter();
+      if (!command) return;
       if (command.kind === "back") api?.back();
       else api?.go(command.to, command.mode);
+    };
+
+    if (command && response.status === 204) {
+      follow();
       return undefined;
     }
 
@@ -43,6 +56,12 @@ export function installServerCallback(): void {
         typeof createFromFetch
       >[1],
     );
+
+    if (command) {
+      if (location) seedPayload(location, payload);
+      follow();
+      return payload.returnValue;
+    }
 
     router?.applyPayload(Promise.resolve(payload));
     return payload.returnValue;

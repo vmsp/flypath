@@ -66,3 +66,40 @@ export function parseCommand(
   if (kind !== "go" || typeof to !== "string") return undefined;
   return { kind: "go", to, mode: mode === "replace" ? "replace" : "push" };
 }
+
+export const LOCATION_HEADER = "x-flypath-location";
+
+export type Location = {
+  readonly url: string;
+  readonly container: string | undefined;
+  readonly route: string;
+  readonly params: Readonly<Record<string, string>>;
+};
+
+export function encodeLocation(location: Location): string {
+  return JSON.stringify(location);
+}
+
+export function parseLocation(
+  value: string | null | undefined,
+): Location | undefined {
+  if (value === null || value === undefined) return undefined;
+  const parsed: unknown = JSON.parse(value);
+  if (parsed === null || typeof parsed !== "object") return undefined;
+  const { url, container, route, params } = parsed as {
+    url?: unknown;
+    container?: unknown;
+    route?: unknown;
+    params?: unknown;
+  };
+  if (typeof url !== "string") return undefined;
+  return {
+    url,
+    container: typeof container === "string" ? container : undefined,
+    route: typeof route === "string" ? route : "",
+    params:
+      params === null || typeof params !== "object"
+        ? {}
+        : (params as Readonly<Record<string, string>>),
+  };
+}

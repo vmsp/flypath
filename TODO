@@ -14,14 +14,7 @@
 
 Deep links are wired but unexercisable. Linking.getInitialURL() and the url listener are in native-root.tsx, but no URL scheme is registered in templates/ios/App/Info.plist or the Android manifest — so nothing can deliver one. Written, never run.
 
-Native loses the URL after a middleware redirect, which makes a guarded login
-unescapable. fetchPayload (native-root.tsx) follows an x-flypath-navigate
-command by re-fetching command.to and returning that payload, so the router
-never learns the URL changed: the screen shows /login while currentUrl() still
-says /me. Every server action posts to currentUrl(), so signing in posts to the
-guarded URL, the guard blocks it before the action runs, no Set-Cookie is ever
-sent, and the user cannot get out. Web is correct here and is the model to
-copy: request() in router-web.tsx returns { command } unfollowed and the caller
-runs a real navigate(to, mode). Cookies themselves are fine on iOS - verified
-GET/POST/POST+body/POST+FormData, HttpOnly, SameSite=Lax and 204 all
-round-trip, so no new fetch polyfill is needed. Android unverified.
+Native does not invalidate screens after an action. signOut() redirects to /,
+but the /me entry in the profile tab keeps its pre-signout payload, so tapping
+the tab shows a stale signed-in screen until a refresh. Web calls
+invalidatePayloads() on every command; native has no equivalent.

@@ -12,8 +12,13 @@ import {
   matchManifest,
   SHARED,
 } from "../router/manifest.ts";
-import type { NavigationCommand } from "../router/navigation.ts";
-import { NAVIGATE_HEADER, parseCommand } from "../router/navigation.ts";
+import type { Location, NavigationCommand } from "../router/navigation.ts";
+import {
+  LOCATION_HEADER,
+  NAVIGATE_HEADER,
+  parseCommand,
+  parseLocation,
+} from "../router/navigation.ts";
 import { normalizePath } from "../router/path.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext } from "../router/scope.tsx";
@@ -31,7 +36,11 @@ type Snapshot = {
 
 type State = Snapshot & { key: string };
 
-type Fetched = { payload?: RscPayload; command?: NavigationCommand };
+export type Fetched = {
+  payload?: RscPayload;
+  command?: NavigationCommand;
+  location?: Location;
+};
 
 const SNAPSHOT_LIMIT = 24;
 const PAYLOAD_LIMIT = 24;
@@ -112,14 +121,28 @@ async function request(
   });
 
   const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
-  if (command) {
+  const location = parseLocation(response.headers.get(LOCATION_HEADER));
+
+  if (response.status === 204 || !response.body) {
     void response.body?.cancel();
-    return { command };
+    return { command, location };
   }
 
   return {
+    command,
+    location,
     payload: await createFromFetch<RscPayload>(Promise.resolve(response)),
   };
+}
+
+function cacheKey(container: string | undefined, url: string): string {
+  return `${container ?? "document"}:${url}`;
+}
+
+function seedPayload(location: Location, payload: RscPayload): void {
+  const key = cacheKey(location.container, location.url);
+  prefetched.set(key, Promise.resolve({ payload, location }));
+  cap(prefetched, PAYLOAD_LIMIT);
 }
 
 function load(
@@ -127,13 +150,13 @@ function load(
   container: string | undefined,
   prefetch = false,
 ): Promise<Fetched> {
-  const cacheKey = `${container ?? "document"}:${url}`;
-  const cached = prefetched.get(cacheKey);
+  const key = cacheKey(container, url);
+  const cached = prefetched.get(key);
   if (cached) return cached;
   const task = request(url, container, prefetch);
-  prefetched.set(cacheKey, task);
+  prefetched.set(key, task);
   cap(prefetched, PAYLOAD_LIMIT);
-  task.catch(() => prefetched.delete(cacheKey));
+  task.catch(() => prefetched.delete(key));
   return task;
 }
 
@@ -202,8 +225,9 @@ export function swapPayload(payload: RscPayload): void {
   startTransition(() => dispatch?.({ ...state, payload, modal: undefined }));
 }
 
-export function applyCommand(command: NavigationCommand): void {
+export function applyCommand(command: NavigationCommand, seed?: Fetched): void {
   invalidatePayloads();
+  if (seed?.payload && seed.location) seedPayload(seed.location, seed.payload);
   if (command.kind === "back") {
     window.history.back();
     return;
@@ -220,6 +244,10 @@ export function refreshPayload(): void {
   if (!state) return;
   invalidatePayloads();
   void load(state.url, undefined).then((result) => {
+    if (result.command) {
+      applyCommand(result.command, result);
+      return;
+    }
     if (!result.payload) return;
     startTransition(() =>
       dispatch?.({
@@ -344,11 +372,24 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
           window.history.back();
           return;
         }
+        if (result.payload && result.location) {
+          seedPayload(result.location, result.payload);
+        }
         await navigate(result.command.to, result.command.mode);
         return;
       }
       const payload = result.payload;
       if (!payload) return;
+
+      const committed = result.location?.url ?? path;
+      const landed =
+        committed === path
+          ? route
+          : optionsFor(
+              normalizePath(
+                new URL(committed, window.location.origin).pathname,
+              ),
+            ).route;
 
       const current = read?.();
       const positions = captureScroll();
@@ -366,21 +407,21 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       if (asModal) scrolls.set(key, positions);
       const branches = asModal
         ? (current?.branches ?? {})
-        : branchesFor(route, current?.branches ?? {});
+        : branchesFor(landed, current?.branches ?? {});
       const next: State = asModal
         ? {
             key,
-            url: current?.url ?? path,
+            url: current?.url ?? committed,
             payload: current?.payload ?? payload,
-            modal: { url: path, payload },
+            modal: { url: committed, payload },
             branches,
           }
-        : { key, url: path, payload, modal: undefined, branches };
+        : { key, url: committed, payload, modal: undefined, branches };
 
       if (mode === "push") {
-        window.history.pushState({ __flypathKey: key }, "", path);
+        window.history.pushState({ __flypathKey: key }, "", committed);
       } else {
-        window.history.replaceState({ __flypathKey: key }, "", path);
+        window.history.replaceState({ __flypathKey: key }, "", committed);
       }
 
       startTransition(() => setState(next));
@@ -437,17 +478,24 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
         return;
       }
       void load(url, undefined).then((result) => {
+        if (result.command) {
+          applyCommand(result.command, result);
+          return;
+        }
         if (!result.payload) return;
+        const committed = result.location?.url ?? url;
         startTransition(() => {
           const current = read?.();
           setState({
             key,
-            url,
+            url: committed,
             payload: result.payload as RscPayload,
             modal: undefined,
             branches: branchesFor(
               optionsFor(
-                normalizePath(new URL(url, window.location.origin).pathname),
+                normalizePath(
+                  new URL(committed, window.location.origin).pathname,
+                ),
               ).route,
               current?.branches ?? {},
             ),
