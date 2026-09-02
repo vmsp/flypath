@@ -1,7 +1,5 @@
 import type { Mode } from "./types.ts";
 
-export const NAVIGATE_HEADER = "x-flypath-navigate";
-
 export type NavigationSignal =
   | {
       readonly kind: "go";
@@ -66,8 +64,6 @@ export function parseCommand(
   if (kind !== "go" || typeof to !== "string") return undefined;
   return { kind: "go", to, mode: mode === "replace" ? "replace" : "push" };
 }
-
-export const LOCATION_HEADER = "x-flypath-location";
 
 export type Location = {
   readonly url: string;

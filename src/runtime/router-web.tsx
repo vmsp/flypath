@@ -4,6 +4,13 @@ import { startTransition, useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { manifest } from "virtual:flypath/route-manifest";
 
+import {
+  LOCATION_HEADER,
+  NAVIGATE_HEADER,
+  PREFETCH_HEADER,
+  SCREEN_HEADER,
+} from "../protocol/headers.ts";
+import { FLIGHT_PARAM } from "../protocol/params.ts";
 import { setRouter } from "../router/dispatch.ts";
 import type { ManifestRoute } from "../router/manifest.ts";
 import {
@@ -13,12 +20,7 @@ import {
   SHARED,
 } from "../router/manifest.ts";
 import type { Location, NavigationCommand } from "../router/navigation.ts";
-import {
-  LOCATION_HEADER,
-  NAVIGATE_HEADER,
-  parseCommand,
-  parseLocation,
-} from "../router/navigation.ts";
+import { parseCommand, parseLocation } from "../router/navigation.ts";
 import { normalizePath } from "../router/path.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext } from "../router/scope.tsx";
@@ -111,12 +113,12 @@ async function request(
   prefetch: boolean,
 ): Promise<Fetched> {
   const target = new URL(url, window.location.origin);
-  target.searchParams.set("__flight", "1");
+  target.searchParams.set(FLIGHT_PARAM, "1");
 
   const response = await fetch(target, {
     headers: {
-      ...(container === undefined ? {} : { "x-flypath-screen": container }),
-      ...(prefetch ? { "x-flypath-prefetch": "1" } : {}),
+      ...(container === undefined ? {} : { [SCREEN_HEADER]: container }),
+      ...(prefetch ? { [PREFETCH_HEADER]: "1" } : {}),
     },
   });
 

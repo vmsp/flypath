@@ -3,6 +3,11 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import type { Plugin, ViteDevServer } from "vite";
 
+import {
+  METRO_DELTA_ID_HEADER,
+  METRO_PROJECT_ROOT_HEADER,
+} from "../protocol/headers.ts";
+import { DEV_PARAM, PLATFORM_PARAM } from "../protocol/params.ts";
 import { attachDevMiddleware } from "./dev-middleware.ts";
 import { FlypathSocket, HotSocket, MessageSocket } from "./metro-sockets.ts";
 import type { NativePlatform } from "./native-env.ts";
@@ -63,7 +68,7 @@ function parseChunkPath(pathname: string):
 }
 
 function platformOf(url: URL): NativePlatform | undefined {
-  const value = url.searchParams.get("platform");
+  const value = url.searchParams.get(PLATFORM_PARAM);
   return value !== null && isNativePlatform(value as never)
     ? (value as NativePlatform)
     : undefined;
@@ -140,7 +145,7 @@ export function metroEndpoints(distDir: string): Plugin {
         const url = new URL(request.url ?? "/", baseUrl);
 
         if (url.pathname === "/status") {
-          response.setHeader("X-React-Native-Project-Root", server.config.root);
+          response.setHeader(METRO_PROJECT_ROOT_HEADER, server.config.root);
           send(response, 200, "text/plain", "packager-status:running");
           return;
         }
@@ -210,10 +215,10 @@ export function metroEndpoints(distDir: string): Plugin {
             send(response, 400, "text/plain", "flypath: unknown platform");
             return;
           }
-          const dev = url.searchParams.get("dev") !== "false";
+          const dev = url.searchParams.get(DEV_PARAM) !== "false";
           try {
             const built = await native.bundle(platform, dev);
-            response.setHeader("X-Metro-Delta-ID", built.revisionId);
+            response.setHeader(METRO_DELTA_ID_HEADER, built.revisionId);
             response.setHeader(
               "SourceMap",
               `${url.pathname.replace(/\.bundle$/, ".map")}${url.search}`,

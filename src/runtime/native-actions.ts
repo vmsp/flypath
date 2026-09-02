@@ -6,14 +6,16 @@ import {
 } from "@vitejs/plugin-rsc/react/browser";
 
 import { nativeRouter } from "../components/native/router-store.ts";
-import { getRouter } from "../router/dispatch.ts";
-import { ROOT_CONTAINER } from "../router/manifest.ts";
 import {
+  ACTION_HEADER,
   LOCATION_HEADER,
   NAVIGATE_HEADER,
-  parseCommand,
-  parseLocation,
-} from "../router/navigation.ts";
+  PLATFORM_HEADER,
+  SCREEN_HEADER,
+} from "../protocol/headers.ts";
+import { getRouter } from "../router/dispatch.ts";
+import { ROOT_CONTAINER } from "../router/manifest.ts";
+import { parseCommand, parseLocation } from "../router/navigation.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import { seedPayload } from "./native-router.ts";
 import type { RscPayload } from "./payload.ts";
@@ -29,9 +31,9 @@ export function installServerCallback(): void {
       method: "POST",
       body: body as never,
       headers: {
-        "x-rsc-action": id,
-        "x-flypath-platform": platform,
-        "x-flypath-screen": router?.currentContainer() ?? ROOT_CONTAINER,
+        [ACTION_HEADER]: id,
+        [PLATFORM_HEADER]: platform,
+        [SCREEN_HEADER]: router?.currentContainer() ?? ROOT_CONTAINER,
       },
     });
 

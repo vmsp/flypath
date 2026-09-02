@@ -10,11 +10,11 @@ import { hydrateRoot } from "react-dom/client";
 import { rscStream } from "rsc-html-stream/client";
 
 import {
+  ACTION_HEADER,
   LOCATION_HEADER,
   NAVIGATE_HEADER,
-  parseCommand,
-  parseLocation,
-} from "../router/navigation.ts";
+} from "../protocol/headers.ts";
+import { parseCommand, parseLocation } from "../router/navigation.ts";
 import type { RscPayload } from "./payload.ts";
 import {
   applyCommand,
@@ -29,7 +29,7 @@ async function callServer(id: string, args: unknown[]): Promise<unknown> {
   const response = await fetch(window.location.href, {
     method: "POST",
     body,
-    headers: { "x-rsc-action": id },
+    headers: { [ACTION_HEADER]: id },
   });
 
   const command = parseCommand(response.headers.get(NAVIGATE_HEADER));

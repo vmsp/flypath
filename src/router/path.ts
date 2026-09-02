@@ -1,3 +1,4 @@
+import { isInternalParam } from "../protocol/params.ts";
 import type { Params, Search } from "./types.ts";
 
 export function normalizePath(pathname: string): string {
@@ -37,10 +38,6 @@ export function matchPattern(
   }
 
   return expected.length === actual.length ? params : undefined;
-}
-
-function isInternalParam(key: string): boolean {
-  return key === "__flight" || key.startsWith("__flypath");
 }
 
 export function hrefOf(url: URL): string {

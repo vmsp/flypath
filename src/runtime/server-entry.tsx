@@ -9,6 +9,16 @@ import {
 import type { ReactNode } from "react";
 import { tree } from "virtual:flypath/routes";
 
+import {
+  ACTION_HEADER,
+  FRAGMENT_HEADER,
+  LOCATION_HEADER,
+  NAVIGATE_HEADER,
+  PLATFORM_HEADER,
+  PREFETCH_HEADER,
+  SCREEN_HEADER,
+} from "../protocol/headers.ts";
+import { FLIGHT_PARAM } from "../protocol/params.ts";
 import { createContextStore } from "../router/context.ts";
 import type { FlatRoute } from "../router/flatten.ts";
 import { matchRoutes } from "../router/flatten.ts";
@@ -18,8 +28,6 @@ import type { NavigationSignal } from "../router/navigation.ts";
 import {
   encodeCommand,
   encodeLocation,
-  LOCATION_HEADER,
-  NAVIGATE_HEADER,
   navigationSignal,
 } from "../router/navigation.ts";
 import { hrefOf, normalizePath, searchOf } from "../router/path.ts";
@@ -82,7 +90,7 @@ async function runAction(
   request: Request,
   temporaryReferences: unknown,
 ): Promise<ActionResult> {
-  const id = request.headers.get("x-rsc-action");
+  const id = request.headers.get(ACTION_HEADER);
 
   if (id !== null) {
     const contentType = request.headers.get("content-type") ?? "";
@@ -225,32 +233,25 @@ function withOutgoing(response: Response, outgoing: Headers): Response {
 
 export default async function handler(request: Request): Promise<Response> {
   const url = new URL(request.url);
-  const platform =
-    parsePlatform(request.headers.get("x-flypath-platform")) ??
-    parsePlatform(url.searchParams.get("platform")) ??
-    "web";
+  const platform = parsePlatform(request.headers.get(PLATFORM_HEADER)) ?? "web";
 
   const resolved = resolveTree(tree);
 
-  const screen =
-    request.headers.get("x-flypath-screen") ??
-    url.searchParams.get("__flypath_screen");
+  const screen = request.headers.get(SCREEN_HEADER);
 
-  const fragment =
-    request.headers.get("x-flypath-fragment") ??
-    url.searchParams.get("__flypath_fragment");
+  const fragment = request.headers.get(FRAGMENT_HEADER);
 
   const wantsFlight =
     platform !== "web" ||
     screen !== null ||
-    url.searchParams.has("__flight") ||
-    request.headers.has("x-rsc-action");
+    url.searchParams.has(FLIGHT_PARAM) ||
+    request.headers.has(ACTION_HEADER);
 
   const document = !wantsFlight;
   const temporaryReferences = createTemporaryReferenceSet();
   const outgoing = new Headers();
   const incoming = new Headers(request.headers);
-  const prefetch = request.headers.has("x-flypath-prefetch");
+  const prefetch = request.headers.has(PREFETCH_HEADER);
 
   let action: ActionResult = {};
 

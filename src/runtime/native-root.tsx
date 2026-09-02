@@ -24,15 +24,17 @@ import { InsetsContext } from "../components/native/insets.ts";
 import { NavigatorContext } from "../components/native/navigator-context.ts";
 import { StackHost } from "../components/native/navigator.tsx";
 import { setNativeRouter } from "../components/native/router-store.ts";
+import {
+  FRAGMENT_HEADER,
+  LOCATION_HEADER,
+  NAVIGATE_HEADER,
+  PLATFORM_HEADER,
+  SCREEN_HEADER,
+} from "../protocol/headers.ts";
 import { setRouter } from "../router/dispatch.ts";
 import { isExternal } from "../router/href.ts";
 import { ROOT_CONTAINER } from "../router/manifest.ts";
-import {
-  LOCATION_HEADER,
-  NAVIGATE_HEADER,
-  parseCommand,
-  parseLocation,
-} from "../router/navigation.ts";
+import { parseCommand, parseLocation } from "../router/navigation.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext, ContainerScope } from "../router/scope.tsx";
 import type { Mode } from "../router/types.ts";
@@ -57,7 +59,7 @@ async function flight(
 ): Promise<Response> {
   const { serverUrl, platform } = nativeConfig();
   return fetch(`${serverUrl}${url}`, {
-    headers: { "x-flypath-platform": platform, ...headers },
+    headers: { [PLATFORM_HEADER]: platform, ...headers },
   });
 }
 
@@ -68,7 +70,7 @@ function decode(response: Response): Promise<RscPayload> {
 }
 
 async function fetchScreen(url: string, container: string): Promise<Fetched> {
-  const response = await flight(url, { "x-flypath-screen": container });
+  const response = await flight(url, { [SCREEN_HEADER]: container });
   const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
   const location = parseLocation(response.headers.get(LOCATION_HEADER));
 
@@ -80,7 +82,7 @@ async function fetchFragment(
   url: string,
   container: string,
 ): Promise<RscPayload> {
-  const response = await flight(url, { "x-flypath-fragment": container });
+  const response = await flight(url, { [FRAGMENT_HEADER]: container });
   if (response.status === 204) {
     throw new Error(
       `flypath: the chrome of container "${container}" redirected while ` +
