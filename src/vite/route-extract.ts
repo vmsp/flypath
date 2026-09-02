@@ -10,7 +10,7 @@ import type {
   RouteTree,
 } from "../router/types.ts";
 import type { Node } from "./eval.ts";
-import { evaluate, StaticError, unwrap } from "./eval.ts";
+import { evaluate, propertyKey, StaticError, unwrap } from "./eval.ts";
 
 const BUILDERS = new Set([
   "routes",
@@ -111,13 +111,48 @@ function builderOf(node: Node, context: Context): string | undefined {
   return context.builders.get(String(callee["name"]));
 }
 
+const SERVER_ONLY = new Set(["middleware"]);
+
+function omitted(value: unknown): RouteOptions {
+  const out = { ...(value as Record<string, unknown>) };
+  for (const key of SERVER_ONLY) delete out[key];
+  return out as RouteOptions;
+}
+
 function options(node: Node | undefined, context: Context): RouteOptions {
   if (!node) return {};
-  const value = evaluate(node, context.scope);
-  if (value === null || typeof value !== "object") {
-    throw new StaticError("flypath: route options must be an object", node);
+  const value = unwrap(node);
+
+  if (value["type"] !== "ObjectExpression") {
+    const evaluated = evaluate(value, context.scope);
+    if (evaluated === null || typeof evaluated !== "object") {
+      throw new StaticError("flypath: route options must be an object", value);
+    }
+    return omitted(evaluated);
   }
-  return value as RouteOptions;
+
+  const out: Record<string, unknown> = {};
+  for (const property of value["properties"] as Node[]) {
+    if (property["type"] === "SpreadElement") {
+      const spread = evaluate(property["argument"] as Node, context.scope);
+      Object.assign(out, omitted(spread));
+      continue;
+    }
+    const key = propertyKey(property);
+    if (SERVER_ONLY.has(key)) continue;
+    try {
+      out[key] = evaluate(property["value"] as Node, context.scope);
+    } catch (error) {
+      if (!(error instanceof StaticError)) throw error;
+      throw new StaticError(
+        `flypath: route option "${key}" is read at build time and shipped to ` +
+          'the client, so it must be a literal; only "middleware" may hold ' +
+          "functions and other runtime values",
+        property,
+      );
+    }
+  }
+  return out as RouteOptions;
 }
 
 function children(node: Node | undefined, context: Context): AnyNode[] {
@@ -132,6 +167,14 @@ function children(node: Node | undefined, context: Context): AnyNode[] {
   return (value["elements"] as Node[]).map((element) =>
     interpret(element, context),
   );
+}
+
+function hasOptions(args: readonly Node[], at: number): boolean {
+  const node = args[at];
+  if (node === undefined) return false;
+  const type = unwrap(node)["type"];
+  if (type === "ObjectExpression") return true;
+  return type !== "ArrayExpression" && args[at + 1] !== undefined;
 }
 
 function interpret(input: Node, context: Context): AnyNode {
@@ -152,15 +195,18 @@ function interpret(input: Node, context: Context): AnyNode {
       return {
         kind: "layout",
         load: NOOP,
-        children: children(args[1], context),
+        children: children(args[hasOptions(args, 1) ? 2 : 1], context),
       };
     case "stack":
-      return { kind: "stack", children: children(args[0], context) };
+      return {
+        kind: "stack",
+        children: children(args[hasOptions(args, 0) ? 1 : 0], context),
+      };
     case "branches":
       return {
         kind: "branches",
         load: NOOP,
-        children: children(args[1], context),
+        children: children(args[hasOptions(args, 1) ? 2 : 1], context),
       };
     case "route": {
       const pattern = evaluate(args[0] as Node, context.scope);
@@ -206,9 +252,11 @@ export function parseRouteTree(id: string, code: string): RouteTree {
     throw new Error(`flypath: ${id} must default-export routes([...])`);
   }
 
+  const args = node["arguments"] as Node[];
+
   return {
     kind: "routes",
-    children: children((node["arguments"] as Node[])[0], context),
+    children: children(args[hasOptions(args, 0) ? 1 : 0], context),
   };
 }
 

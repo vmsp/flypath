@@ -1,10 +1,12 @@
 import { href } from "flypath";
 
 import { listPosts } from "./posts.ts";
+import { requestId, visitor } from "./session.ts";
 import { colors } from "./vars.css.ts";
 
 export default async function Feed() {
   const posts = await listPosts();
+  const user = visitor();
 
   return (
     <>
@@ -20,6 +22,9 @@ export default async function Feed() {
         }}
       >
         <h1 style={{ color: colors.text, fontSize: 24 }}>Feed</h1>
+        <span style={{ color: colors.muted, fontSize: 13 }}>
+          {user ? `signed in as ${user.name}` : "signed out"} · {requestId()}
+        </span>
         {posts.map((post) => (
           <a
             href={href("/p/:id", { id: post.id })}

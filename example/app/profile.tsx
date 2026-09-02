@@ -1,9 +1,10 @@
-import { entries, signForm } from "./actions.ts";
+import { entries, signForm, signOut } from "./actions.ts";
 import { WebView } from "./battery.ts";
 import Counter from "./counter.tsx";
 import Guestbook from "./guestbook.tsx";
 import Loaded from "./loaded.tsx";
 import NavDemo from "./nav-demo.tsx";
+import { session } from "./session.ts";
 import { colors, dark } from "./vars.css.ts";
 
 export default async function Profile() {
@@ -23,6 +24,22 @@ export default async function Profile() {
         }}
       >
         <h1 style={{ color: colors.primary }}>Profile</h1>
+        <span style={{ color: colors.muted }}>
+          signed in as {session().name}
+        </span>
+        <form action={signOut}>
+          <button
+            style={{
+              backgroundColor: colors.secondary,
+              borderRadius: 8,
+              color: "white",
+              padding: 12,
+            }}
+            type="submit"
+          >
+            sign out
+          </button>
+        </form>
         <p
           style={{
             color: { default: colors.primary, ":hover": colors.secondary },

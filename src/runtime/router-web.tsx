@@ -99,12 +99,16 @@ function currentUrl(): string {
 async function request(
   url: string,
   container: string | undefined,
+  prefetch: boolean,
 ): Promise<Fetched> {
   const target = new URL(url, window.location.origin);
   target.searchParams.set("__flight", "1");
 
   const response = await fetch(target, {
-    headers: container === undefined ? {} : { "x-flypath-screen": container },
+    headers: {
+      ...(container === undefined ? {} : { "x-flypath-screen": container }),
+      ...(prefetch ? { "x-flypath-prefetch": "1" } : {}),
+    },
   });
 
   const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
@@ -118,11 +122,15 @@ async function request(
   };
 }
 
-function load(url: string, container: string | undefined): Promise<Fetched> {
+function load(
+  url: string,
+  container: string | undefined,
+  prefetch = false,
+): Promise<Fetched> {
   const cacheKey = `${container ?? "document"}:${url}`;
   const cached = prefetched.get(cacheKey);
   if (cached) return cached;
-  const task = request(url, container);
+  const task = request(url, container, prefetch);
   prefetched.set(cacheKey, task);
   cap(prefetched, PAYLOAD_LIMIT);
   task.catch(() => prefetched.delete(cacheKey));
@@ -407,7 +415,7 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       if (href === undefined) return;
       const path = normalizePath(new URL(href, window.location.href).pathname);
       if (optionsFor(path).prefetch !== "hover") return;
-      void load(href, undefined);
+      void load(href, undefined, true);
     };
 
     const onPop = (): void => {

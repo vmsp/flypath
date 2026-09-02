@@ -1,3 +1,4 @@
+import type { ContextStore } from "../router/context.ts";
 import type { RouteInfo } from "../router/types.ts";
 
 export type Platform = "web" | "ios" | "android";
@@ -7,6 +8,10 @@ const KEY = "__flypathRequest";
 export type RequestInfo = RouteInfo & {
   platform: Platform;
   phase: "render" | "action";
+  headers: Headers;
+  outgoing: Headers;
+  prefetch: boolean;
+  context: ContextStore;
 };
 
 export type RequestStore = { get: () => RequestInfo | undefined };
@@ -40,6 +45,22 @@ export function platform(): Platform {
     parsePlatform(holder.__FLYPATH__?.platform) ??
     "web"
   );
+}
+
+export function headers(): Headers {
+  const request = getRequest();
+  if (!request) {
+    throw new Error(
+      "flypath: headers() reads the incoming request, so it is only " +
+        "available while the flypath router is handling one — in a " +
+        "middleware, a server component or a server action",
+    );
+  }
+  return new Headers(request.headers);
+}
+
+export function isPrefetch(): boolean {
+  return getRequest()?.prefetch ?? false;
 }
 
 export function isNative(): boolean {

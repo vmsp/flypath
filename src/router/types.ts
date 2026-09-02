@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { Register } from "../index.ts";
+import type { Middleware } from "./middleware.ts";
 
 export type Edge = "top" | "bottom" | "left" | "right";
 
@@ -12,9 +13,19 @@ export type RouteOptions = {
   prefetch?: "hover" | false;
 };
 
+export type MiddlewareOptions = {
+  middleware?: readonly Middleware[];
+};
+
+export type NodeOptions = RouteOptions & MiddlewareOptions;
+
+type Guarded = {
+  readonly middleware?: readonly Middleware[];
+};
+
 export type Loader = () => Promise<{ default: ComponentType<never> }>;
 
-export type RouteNode = {
+export type RouteNode = Guarded & {
   readonly kind: "route";
   readonly pattern: string;
   readonly load: Loader;
@@ -22,30 +33,30 @@ export type RouteNode = {
   readonly children: readonly AnyNode[];
 };
 
-export type IndexNode = {
+export type IndexNode = Guarded & {
   readonly kind: "index";
   readonly load: Loader;
   readonly options: RouteOptions;
 };
 
-export type NotFoundNode = {
+export type NotFoundNode = Guarded & {
   readonly kind: "not-found";
   readonly load: Loader;
   readonly options: RouteOptions;
 };
 
-export type LayoutNode = {
+export type LayoutNode = Guarded & {
   readonly kind: "layout";
   readonly load: Loader;
   readonly children: readonly AnyNode[];
 };
 
-export type StackNode = {
+export type StackNode = Guarded & {
   readonly kind: "stack";
   readonly children: readonly AnyNode[];
 };
 
-export type BranchesNode = {
+export type BranchesNode = Guarded & {
   readonly kind: "branches";
   readonly load: Loader;
   readonly children: readonly AnyNode[];
@@ -61,7 +72,7 @@ export type AnyNode =
 
 export type LoadedNode = Exclude<AnyNode, StackNode>;
 
-export type RouteTree = {
+export type RouteTree = Guarded & {
   readonly kind: "routes";
   readonly children: readonly AnyNode[];
 };

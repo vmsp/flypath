@@ -8,12 +8,15 @@ export {
   routes,
   stack,
 } from "./config.ts";
+export type { Middleware, Next } from "./middleware.ts";
 export type {
   AnyNode,
   Edge,
   IndexNode,
   LayoutNode,
   Loader,
+  MiddlewareOptions,
+  NodeOptions,
   NotFoundNode,
   BranchesNode,
   Presentation,

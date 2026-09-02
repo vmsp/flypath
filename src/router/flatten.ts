@@ -1,5 +1,6 @@
 import type { ContainerKind } from "./manifest.ts";
 import { ROOT_CONTAINER, SHARED } from "./manifest.ts";
+import type { Middleware } from "./middleware.ts";
 import { joinPattern, matchPattern } from "./path.ts";
 import type {
   AnyNode,
@@ -24,6 +25,7 @@ export type FlatRoute = {
   pattern: string;
   options: RouteOptions;
   chain: readonly LoadedNode[];
+  middleware: readonly Middleware[];
   leaf: LoadedNode;
   placement: readonly string[];
 };
@@ -70,12 +72,14 @@ export function flatten(tree: RouteTree): Flattened {
     options: RouteOptions,
     chain: readonly LoadedNode[],
     placement: readonly string[],
+    middleware: readonly Middleware[],
   ): void => {
     routes.push({
       id: uniqueId(pattern),
       pattern,
       options,
       chain,
+      middleware,
       leaf,
       placement,
     });
@@ -93,13 +97,26 @@ export function flatten(tree: RouteTree): Flattened {
     chain: readonly LoadedNode[],
     placement: readonly string[],
     shared: ContainerInfo | undefined,
+    guards: readonly Middleware[],
   ): void => {
     const of = (): readonly string[] =>
       shared ? [...placement, SHARED] : placement;
 
     for (const node of nodes) {
+      const middleware =
+        node.middleware === undefined || node.middleware.length === 0
+          ? guards
+          : [...guards, ...node.middleware];
+
       if (node.kind === "index") {
-        emit(base === "" ? "/" : base, node, node.options, chain, of());
+        emit(
+          base === "" ? "/" : base,
+          node,
+          node.options,
+          chain,
+          of(),
+          middleware,
+        );
         continue;
       }
 
@@ -112,6 +129,7 @@ export function flatten(tree: RouteTree): Flattened {
           pattern: "",
           options: node.options,
           chain,
+          middleware,
           leaf: node,
           placement: of(),
         };
@@ -119,7 +137,14 @@ export function flatten(tree: RouteTree): Flattened {
       }
 
       if (node.kind === "layout") {
-        walk(node.children, base, [...chain, node], placement, shared);
+        walk(
+          node.children,
+          base,
+          [...chain, node],
+          placement,
+          shared,
+          middleware,
+        );
         continue;
       }
 
@@ -146,6 +171,7 @@ export function flatten(tree: RouteTree): Flattened {
           ancestors,
           [...placement, id],
           branching ? info : undefined,
+          middleware,
         );
         if (branching && info.branches.length === 0) {
           throw new Error(
@@ -158,14 +184,28 @@ export function flatten(tree: RouteTree): Flattened {
 
       const pattern = joinPattern(base, node.pattern);
       if (node.children.length === 0) {
-        emit(pattern, node, node.options, chain, of());
+        emit(pattern, node, node.options, chain, of(), middleware);
         continue;
       }
-      walk(node.children, pattern, [...chain, node], placement, shared);
+      walk(
+        node.children,
+        pattern,
+        [...chain, node],
+        placement,
+        shared,
+        middleware,
+      );
     }
   };
 
-  walk(tree.children, "", [], [ROOT_CONTAINER], undefined);
+  walk(
+    tree.children,
+    "",
+    [],
+    [ROOT_CONTAINER],
+    undefined,
+    tree.middleware ?? [],
+  );
 
   for (const info of [...containers.values()].reverse()) {
     if (info.kind !== "branches") continue;

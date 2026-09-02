@@ -13,8 +13,20 @@ export type {
   VarToken,
 } from "./styles/types.ts";
 export type { Platform } from "./runtime/platform.ts";
-export { platform, isAndroid, isIos, isNative } from "./runtime/platform.ts";
+export {
+  headers,
+  isAndroid,
+  isIos,
+  isNative,
+  isPrefetch,
+  platform,
+} from "./runtime/platform.ts";
+export type { CookieOptions, Cookies, SameSite } from "./runtime/cookies.ts";
+export { cookies } from "./runtime/cookies.ts";
+export type { Context } from "./router/context.ts";
+export { context } from "./router/context.ts";
 export { href } from "./router/href.ts";
+export type { Middleware, Next } from "./router/middleware.ts";
 export type {
   Destination,
   ExternalHref,
