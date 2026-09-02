@@ -1,5 +1,5 @@
 import type { Middleware } from "flypath";
-import { isPrefetch, navigate } from "flypath";
+import { headers, isPrefetch, navigate } from "flypath";
 
 import { requestId, session, userFromSession, visitor } from "./session.ts";
 
@@ -11,11 +11,12 @@ export const request: Middleware = async (next) => {
   requestId.set(id);
   visitor.set(userFromSession() ?? null);
 
+  headers.set("x-request-id", id);
+  if (isPrefetch()) headers.set("x-request-prefetch", "1");
+
   const started = Date.now();
-  const response = await next();
-  response.headers.set("x-request-id", id);
-  response.headers.set("x-request-ms", String(Date.now() - started));
-  if (isPrefetch()) response.headers.set("x-request-prefetch", "1");
+  await next();
+  headers.set("x-request-ms", String(Date.now() - started));
 };
 
 export const auth: Middleware = () => {

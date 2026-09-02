@@ -150,18 +150,23 @@ written.
 ## The signature
 
 ```ts
-import type { Middleware, Next } from "flypath";
+import type { Middleware } from "flypath";
 
-export const auth: Middleware = async (next) => {
+export const auth: Middleware = async () => {
   const user = await userFromSession();
   if (!user) return navigate("/login");
   session.set(user);
-  return next();
+};
+
+export const timing: Middleware = async (next) => {
+  const started = Date.now();
+  await next();
+  headers.set("server-timing", `render;dur=${Date.now() - started}`);
 };
 ```
 
 ```ts
-export type Next = () => Promise<Response>;
+export type Next = () => Promise<void>;
 
 export type Middleware = (
   next: Next,
@@ -244,20 +249,95 @@ kept the handle for this reason.
 
 The full contract:
 
-| what the middleware does                | what happens                                         |
-| --------------------------------------- | ---------------------------------------------------- |
-| returns without calling `next()`        | `next()` runs; its response is the answer            |
-| returns a `Response`                    | that is the answer; the rest of the chain is skipped |
-| calls `next()`, returns its result      | that response is the answer                          |
-| calls `next()`, returns `undefined`     | `next()`'s response is the answer                    |
-| calls `next()`, returns a different one | the returned response wins                           |
-| calls `next()` twice                    | error — a request has one downstream                 |
-| calls `navigate(...)`                   | throws; the chain unwinds into a navigation response |
+| what the middleware does             | what happens                                         |
+| ------------------------------------ | ---------------------------------------------------- |
+| returns without calling `next()`     | `next()` runs; its response is the answer            |
+| returns a `Response`                 | that is the answer; the rest of the chain is skipped |
+| calls `next()`, returns nothing      | `next()`'s response is the answer                    |
+| calls `next()`, returns a `Response` | the returned one replaces the answer                 |
+| calls `next()` twice                 | error — a request has one downstream                 |
+| calls `navigate(...)`                | throws; the chain unwinds into a navigation response |
 
-The fourth row is the one flypath adds to React Router's list. React Router
-requires server middleware to return the `Response` it got from `next()`;
-flypath remembers it, so `await next()` followed by a bare `return` is
-correct and the only reason to return anything is to _replace_ the answer.
+The third row is the one flypath adds to React Router's list, and it is
+also the reason the next section is possible. React Router _requires_
+server middleware to return the `Response` it got from `next()`, which is
+why `next()` has to hand one over in the first place. flypath remembers the
+answer itself, so `await next()` followed by a bare `return` is correct,
+the only reason to return anything is to _replace_ the answer, and `next()`
+never has to give the response away.
+
+### Why `next()` hands back nothing at all
+
+Withholding the `Request` and then handing back the `Response` would have
+undone the argument above, because every objection to the request applies
+to the response, and two of them apply harder.
+
+- **The body is as consumable, and consuming it breaks the request.** A
+  middleware that logs the body of `await next()` disturbs the stream, and
+  the rewrap that merges outgoing headers then throws
+  `TypeError: Response body object should not be disturbed or locked`.
+  That is `.formData()` on the request — one keystroke, guaranteed
+  outcome — in the other direction.
+- **It is not transport, it is flypath's own wire format.** A `Request` is
+  at least honest input from outside. The response from `next()` carries
+  `content-type: text/x-component`, an `x-flypath-location` holding an
+  encoded route id, and an `x-flypath-navigate` command. All of it becomes
+  de facto API the moment app code can read it, and none of it is a thing
+  the app was ever meant to see.
+- **It is not even consistent across the three transports.** The same
+  redirect answers 307 on a document request and 204-plus-header on a
+  flight one, so an after-phase branching on `status` behaves differently
+  on web and on native for one navigation. Converting `NavigationError`
+  into a `Response` inside `next()` made redirects uniformly _shaped_
+  while leaving them non-uniformly _encoded_, which is half a fix.
+- **It is a second writer for headers, with a different lifetime.**
+  `cookies.set` and `headers.set` write `outgoing`, which is created once
+  per HTTP request and merged into whatever the answer turns out to be,
+  across redirect hops included. A mutation of a hop's `Response` is
+  scoped to that hop and is discarded when the redirect loop
+  re-dispatches. One bag with two lifetimes is the kind of thing nobody
+  discovers until it silently drops a header.
+
+The obvious repair is to hand back a summary instead — `ok`, `notFound`,
+the redirect destination — and it was tried. It does not survive contact:
+
+- **`ok` is a lie in the case that matters.** It is false for a redirect,
+  and a redirect is usually _success_ — a login flow arriving at `/feed`.
+  `if (!ok) rollback()` reads correctly and is backwards. Nor is it the
+  render's verdict: a component that throws is serialized into the flight
+  payload as an error and the answer is still a 200, so the field cannot
+  carry the meaning its name promises.
+- **`notFound` is better said in `routes.ts`.** The fallback node has its
+  own chain, so "run this when the URL matched nothing" is
+  `notFound(load, { middleware: [cmsLookup] })` — declared where the tree
+  is read, running only on the requests it concerns, instead of a boolean
+  branch inside a root middleware that runs on all of them.
+- **A redirect one middleware wants to report to another is what
+  `context` is for.** The store re-opens for the after-phase, so an inner
+  guard can `bounced.set(true)` and an outer middleware can read it —
+  typed, and only where the handle was imported.
+
+So `next()` returns `void`. The after-phase survives on its own terms —
+timing, a commit, a header only knowable afterwards — which is what it was
+kept for; it simply learns nothing about the answer. That is the shape
+Hono, Koa and Express have, arrived at from the opposite direction: they
+can afford a void `next()` because the response sits on the context,
+flypath because there is no response for app code anywhere.
+
+The asymmetry with the return type is deliberate rather than an oversight.
+_Receiving_ the framework's answer is implicit and easy to corrupt;
+_constructing_ one is explicit, total, and the only escape hatch for
+something flypath does not model — a 401 from a guard, a health check —
+until API routes exist and take the `Request` as a parameter.
+
+Two things this costs, both accepted. A middleware cannot observe a
+_render-time_ `notFound()` — a page that matched and then said the post
+does not exist — which neither replacement above covers. And there is no
+middleware-implemented response cache, since `next()`'s response cannot be
+stashed and replayed; but a flight payload is only valid for one URL,
+platform, container and chrome set, so replaying one is flypath's job —
+that is what `revalidate` is — and not the app's. It is the same line
+"no rewrite" already draws.
 
 ### `navigate` is already the short-circuit
 
@@ -507,8 +587,8 @@ a component's body that `cache()` does not create.
 ## Headers, cookies, and the response
 
 Middleware without cookies is half a feature, so this plan carries the
-prerequisites rather than assuming them. Two readers and one writer, and
-no `Request` behind any of them.
+prerequisites rather than assuming them. Two accessors that read the
+request and write the response, and no `Request` behind either.
 
 ```ts
 import { cookies, headers, isPrefetch } from "flypath";
@@ -516,6 +596,9 @@ import { cookies, headers, isPrefetch } from "flypath";
 headers(); // Headers — a snapshot of the incoming ones
 headers().get("accept-language");
 auth.api.getSession({ headers: headers() });
+
+headers.set("server-timing", "render;dur=12");
+headers.delete("server-timing");
 
 cookies("session"); // string | undefined
 cookies.set("session", token, { httpOnly: true, maxAge: 604800 });
@@ -527,6 +610,20 @@ isPrefetch(); // boolean
 - `headers()` returns a `Headers` rather than a plain record, because the
   thing callers most want to do with it is hand it to a session library
   whole. It is a per-request snapshot, so mutating it changes nothing.
+- **`headers.set` and `headers.delete` are the writers**, the shape
+  `cookies` already has: calling the accessor reads the request, a property
+  on it writes the response. They go into `outgoing`, so a header written
+  _before_ `next()` lands on the 307 as readily as on the 200, and the
+  after-phase is left for values only knowable afterwards — a duration, a
+  cache verdict. Most middleware that wanted the response only wanted this.
+- **The shape invites two mistakes, so both are guarded.**
+  `headers().set(...)` mutates the snapshot and changes nothing — two
+  characters from the writer that does — so in dev the snapshot's `set`,
+  `append` and `delete` warn and name `headers.set`. And `headers.set`
+  refuses `content-type`, `location`, `set-cookie` and anything
+  `x-flypath-*`: the first two are decided by the response flypath builds,
+  the third would replace the whole jar rather than merge into it (that is
+  `cookies.set`), and the last is the protocol the client parses.
 - `cookies()` is sugar over `headers().get("cookie")`, and earns its place
   because cookie parsing is fiddly and it is the 95% case.
 - `RequestInfo` gains `headers: Headers` (incoming), `outgoing: Headers`,
@@ -536,9 +633,9 @@ isPrefetch(); // boolean
   component or a server action lands on whatever the answer turns out to
   be, including a 307 and a 204.
 - `cookies.set` from a server action is what makes a login flow
-  expressible; it is one write into that bag. Reads are ambient; every
-  other write goes through the response a middleware returns, because a
-  middleware is the only place that has one in hand.
+  expressible; it is one write into that bag. Reads are ambient and writes
+  are ambient, from all three of a middleware, a server component and a
+  server action — which is what lets `next()` keep the response to itself.
 
 Streaming is not a concern yet: `toFlight` collects the whole payload into
 bytes before responding (`server-entry.tsx:101`), so an after-phase that
@@ -599,7 +696,9 @@ is the same escape hatch Next.js exposes as `has`/`missing` matchers on
 ## What changes
 
 - `runtime/platform.ts` — `RequestInfo` gains `headers`, `outgoing`,
-  `prefetch`, and the context `Map`; `isPrefetch()` alongside `isNative()`.
+  `prefetch`, and the context `Map`; `isPrefetch()` alongside `isNative()`;
+  `headers` becomes a callable reader carrying `set` and `delete`, with the
+  dev-only warning on the snapshot's own mutators.
 - `runtime/server-entry.tsx` — the middleware runner between
   `matchRoutes` (line 189) and `runAction` (line 200); outgoing headers
   merged into all six `Response` sites.
@@ -613,7 +712,9 @@ is the same escape hatch Next.js exposes as `has`/`missing` matchers on
   bag.
 - `runtime/router-web.tsx` — `x-flypath-prefetch` on the hover fetch.
 - New: `router/middleware.ts` (runner, `Middleware`, `Next`),
-  `router/context.ts` (`context`), `runtime/cookies.ts`.
+  `router/context.ts` (`context`), `runtime/cookies.ts`. The runner keeps
+  the `Response` to itself and resolves `next()` with `undefined`, so no
+  `Response` reaches app code.
 
 Nothing is deleted — this plan is additive, which is the first time that
 has been true since plan 6.
@@ -622,7 +723,8 @@ has been true since plan 6.
 
 ### Phase 1 — headers and cookies
 
-`headers()`, `cookies()` / `cookies.set` / `cookies.clear`, the outgoing
+`headers()` / `headers.set` / `headers.delete`, `cookies()` /
+`cookies.set` / `cookies.clear`, the outgoing
 `Headers` on the store, merged into every response. `prefetch` on
 `RequestInfo`, `isPrefetch()`, and the header that sets it. No middleware
 yet; this phase alone makes a session readable from a server component,
@@ -666,6 +768,19 @@ phase — see risks.
   `next()`'s response. The after-phase is the only thing that makes
   middleware more than a helper function, so the handle stays — but it
   never has to be typed by a guard that has nothing to say afterwards.
+- **`next()` returns nothing.** Not the `Response` — its body is as
+  consumable as the request's, and its headers and status are flypath's
+  own wire format — and not a summary of it either, because `ok` is false
+  for the redirects that are successes, `notFound` is better declared as
+  middleware on the `notFound()` node, and one middleware reporting to
+  another is what `context` is for. _Returning_ a `Response` stays legal:
+  constructing one is explicit, and it is the only escape hatch until API
+  routes exist.
+- **`headers` is a reader with writers hanging off it**, exactly like
+  `cookies`: `headers()` reads the request, `headers.set`/`headers.delete`
+  write the response, and both work from a middleware, a server component
+  and a server action. That is what makes the response redundant — a
+  header written before the render lands on whatever the answer becomes.
 - **`navigate()` is the short-circuit**, unchanged from everywhere else it
   is used. No `redirect`, no `abortNavigation`, no `NextResponse`.
 - **Declared in `routes.ts`, not exported from route modules.** A module
@@ -711,6 +826,13 @@ phase — see risks.
   be handed `new Request(url, { headers: headers() })` by the app — a
   body-less stand-in, which is exactly what such a library should be
   reading anyway.
+- **The after-phase is blind.** With `next()` returning `void`, a
+  middleware runs code after the render without learning anything about
+  it, including that the page called `notFound()`. If that proves too
+  little, the repair is a reader off the store — `answeredNotFound()`,
+  say — or one field at a time on a return value, added per proven use
+  case and never the `Response` itself. Starting from nothing is
+  reversible; starting from three guessed fields is not.
 - **Nothing enforces that a guard covers an action.** The action POSTs to
   the page's URL, so the guard that runs is the page's. A build-time check
   could in principle map `"use server"` exports to the routes that import

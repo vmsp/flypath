@@ -12,7 +12,7 @@ export type {
   Theme,
   VarToken,
 } from "./styles/types.ts";
-export type { Platform } from "./runtime/platform.ts";
+export type { HeaderAccess, Platform } from "./runtime/platform.ts";
 export {
   headers,
   isAndroid,

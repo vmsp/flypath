@@ -1,18 +1,16 @@
 import type { NavigationSignal } from "./navigation.ts";
 import { navigationSignal } from "./navigation.ts";
 
-export type Next = () => Promise<Response>;
+export type Next = () => Promise<void>;
 
 export type Middleware = (
   next: Next,
 ) => void | Response | Promise<void | Response>;
 
-export type Answer = (signal: NavigationSignal) => Promise<Response>;
-
 export function runMiddleware(
   chain: readonly Middleware[],
-  render: Next,
-  answer: Answer,
+  render: () => Promise<Response>,
+  answer: (signal: NavigationSignal) => Promise<Response>,
 ): Promise<Response> {
   const step = async (index: number): Promise<Response> => {
     const middleware = chain[index];
@@ -27,8 +25,11 @@ export function runMiddleware(
             "downstream, so it may be called at most once",
         );
       }
-      pending = step(index + 1);
-      return pending;
+      const running = step(index + 1);
+      pending = running;
+      const done = running.then(() => undefined);
+      done.catch(() => {});
+      return done;
     };
 
     let returned: unknown;
