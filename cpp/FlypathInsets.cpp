@@ -47,7 +47,9 @@ using facebook::jsi::Runtime;
 using facebook::jsi::Value;
 using facebook::react::TurboModule;
 
-void setInsetsInstaller(InsetsInstaller hook) { installer() = hook; }
+void setInsetsInstaller(InsetsInstaller hook) {
+  installer() = hook;
+}
 
 Insets currentInsets() {
   std::lock_guard<std::mutex> guard(lock());
@@ -58,21 +60,26 @@ void publishInsets(const Insets& insets) {
   std::shared_ptr<FlypathInsetsModule> module;
   {
     std::lock_guard<std::mutex> guard(lock());
-    if (same(store(), insets)) return;
+    if (same(store(), insets))
+      return;
     store() = insets;
     module = live().lock();
   }
-  if (module) module->emit();
+  if (module)
+    module->emit();
 }
 
-Value FlypathInsetsModule::getInsetsMethod(Runtime& runtime, TurboModule&,
-                                           const Value*, size_t) {
+Value FlypathInsetsModule::getInsetsMethod(Runtime& runtime,
+                                           TurboModule&,
+                                           const Value*,
+                                           size_t) {
   return describe(runtime, currentInsets());
 }
 
 Value FlypathInsetsModule::observeMethod(Runtime& runtime,
                                          TurboModule& turboModule,
-                                         const Value* args, size_t count) {
+                                         const Value* args,
+                                         size_t count) {
   auto& module = static_cast<FlypathInsetsModule&>(turboModule);
   if (count == 0 || !args[0].isObject() ||
       !args[0].getObject(runtime).isFunction(runtime)) {
@@ -89,7 +96,8 @@ void FlypathInsetsModule::emit() {
   std::weak_ptr<FlypathInsetsModule> self = weak_from_this();
   jsInvoker_->invokeAsync([self](Runtime& runtime) {
     auto module = self.lock();
-    if (!module || !module->listener_) return;
+    if (!module || !module->listener_)
+      return;
     module->listener_->call(runtime, describe(runtime, currentInsets()));
   });
 }
@@ -99,13 +107,15 @@ FlypathInsetsModule::FlypathInsetsModule(
     : TurboModule(kModuleName, std::move(invoker)) {
   methodMap_["getInsets"] = MethodMetadata{0, getInsetsMethod};
   methodMap_["observe"] = MethodMetadata{1, observeMethod};
-  if (auto hook = installer()) hook();
+  if (auto hook = installer())
+    hook();
 }
 
 std::shared_ptr<TurboModule> FlypathInsetsModule::provider(
     const std::string& name,
     const std::shared_ptr<facebook::react::CallInvoker>& invoker) {
-  if (name != kModuleName) return nullptr;
+  if (name != kModuleName)
+    return nullptr;
   auto module = std::make_shared<FlypathInsetsModule>(invoker);
   {
     std::lock_guard<std::mutex> guard(lock());

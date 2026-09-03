@@ -19,7 +19,8 @@ Value Promise::create(
       runtime, PropNameID::forAscii(runtime, "executor"), 2,
       [slot, invoker](Runtime& rt, const Value&, const Value* args,
                       size_t count) -> Value {
-        if (count < 2) return Value::undefined();
+        if (count < 2)
+          return Value::undefined();
         auto resolve =
             std::make_shared<Function>(args[0].getObject(rt).getFunction(rt));
         auto reject =
@@ -36,7 +37,8 @@ Value Promise::create(
 }
 
 void Promise::resolve() {
-  if (settled_.exchange(true)) return;
+  if (settled_.exchange(true))
+    return;
   invoker_->invokeAsync([this](Runtime& runtime) {
     resolve_->call(runtime, toValue(runtime, out_));
     delete this;
@@ -44,7 +46,8 @@ void Promise::resolve() {
 }
 
 void Promise::reject(std::string&& message) {
-  if (settled_.exchange(true)) return;
+  if (settled_.exchange(true))
+    return;
   invoker_->invokeAsync([this, text = std::move(message)](Runtime& runtime) {
     Value error =
         runtime.global()
@@ -68,7 +71,8 @@ void flypath_promise_resolve(FlypathPromiseRef promise) {
   reinterpret_cast<flypath::Promise*>(promise)->resolve();
 }
 
-void flypath_promise_reject(FlypathPromiseRef promise, const char* message,
+void flypath_promise_reject(FlypathPromiseRef promise,
+                            const char* message,
                             size_t length) {
   reinterpret_cast<flypath::Promise*>(promise)->reject(
       std::string(message, length));

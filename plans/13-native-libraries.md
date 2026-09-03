@@ -120,7 +120,7 @@ the permission go", and they cluster into three camps.
   IDEs". Maximum flexibility, and every one of them needed a migration tool
   to survive its own upgrades: `npx cap migrate`, React Native's Upgrade
   Helper (rn-diff-purge), `flutter create .` and diff by hand. Capacitor's
-  own issue tracker carries a long-running request to go the *other* way and
+  own issue tracker carries a long-running request to go the _other_ way and
   generate the platforms from a file, citing merge conflicts, repo bloat, and
   needing Xcode installed just to change a setting.
 - **Fully generated, config-driven** — Expo's Continuous Native Generation
@@ -158,7 +158,7 @@ is worth writing now.
 2. **Expo-style config plugins** — JS that mutates the materialized projects.
    Rejected for v1: the point of materializing is that the shell is
    disposable and the user's project is real. A plugin API is what you build
-   when the user's project *isn't* real.
+   when the user's project _isn't_ real.
 3. **Full checked-in `android/` and `ios/` projects**, generated once. The
    honest case for it is strong: LaunchScreen, icons, plist, manifest,
    signing, extra Xcode targets all just work, and `templates/`,
@@ -224,17 +224,17 @@ example/
 
 Where each need is served:
 
-| need                        | Android                               | iOS                              |
-| --------------------------- | ------------------------------------- | -------------------------------- |
-| permissions / usage strings | `src/main/AndroidManifest.xml`        | `Info.plist` (flypath merges)    |
-| intent filters / URL schemes| `src/main/AndroidManifest.xml`        | `Info.plist` (flypath merges)    |
-| native dependencies         | `build.gradle.kts`                    | `Package.swift`                  |
-| icon, splash, drawables     | `src/main/res`                        | `Resources/` (buildable folder)  |
-| module build options        | `build.gradle.kts`                    | `Package.swift` settings         |
-| shrinker rules              | `consumerProguardFiles`               | n/a                              |
-| app-level build options     | `app.gradle.kts`, `gradle.properties` | `App.xcconfig`                   |
-| entitlements / capabilities | n/a                                   | `App.entitlements`               |
-| name, id, version, orient.  | `flypath({ … })`                      | `flypath({ … })`                 |
+| need                         | Android                               | iOS                             |
+| ---------------------------- | ------------------------------------- | ------------------------------- |
+| permissions / usage strings  | `src/main/AndroidManifest.xml`        | `Info.plist` (flypath merges)   |
+| intent filters / URL schemes | `src/main/AndroidManifest.xml`        | `Info.plist` (flypath merges)   |
+| native dependencies          | `build.gradle.kts`                    | `Package.swift`                 |
+| icon, splash, drawables      | `src/main/res`                        | `Resources/` (buildable folder) |
+| module build options         | `build.gradle.kts`                    | `Package.swift` settings        |
+| shrinker rules               | `consumerProguardFiles`               | n/a                             |
+| app-level build options      | `app.gradle.kts`, `gradle.properties` | `App.xcconfig`                  |
+| entitlements / capabilities  | n/a                                   | `App.entitlements`              |
+| name, id, version, orient.   | `flypath({ … })`                      | `flypath({ … })`                |
 
 Everything in the Android column is read by AGP's own manifest, resource and
 dependency mergers. Flypath's entire contribution on that platform is two
@@ -275,7 +275,7 @@ reason to stash the options there rather than in a module-level variable.
 the nested `PluginOption[]` that `flypath()` returns.
 
 This also settles an existing split: `--port` is a CLI flag defaulting to
-8081 (`cli.ts:38`, `:46`) *and* `flypath({ port })` defaults to 8081
+8081 (`cli.ts:38`, `:46`) _and_ `flypath({ port })` defaults to 8081
 (`index.ts:139`), independently. After this, the plugin option is the value
 and the flag overrides it.
 
@@ -695,7 +695,7 @@ browser.
   makes the overlay worth having.
 - **A symlinked buildable folder** is the specific untested combination:
   `link.ts` symlinks files today and Xcode follows symlinks for file
-  references, but a synchronized *directory* that is itself a symlink is not
+  references, but a synchronized _directory_ that is itself a symlink is not
   something this project has done. Copying instead of symlinking is the
   fallback, at the cost of edits not being live.
 - **The scaffolded consumer `build.gradle.kts` can go stale.** It pins

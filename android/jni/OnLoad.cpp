@@ -27,7 +27,8 @@ void registerComponents(
 }
 
 std::shared_ptr<TurboModule> cxxModuleProvider(
-    const std::string& name, const std::shared_ptr<CallInvoker>& jsInvoker) {
+    const std::string& name,
+    const std::shared_ptr<CallInvoker>& jsInvoker) {
   if (auto module = flypath::FlypathModule::provider(name, jsInvoker)) {
     return module;
   }
@@ -38,7 +39,8 @@ std::shared_ptr<TurboModule> cxxModuleProvider(
 }
 
 std::shared_ptr<TurboModule> javaModuleProvider(
-    const std::string& name, const JavaTurboModule::InitParams& params) {
+    const std::string& name,
+    const JavaTurboModule::InitParams& params) {
   if (auto module = FBReactNativeSpec_ModuleProvider(name, params)) {
     return module;
   }

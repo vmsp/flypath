@@ -9,24 +9,24 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 import dev.flypath.FlypathApp
-import dev.flypath.FlypathPackage
 import dev.flypath.FlypathHermesInstance
+import dev.flypath.FlypathPackage
 
 class MainApplication : Application(), ReactApplication {
-    override val reactHost: ReactHost
-        get() =
-            getDefaultReactHost(
-                applicationContext,
-                PackageList(this).packages +
-                        FlypathPackage(listOf(__FLYPATH_VIEW_NAMES__)),
-                jsRuntimeFactory = FlypathHermesInstance(),
-                useDevSupport = true,
-            )
+  override val reactHost: ReactHost
+    get() =
+      getDefaultReactHost(
+        applicationContext,
+        PackageList(this).packages +
+          FlypathPackage(listOf(__FLYPATH_VIEW_NAMES__)),
+        jsRuntimeFactory = FlypathHermesInstance(),
+        useDevSupport = true,
+      )
 
-    override fun onCreate() {
-        super.onCreate()
-        FlypathApp.context = this
-        SoLoader.init(this, OpenSourceMergedSoMapping)
-        load()
-    }
+  override fun onCreate() {
+    super.onCreate()
+    FlypathApp.context = this
+    SoLoader.init(this, OpenSourceMergedSoMapping)
+    load()
+  }
 }

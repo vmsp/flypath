@@ -22,7 +22,8 @@ Registry& Registry::shared() {
 
 Module& Registry::module(const char* id) {
   for (Module& existing : modules) {
-    if (existing.id == id) return existing;
+    if (existing.id == id)
+      return existing;
   }
   modules.push_back(Module{std::string(id), {}});
   return modules.back();
@@ -104,13 +105,17 @@ void flypath_register_hash(const char* hash) {
   flypath::Registry::shared().hash = hash;
 }
 
-void flypath_register_function(const char* module, const char* name,
-                               size_t arity, FlypathCall call) {
+void flypath_register_function(const char* module,
+                               const char* name,
+                               size_t arity,
+                               FlypathCall call) {
   flypath::Registry::shared().module(module).bindings.push_back(
       flypath::Binding{std::string(name), arity, call, nullptr});
 }
 
-void flypath_register_async(const char* module, const char* name, size_t arity,
+void flypath_register_async(const char* module,
+                            const char* name,
+                            size_t arity,
                             FlypathAsyncCall call) {
   flypath::Registry::shared().module(module).bindings.push_back(
       flypath::Binding{std::string(name), arity, nullptr, call});
@@ -123,7 +128,8 @@ void flypath_register_view(const char* name, FlypathViewCreate create) {
 
 FlypathViewCreate flypath_view_create(const char* name) {
   for (const flypath::View& view : flypath::Registry::shared().views) {
-    if (view.name == name) return view.create;
+    if (view.name == name)
+      return view.create;
   }
   return nullptr;
 }

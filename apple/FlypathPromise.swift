@@ -20,6 +20,8 @@ public struct FlypathPromise: @unchecked Sendable {
   }
 }
 
-public func flypathAwait<T>(_ value: @autoclosure () async throws -> T) async throws -> T {
+public func flypathAwait<T>(_ value: @autoclosure () async throws -> T)
+  async throws -> T
+{
   try await value()
 }

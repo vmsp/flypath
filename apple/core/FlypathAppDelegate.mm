@@ -14,12 +14,14 @@ extern "C" NSDictionary* FlypathCoreFabricComponents(void);
 @implementation FlypathAppDelegate
 
 - (JSRuntimeFactoryRef)createJSRuntimeFactory {
-  return static_cast<JSRuntimeFactoryRef>(flypath::createHermesRuntimeFactory());
+  return static_cast<JSRuntimeFactoryRef>(
+      flypath::createHermesRuntimeFactory());
 }
 
-- (NSDictionary<NSString*, Class<RCTComponentViewProtocol>>*)thirdPartyFabricComponents {
-  NSMutableDictionary* components =
-      [NSMutableDictionary dictionaryWithDictionary:[super thirdPartyFabricComponents]];
+- (NSDictionary<NSString*, Class<RCTComponentViewProtocol>>*)
+    thirdPartyFabricComponents {
+  NSMutableDictionary* components = [NSMutableDictionary
+      dictionaryWithDictionary:[super thirdPartyFabricComponents]];
   [components addEntriesFromDictionary:FlypathCoreFabricComponents()];
   [components addEntriesFromDictionary:FlypathFabricComponents()];
   return components;
@@ -39,7 +41,8 @@ extern "C" NSDictionary* FlypathCoreFabricComponents(void);
 
 - (BOOL)application:(UIApplication*)application
     didFinishLaunchingWithOptions:(NSDictionary*)launchOptions {
-  BOOL started = [super application:application didFinishLaunchingWithOptions:launchOptions];
+  BOOL started = [super application:application
+      didFinishLaunchingWithOptions:launchOptions];
   [FlypathInsetsProbe installInWindow:self.window];
   return started;
 }

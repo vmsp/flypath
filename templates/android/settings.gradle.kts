@@ -20,4 +20,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "__FLYPATH_APP_NAME__"
+
 include(":app")

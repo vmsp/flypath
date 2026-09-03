@@ -53,20 +53,26 @@ FlypathOutRef flypath_out_field(FlypathOutRef object, const char* name);
 
 FlypathOutRef flypath_promise_out(FlypathPromiseRef promise);
 void flypath_promise_resolve(FlypathPromiseRef promise);
-void flypath_promise_reject(FlypathPromiseRef promise, const char* message,
+void flypath_promise_reject(FlypathPromiseRef promise,
+                            const char* message,
                             size_t length);
 
 void flypath_register_hash(const char* hash);
-void flypath_register_function(const char* module, const char* name,
-                               size_t arity, FlypathCall call);
-void flypath_register_async(const char* module, const char* name, size_t arity,
+void flypath_register_function(const char* module,
+                               const char* name,
+                               size_t arity,
+                               FlypathCall call);
+void flypath_register_async(const char* module,
+                            const char* name,
+                            size_t arity,
                             FlypathAsyncCall call);
 void flypath_register_view(const char* name, FlypathViewCreate create);
 
 FlypathViewCreate flypath_view_create(const char* name);
 
 FlypathOutRef flypath_event_begin(FlypathViewRef view);
-void flypath_event_end(FlypathViewRef view, const char* name,
+void flypath_event_end(FlypathViewRef view,
+                       const char* name,
                        FlypathOutRef payload);
 
 FlypathControllerRef flypath_host_controller(FlypathHostRef host);

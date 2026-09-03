@@ -4,18 +4,23 @@ namespace flypath {
 
 namespace {
 
-std::string stringAt(const folly::dynamic& values, const char* key,
+std::string stringAt(const folly::dynamic& values,
+                     const char* key,
                      const std::string& fallback) {
-  if (!values.isObject()) return fallback;
+  if (!values.isObject())
+    return fallback;
   const folly::dynamic* found = values.get_ptr(key);
-  if (found == nullptr || !found->isString()) return fallback;
+  if (found == nullptr || !found->isString())
+    return fallback;
   return found->getString();
 }
 
 bool boolAt(const folly::dynamic& values, const char* key, bool fallback) {
-  if (!values.isObject()) return fallback;
+  if (!values.isObject())
+    return fallback;
   const folly::dynamic* found = values.get_ptr(key);
-  if (found == nullptr || !found->isBool()) return fallback;
+  if (found == nullptr || !found->isBool())
+    return fallback;
   return found->getBool();
 }
 

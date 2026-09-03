@@ -49,13 +49,15 @@ using namespace facebook::react;
 }
 
 - (void)startReceivingTouches {
-  if (_touches != nil) return;
+  if (_touches != nil)
+    return;
   _touches = [[RCTSurfaceTouchHandler alloc] init];
   [_touches attachToView:_screen];
 }
 
 - (void)stopReceivingTouches {
-  if (_touches == nil) return;
+  if (_touches == nil)
+    return;
   [_touches detachFromView:_screen];
   _touches = nil;
 }
@@ -72,7 +74,8 @@ using namespace facebook::react;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider {
-  return concreteComponentDescriptorProvider<flypath::ScreenComponentDescriptor>();
+  return concreteComponentDescriptorProvider<
+      flypath::ScreenComponentDescriptor>();
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -86,8 +89,10 @@ using namespace facebook::react;
   return self;
 }
 
-- (void)updateProps:(const Props::Shared&)props oldProps:(const Props::Shared&)oldProps {
-  const auto& next = *std::static_pointer_cast<const flypath::ScreenProps>(props);
+- (void)updateProps:(const Props::Shared&)props
+           oldProps:(const Props::Shared&)oldProps {
+  const auto& next =
+      *std::static_pointer_cast<const flypath::ScreenProps>(props);
 
   _screenKey = [NSString stringWithUTF8String:next.screenKey.c_str()];
   _transitionMode = [NSString stringWithUTF8String:next.transition.c_str()];
@@ -108,7 +113,8 @@ using namespace facebook::react;
 }
 
 - (void)applyPendingMetrics {
-  if (!_hasPendingMetrics) return;
+  if (!_hasPendingMetrics)
+    return;
   _hasPendingMetrics = NO;
   [super updateLayoutMetrics:_pendingMetrics oldLayoutMetrics:_pendingMetrics];
 }
@@ -123,13 +129,16 @@ using namespace facebook::react;
 
 @implementation FlypathScreenFade
 
-- (NSTimeInterval)transitionDuration:(id<UIViewControllerContextTransitioning>)context {
+- (NSTimeInterval)transitionDuration:
+    (id<UIViewControllerContextTransitioning>)context {
   return _duration;
 }
 
 - (void)animateTransition:(id<UIViewControllerContextTransitioning>)context {
-  UIViewController* to = [context viewControllerForKey:UITransitionContextToViewControllerKey];
-  UIViewController* from = [context viewControllerForKey:UITransitionContextFromViewControllerKey];
+  UIViewController* to =
+      [context viewControllerForKey:UITransitionContextToViewControllerKey];
+  UIViewController* from =
+      [context viewControllerForKey:UITransitionContextFromViewControllerKey];
   if (to == nil) {
     [context completeTransition:!context.transitionWasCancelled];
     return;
@@ -187,12 +196,14 @@ using namespace facebook::react;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider {
-  return concreteComponentDescriptorProvider<flypath::ScreenStackComponentDescriptor>();
+  return concreteComponentDescriptorProvider<
+      flypath::ScreenStackComponentDescriptor>();
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
   if (self = [super initWithFrame:frame]) {
-    static const auto defaults = std::make_shared<const flypath::ScreenStackProps>();
+    static const auto defaults =
+        std::make_shared<const flypath::ScreenStackProps>();
     _props = defaults;
     _children = [NSMutableArray array];
     _retired = [NSMutableArray array];
@@ -201,7 +212,8 @@ using namespace facebook::react;
     _dismissed = [NSMutableSet set];
     _dismissedAt = @[];
     _active = YES;
-    _navigation = [[UINavigationController alloc] initWithNibName:nil bundle:nil];
+    _navigation = [[UINavigationController alloc] initWithNibName:nil
+                                                           bundle:nil];
     _navigation.navigationBarHidden = YES;
     _navigation.delegate = self;
   }
@@ -210,47 +222,57 @@ using namespace facebook::react;
 
 #pragma mark - props
 
-- (void)updateProps:(const Props::Shared&)props oldProps:(const Props::Shared&)oldProps {
-  const auto& next = *std::static_pointer_cast<const flypath::ScreenStackProps>(props);
+- (void)updateProps:(const Props::Shared&)props
+           oldProps:(const Props::Shared&)oldProps {
+  const auto& next =
+      *std::static_pointer_cast<const flypath::ScreenStackProps>(props);
   BOOL active = next.active;
   [super updateProps:props oldProps:oldProps];
-  if (active == _active) return;
+  if (active == _active)
+    return;
   _active = active;
   _navigation.interactivePopGestureRecognizer.enabled = active;
 }
 
 #pragma mark - children
 
-- (void)mountChildComponentView:(UIView<RCTComponentViewProtocol>*)childComponentView
+- (void)mountChildComponentView:
+            (UIView<RCTComponentViewProtocol>*)childComponentView
                           index:(NSInteger)index {
   if (![childComponentView isKindOfClass:FlypathScreenComponentView.class]) {
     [super mountChildComponentView:childComponentView index:index];
     return;
   }
 
-  FlypathScreenComponentView* screen = (FlypathScreenComponentView*)childComponentView;
+  FlypathScreenComponentView* screen =
+      (FlypathScreenComponentView*)childComponentView;
   screen.stack = self;
-  FlypathScreenController* controller = [[FlypathScreenController alloc] initWithScreen:screen];
+  FlypathScreenController* controller =
+      [[FlypathScreenController alloc] initWithScreen:screen];
   NSUInteger at = MIN((NSUInteger)MAX(index, 0), _children.count);
   [_children insertObject:controller atIndex:at];
   [self setNeedsReconcile];
 }
 
-- (void)unmountChildComponentView:(UIView<RCTComponentViewProtocol>*)childComponentView
+- (void)unmountChildComponentView:
+            (UIView<RCTComponentViewProtocol>*)childComponentView
                             index:(NSInteger)index {
   if (![childComponentView isKindOfClass:FlypathScreenComponentView.class]) {
     [super unmountChildComponentView:childComponentView index:index];
     return;
   }
 
-  FlypathScreenComponentView* screen = (FlypathScreenComponentView*)childComponentView;
+  FlypathScreenComponentView* screen =
+      (FlypathScreenComponentView*)childComponentView;
   FlypathScreenController* controller = nil;
   for (FlypathScreenController* candidate in _children) {
-    if (candidate.screen != screen) continue;
+    if (candidate.screen != screen)
+      continue;
     controller = candidate;
     break;
   }
-  if (controller == nil) return;
+  if (controller == nil)
+    return;
 
   [_children removeObject:controller];
   [_retired addObject:controller];
@@ -263,21 +285,26 @@ using namespace facebook::react;
 
 - (void)setNeedsReconcile {
   _dirty = YES;
-  if (_scheduled) return;
+  if (_scheduled)
+    return;
   _scheduled = YES;
   __weak FlypathScreenStackComponentView* weakSelf = self;
   dispatch_async(dispatch_get_main_queue(), ^{
     FlypathScreenStackComponentView* strongSelf = weakSelf;
-    if (strongSelf == nil) return;
+    if (strongSelf == nil)
+      return;
     strongSelf->_scheduled = NO;
     [strongSelf reconcileIfNeeded];
   });
 }
 
 - (void)reconcileIfNeeded {
-  if (!_dirty) return;
-  if (self.window == nil) return;
-  if (_transitioning) return;
+  if (!_dirty)
+    return;
+  if (self.window == nil)
+    return;
+  if (_transitioning)
+    return;
   _dirty = NO;
   [self reconcile];
 }
@@ -289,7 +316,8 @@ using namespace facebook::react;
 
 - (void)didMoveToWindow {
   [super didMoveToWindow];
-  if (self.window == nil) return;
+  if (self.window == nil)
+    return;
   [self attach];
   [self reconcileIfNeeded];
 }
@@ -300,16 +328,19 @@ using namespace facebook::react;
 }
 
 - (void)attach {
-  if (_navigation.parentViewController != nil) return;
+  if (_navigation.parentViewController != nil)
+    return;
 
   UIViewController* parent = nil;
   for (UIResponder* responder = self.nextResponder; responder != nil;
        responder = responder.nextResponder) {
-    if (![responder isKindOfClass:UIViewController.class]) continue;
+    if (![responder isKindOfClass:UIViewController.class])
+      continue;
     parent = (UIViewController*)responder;
     break;
   }
-  if (parent == nil) return;
+  if (parent == nil)
+    return;
 
   [parent addChildViewController:_navigation];
   _navigation.view.frame = self.bounds;
@@ -339,56 +370,69 @@ using namespace facebook::react;
 
 - (void)reconcile {
   [self attach];
-  if (_navigation.parentViewController == nil) return;
+  if (_navigation.parentViewController == nil)
+    return;
 
   [self forgetDeclinedDismissals];
 
   NSMutableArray<FlypathScreenController*>* target = [NSMutableArray array];
   for (FlypathScreenController* controller in _children) {
-    if ([_dismissed containsObject:controller.screen.screenKey]) continue;
+    if ([_dismissed containsObject:controller.screen.screenKey])
+      continue;
     [target addObject:controller];
   }
-  if (target.count == 0) return;
+  if (target.count == 0)
+    return;
 
   NSUInteger split = target.count;
   for (NSUInteger at = 1; at < target.count; at += 1) {
-    if (!target[at].screen.modal) continue;
+    if (!target[at].screen.modal)
+      continue;
     split = at;
     break;
   }
 
   [self syncPushed:[target subarrayWithRange:NSMakeRange(0, split)]];
-  [self syncPresented:[target subarrayWithRange:NSMakeRange(split, target.count - split)]];
+  [self
+      syncPresented:[target subarrayWithRange:NSMakeRange(split, target.count -
+                                                                     split)]];
   [self forgetRetired];
 }
 
 - (void)forgetRetired {
-  if (_transitioning) return;
+  if (_transitioning)
+    return;
   for (FlypathScreenController* controller in [_retired copy]) {
-    if ([_navigation.viewControllers containsObject:controller]) continue;
-    if (controller.presentingViewController != nil) continue;
+    if ([_navigation.viewControllers containsObject:controller])
+      continue;
+    if (controller.presentingViewController != nil)
+      continue;
     [controller stopReceivingTouches];
     [_retired removeObject:controller];
   }
 }
 
 - (void)forgetDeclinedDismissals {
-  if (_dismissed.count == 0) return;
+  if (_dismissed.count == 0)
+    return;
 
   NSMutableArray<NSString*>* keys = [NSMutableArray array];
   for (FlypathScreenController* controller in _children) {
     [keys addObject:controller.screen.screenKey];
   }
-  if ([keys isEqualToArray:_dismissedAt]) return;
+  if ([keys isEqualToArray:_dismissedAt])
+    return;
 
   for (NSString* key in [_dismissed copy]) {
-    if (![keys containsObject:key]) continue;
+    if (![keys containsObject:key])
+      continue;
     [_dismissed removeObject:key];
   }
 }
 
 - (BOOL)animatesScreen:(FlypathScreenComponentView*)screen {
-  if (self.window == nil) return NO;
+  if (self.window == nil)
+    return NO;
   return ![screen.transitionMode isEqualToString:@"none"];
 }
 
@@ -408,14 +452,16 @@ using namespace facebook::react;
 
   if (started && prefix && target.count == current.count + 1) {
     FlypathScreenController* pushed = target.lastObject;
-    [_navigation pushViewController:pushed animated:[self animatesScreen:pushed.screen]];
+    [_navigation pushViewController:pushed
+                           animated:[self animatesScreen:pushed.screen]];
     return;
   }
 
   if (started && prefix && target.count + 1 == current.count) {
     UIViewController* leaving = current.lastObject;
-    BOOL animated = [leaving isKindOfClass:FlypathScreenController.class] &&
-                    [self animatesScreen:((FlypathScreenController*)leaving).screen];
+    BOOL animated =
+        [leaving isKindOfClass:FlypathScreenController.class] &&
+        [self animatesScreen:((FlypathScreenController*)leaving).screen];
     [_navigation popToViewController:target.lastObject animated:animated];
     return;
   }
@@ -432,8 +478,10 @@ using namespace facebook::react;
       presenter = controller;
       continue;
     }
-    if (shown != nil) break;
-    if (presenter.isBeingDismissed || presenter.isBeingPresented) return;
+    if (shown != nil)
+      break;
+    if (presenter.isBeingDismissed || presenter.isBeingPresented)
+      return;
 
     controller.modalPresentationStyle = UIModalPresentationPageSheet;
     [controller startReceivingTouches];
@@ -447,7 +495,8 @@ using namespace facebook::react;
   [_presented setArray:target];
 
   UIViewController* extra = presenter.presentedViewController;
-  if (extra == nil || presenter.isBeingDismissed) return;
+  if (extra == nil || presenter.isBeingDismissed)
+    return;
 
   __weak FlypathScreenStackComponentView* weakSelf = self;
   [presenter dismissViewControllerAnimated:self.window != nil
@@ -462,11 +511,14 @@ using namespace facebook::react;
   NSMutableArray<NSString*>* keys = [NSMutableArray array];
 
   for (FlypathScreenController* controller in [_pushed copy]) {
-    if ([_navigation.viewControllers containsObject:controller]) continue;
+    if ([_navigation.viewControllers containsObject:controller])
+      continue;
     [_pushed removeObject:controller];
-    if (![_children containsObject:controller]) continue;
+    if (![_children containsObject:controller])
+      continue;
     NSString* key = controller.screen.screenKey;
-    if ([_dismissed containsObject:key]) continue;
+    if ([_dismissed containsObject:key])
+      continue;
     [_dismissed addObject:key];
     [keys addObject:key];
   }
@@ -475,7 +527,8 @@ using namespace facebook::react;
 }
 
 - (void)emitPopped:(NSArray<NSString*>*)keys {
-  if (keys.count == 0) return;
+  if (keys.count == 0)
+    return;
 
   NSMutableArray<NSString*>* snapshot = [NSMutableArray array];
   for (FlypathScreenController* controller in _children) {
@@ -483,10 +536,13 @@ using namespace facebook::react;
   }
   _dismissedAt = snapshot;
 
-  if (!_eventEmitter) return;
+  if (!_eventEmitter)
+    return;
   folly::dynamic list = folly::dynamic::array();
-  for (NSString* key in keys) list.push_back(std::string(key.UTF8String));
-  _eventEmitter->dispatchEvent("popped", folly::dynamic::object("keys", std::move(list)),
+  for (NSString* key in keys)
+    list.push_back(std::string(key.UTF8String));
+  _eventEmitter->dispatchEvent("popped",
+                               folly::dynamic::object("keys", std::move(list)),
                                RawEvent::Category::Discrete);
 }
 
@@ -515,13 +571,16 @@ using namespace facebook::react;
 }
 
 - (id<UIViewControllerAnimatedTransitioning>)
-               navigationController:(UINavigationController*)navigationController
+               navigationController:
+                   (UINavigationController*)navigationController
     animationControllerForOperation:(UINavigationControllerOperation)operation
                  fromViewController:(UIViewController*)fromViewController
                    toViewController:(UIViewController*)toViewController {
-  UIViewController* subject =
-      operation == UINavigationControllerOperationPush ? toViewController : fromViewController;
-  if (![subject isKindOfClass:FlypathScreenController.class]) return nil;
+  UIViewController* subject = operation == UINavigationControllerOperationPush
+                                  ? toViewController
+                                  : fromViewController;
+  if (![subject isKindOfClass:FlypathScreenController.class])
+    return nil;
 
   NSString* mode = ((FlypathScreenController*)subject).screen.transitionMode;
   if ([mode isEqualToString:@"fade"]) {
@@ -540,23 +599,32 @@ using namespace facebook::react;
 #pragma mark - UIGestureRecognizerDelegate
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer*)gestureRecognizer {
-  if (gestureRecognizer != _navigation.interactivePopGestureRecognizer) return YES;
-  if (!_active || _transitioning) return NO;
-  if (_navigation.viewControllers.count < 2) return NO;
-  if (_navigation.presentedViewController != nil) return NO;
-  FlypathScreenController* top = (FlypathScreenController*)_navigation.viewControllers.lastObject;
-  if (![top isKindOfClass:FlypathScreenController.class]) return NO;
-  if (!top.screen.gestureEnabled) return NO;
+  if (gestureRecognizer != _navigation.interactivePopGestureRecognizer)
+    return YES;
+  if (!_active || _transitioning)
+    return NO;
+  if (_navigation.viewControllers.count < 2)
+    return NO;
+  if (_navigation.presentedViewController != nil)
+    return NO;
+  FlypathScreenController* top =
+      (FlypathScreenController*)_navigation.viewControllers.lastObject;
+  if (![top isKindOfClass:FlypathScreenController.class])
+    return NO;
+  if (!top.screen.gestureEnabled)
+    return NO;
   [self cancelReactTouches];
   return YES;
 }
 
 - (void)cancelReactTouches {
   Class handler = NSClassFromString(@"RCTSurfaceTouchHandler");
-  if (handler == nil) return;
+  if (handler == nil)
+    return;
   for (UIView* view = self; view != nil; view = view.superview) {
     for (UIGestureRecognizer* recognizer in view.gestureRecognizers) {
-      if (![recognizer isKindOfClass:handler]) continue;
+      if (![recognizer isKindOfClass:handler])
+        continue;
       recognizer.enabled = NO;
       recognizer.enabled = YES;
     }
@@ -564,24 +632,29 @@ using namespace facebook::react;
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer
-    shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer*)other {
+    shouldRecognizeSimultaneouslyWithGestureRecognizer:
+        (UIGestureRecognizer*)other {
   return NO;
 }
 
 #pragma mark - UIAdaptivePresentationControllerDelegate
 
-- (void)presentationControllerDidDismiss:(UIPresentationController*)presentationController {
+- (void)presentationControllerDidDismiss:
+    (UIPresentationController*)presentationController {
   UIViewController* dismissed = presentationController.presentedViewController;
-  if (![dismissed isKindOfClass:FlypathScreenController.class]) return;
+  if (![dismissed isKindOfClass:FlypathScreenController.class])
+    return;
 
   FlypathScreenController* controller = (FlypathScreenController*)dismissed;
   [controller stopReceivingTouches];
   [_presented removeObject:controller];
   [_retired removeObject:controller];
-  if (![_children containsObject:controller]) return;
+  if (![_children containsObject:controller])
+    return;
 
   NSString* key = controller.screen.screenKey;
-  if ([_dismissed containsObject:key]) return;
+  if ([_dismissed containsObject:key])
+    return;
   [_dismissed addObject:key];
   [self emitPopped:@[ key ]];
 }

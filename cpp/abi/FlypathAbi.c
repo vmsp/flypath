@@ -1,3 +1,5 @@
 #include "FlypathAbi.h"
 
-int flypath_abi_version(void) { return 1; }
+int flypath_abi_version(void) {
+  return 1;
+}

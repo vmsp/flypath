@@ -17,7 +17,8 @@ class FlypathModule : public facebook::react::TurboModule {
   static facebook::jsi::Value installMethod(
       facebook::jsi::Runtime& runtime,
       facebook::react::TurboModule& turboModule,
-      const facebook::jsi::Value* args, size_t count);
+      const facebook::jsi::Value* args,
+      size_t count);
 
   static std::shared_ptr<facebook::react::TurboModule> provider(
       const std::string& name,

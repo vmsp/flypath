@@ -32,13 +32,15 @@ In* Scope::wrap(const folly::dynamic* value) {
 
 const char* Scope::text(std::string&& value, size_t* length) {
   strings_.push_back(std::move(value));
-  if (length != nullptr) *length = strings_.back().size();
+  if (length != nullptr)
+    *length = strings_.back().size();
   return strings_.back().c_str();
 }
 
 const uint8_t* Scope::bytes(std::vector<uint8_t>&& value, size_t* length) {
   buffers_.push_back(std::move(value));
-  if (length != nullptr) *length = buffers_.back().size();
+  if (length != nullptr)
+    *length = buffers_.back().size();
   return buffers_.back().data();
 }
 
@@ -103,7 +105,8 @@ folly::dynamic toDynamic(const Out& out) {
       return folly::dynamic::array();
     case Out::Kind::Array: {
       folly::dynamic array = folly::dynamic::array();
-      for (const Out& item : out.items) array.push_back(toDynamic(item));
+      for (const Out& item : out.items)
+        array.push_back(toDynamic(item));
       return array;
     }
     case Out::Kind::Object: {
@@ -129,7 +132,9 @@ const In* in(FlypathValueRef value) {
   return reinterpret_cast<const In*>(value);
 }
 
-const folly::dynamic* dyn(const In* node) { return node->dynamic; }
+const folly::dynamic* dyn(const In* node) {
+  return node->dynamic;
+}
 
 }  // namespace
 
@@ -137,14 +142,17 @@ extern "C" {
 
 size_t flypath_count(FlypathValueRef value) {
   const In* node = in(value);
-  if (node->source == Source::Args) return node->count;
+  if (node->source == Source::Args)
+    return node->count;
   if (node->source == Source::Dynamic) {
     const folly::dynamic* item = dyn(node);
     return item != nullptr && item->isArray() ? item->size() : 0;
   }
-  if (!node->values->isObject()) return 0;
+  if (!node->values->isObject())
+    return 0;
   facebook::jsi::Object object = node->values->getObject(*node->runtime);
-  if (!object.isArray(*node->runtime)) return 0;
+  if (!object.isArray(*node->runtime))
+    return 0;
   return object.getArray(*node->runtime).size(*node->runtime);
 }
 
@@ -204,9 +212,12 @@ double flypath_number(FlypathValueRef value) {
   const In* node = in(value);
   if (node->source == Source::Dynamic) {
     const folly::dynamic* item = dyn(node);
-    if (item == nullptr) return 0;
-    if (item->isDouble()) return item->getDouble();
-    if (item->isInt()) return static_cast<double>(item->getInt());
+    if (item == nullptr)
+      return 0;
+    if (item->isDouble())
+      return item->getDouble();
+    if (item->isInt())
+      return static_cast<double>(item->getInt());
     return 0;
   }
   const facebook::jsi::Value& item = *node->values;
@@ -223,16 +234,19 @@ const char* flypath_string(FlypathValueRef value, size_t* length) {
                              length);
   }
   const facebook::jsi::Value& item = *node->values;
-  if (!item.isString()) return node->scope->text(std::string(), length);
+  if (!item.isString())
+    return node->scope->text(std::string(), length);
   return node->scope->text(item.getString(*node->runtime).utf8(*node->runtime),
                            length);
 }
 
 const uint8_t* flypath_bytes(FlypathValueRef value, size_t* length) {
   const In* node = in(value);
-  if (node->source == Source::Dynamic) return node->scope->bytes({}, length);
+  if (node->source == Source::Dynamic)
+    return node->scope->bytes({}, length);
   const facebook::jsi::Value& item = *node->values;
-  if (!item.isObject()) return node->scope->bytes({}, length);
+  if (!item.isObject())
+    return node->scope->bytes({}, length);
   facebook::jsi::Object object = item.getObject(*node->runtime);
   if (!object.isArrayBuffer(*node->runtime)) {
     return node->scope->bytes({}, length);

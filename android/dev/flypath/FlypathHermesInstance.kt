@@ -6,13 +6,11 @@ import com.facebook.react.runtime.JSRuntimeFactory
 import com.facebook.soloader.SoLoader
 
 public class FlypathHermesInstance : JSRuntimeFactory(initHybrid()) {
-    public companion object {
-        @JvmStatic
-        @DoNotStrip
-        protected external fun initHybrid(): HybridData
+  public companion object {
+    @JvmStatic @DoNotStrip protected external fun initHybrid(): HybridData
 
-        init {
-            SoLoader.loadLibrary("appmodules")
-        }
+    init {
+      SoLoader.loadLibrary("appmodules")
     }
+  }
 }

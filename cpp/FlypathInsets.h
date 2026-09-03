@@ -42,12 +42,14 @@ class FlypathInsetsModule
   static facebook::jsi::Value getInsetsMethod(
       facebook::jsi::Runtime& runtime,
       facebook::react::TurboModule& turboModule,
-      const facebook::jsi::Value* args, size_t count);
+      const facebook::jsi::Value* args,
+      size_t count);
 
   static facebook::jsi::Value observeMethod(
       facebook::jsi::Runtime& runtime,
       facebook::react::TurboModule& turboModule,
-      const facebook::jsi::Value* args, size_t count);
+      const facebook::jsi::Value* args,
+      size_t count);
 
   std::shared_ptr<facebook::jsi::Function> listener_;
 };

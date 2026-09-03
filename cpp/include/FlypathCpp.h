@@ -130,13 +130,15 @@ class Promise {
     }
 
     void flush() {
-      if (sent || ref == nullptr) return;
+      if (sent || ref == nullptr)
+        return;
       if (error.has_value()) {
         sent = true;
         flypath_promise_reject(ref, error->data(), error->size());
         return;
       }
-      if (!value.has_value()) return;
+      if (!value.has_value())
+        return;
       sent = true;
       encode(flypath_promise_out(ref), *value);
       flypath_promise_resolve(ref);
@@ -184,13 +186,15 @@ class Promise<void> {
     }
 
     void flush() {
-      if (sent || ref == nullptr) return;
+      if (sent || ref == nullptr)
+        return;
       if (error.has_value()) {
         sent = true;
         flypath_promise_reject(ref, error->data(), error->size());
         return;
       }
-      if (!done) return;
+      if (!done)
+        return;
       sent = true;
       flypath_promise_resolve(ref);
     }

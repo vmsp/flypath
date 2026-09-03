@@ -55,8 +55,8 @@
   "scripts": {
     "build": "tsc -b",
     "dev": "tsc -b --watch",
-    "fmt": "oxfmt && git ls-files -co --exclude-standard -z '*.c' '*.h' '*.cpp' '*.hpp' '*.m' '*.mm' | xargs -0 clang-format -i && git ls-files -co --exclude-standard -z '*.swift' | xargs -0 swift format --in-place --parallel",
-    "fmt:check": "oxfmt --check && git ls-files -co --exclude-standard -z '*.c' '*.h' '*.cpp' '*.hpp' '*.m' '*.mm' | xargs -0 clang-format --dry-run -Werror && git ls-files -co --exclude-standard -z '*.swift' | xargs -0 swift format lint --strict --parallel",
+    "fmt": "oxfmt && git ls-files -co --exclude-standard -z '*.c' '*.h' '*.cpp' '*.hpp' '*.m' '*.mm' | xargs -0 clang-format -i && git ls-files -co --exclude-standard -z '*.swift' | xargs -0 swift format --in-place --parallel && git ls-files -co --exclude-standard -z '*.kt' '*.kts' | xargs -0 ktfmt --google-style --enable-editorconfig --set-exit-if-changed --quiet",
+    "fmt:check": "oxfmt --check && git ls-files -co --exclude-standard -z '*.c' '*.h' '*.cpp' '*.hpp' '*.m' '*.mm' | xargs -0 clang-format --dry-run -Werror && git ls-files -co --exclude-standard -z '*.swift' | xargs -0 swift format lint --strict --parallel && git ls-files -co --exclude-standard -z '*.kt' '*.kts' | xargs -0 ktfmt --dry-run --google-style --enable-editorconfig --set-exit-if-changed --quiet",
     "lint": "knip",
     "lint:fix": "knip --fix",
     "knip": "knip"

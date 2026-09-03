@@ -5,11 +5,13 @@ import UIKit
 class AppDelegate: FlypathAppDelegate {
   override func application(
     _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    didFinishLaunchingWithOptions launchOptions: [UIApplication
+      .LaunchOptionsKey: Any]? = nil
   ) -> Bool {
     self.moduleName = "main"
     self.initialProps = [:]
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    return super.application(
+      application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   override func sourceURL(for bridge: RCTBridge) -> URL? {
@@ -18,7 +20,10 @@ class AppDelegate: FlypathAppDelegate {
 
   override func bundleURL() -> URL? {
     #if DEBUG
-      return URL(string: "http://localhost:__FLYPATH_PORT__/index.bundle?platform=ios&dev=true")
+      return URL(
+        string:
+          "http://localhost:__FLYPATH_PORT__/index.bundle?platform=ios&dev=true"
+      )
     #else
       return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
     #endif

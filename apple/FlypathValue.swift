@@ -15,7 +15,9 @@ public struct FlypathValue {
   public var string: String {
     var length = 0
     guard let pointer = flypath_string(ref, &length) else { return "" }
-    return String(decoding: UnsafeRawBufferPointer(start: pointer, count: length), as: UTF8.self)
+    return String(
+      decoding: UnsafeRawBufferPointer(start: pointer, count: length),
+      as: UTF8.self)
   }
 
   public var bytes: [UInt8] {
