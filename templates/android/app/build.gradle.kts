@@ -1,7 +1,6 @@
 plugins {
   id("com.android.application")
   id("com.facebook.react")
-  id("org.jetbrains.kotlin.plugin.compose") version "2.2.10"
 }
 
 react {
@@ -16,10 +15,10 @@ android {
 
   defaultConfig {
     applicationId = "__FLYPATH_PACKAGE__"
-    minSdk = 24
+    minSdk = __FLYPATH_MIN_SDK__
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = __FLYPATH_BUILD__
+    versionName = "__FLYPATH_VERSION__"
   }
 
   signingConfigs {
@@ -41,17 +40,6 @@ android {
     }
   }
 
-  buildFeatures {
-    compose = true
-  }
-
-  sourceSets {
-    getByName("main") {
-      kotlin.directories.add("__FLYPATH_ANDROID_DIR__")
-      __FLYPATH_KOTLIN_SRC_DIRS__
-    }
-  }
-
   externalNativeBuild {
     cmake {
       path = file("src/main/jni/CMakeLists.txt")
@@ -67,10 +55,8 @@ android {
 dependencies {
   implementation("com.facebook.react:react-android")
   implementation("com.facebook.react:hermes-android")
-  implementation(platform("androidx.compose:compose-bom:2025.06.01"))
-  implementation("androidx.compose.runtime:runtime")
-  implementation("androidx.compose.ui:ui")
-  implementation("androidx.compose.foundation:foundation")
-  implementation("androidx.compose.material3:material3")
-  implementation("androidx.activity:activity-compose:1.10.1")
+  implementation(project(":flypath"))
+  implementation(project(":native"))
 }
+
+__FLYPATH_APP_GRADLE__

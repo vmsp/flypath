@@ -10,4 +10,5 @@ buildscript {
 
 plugins {
   id("com.facebook.react.rootproject")
+  id("org.jetbrains.kotlin.plugin.compose") version "2.2.10" apply false
 }

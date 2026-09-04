@@ -2,12 +2,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { loadOptions } from "./config.ts";
 import { run } from "./exec.ts";
 import { generateAndroidRegistry } from "./generate-cpp.ts";
 import { generateCxxAdapters } from "./generate-cxx.ts";
 import { link, list } from "./link.ts";
 import { componentName } from "./manifest.ts";
-import { cxxSources, kotlinSourceDirs, scaffoldNative } from "./scaffold.ts";
+import { cxxSources, scaffoldAndroid, scaffoldNative } from "./scaffold.ts";
+import type { ProjectContext } from "./template.ts";
 import {
   materialize,
   outputDir,
@@ -145,6 +147,30 @@ async function ensureKeystore(root: string, target: string): Promise<void> {
   );
 }
 
+function overlay(context: ProjectContext, name: string): string {
+  const file = path.join(context.root, "android", name);
+  return fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
+}
+
+function mergeProperties(context: ProjectContext, target: string): void {
+  const extra = overlay(context, "gradle.properties");
+  if (extra === "") return;
+
+  const file = path.join(target, "gradle.properties");
+  const entries = new Map<string, string>();
+  for (const source of [fs.readFileSync(file, "utf8"), extra]) {
+    for (const line of source.split("\n")) {
+      const at = line.indexOf("=");
+      if (at === -1 || line.trimStart().startsWith("#")) continue;
+      entries.set(line.slice(0, at).trim(), line.slice(at + 1).trim());
+    }
+  }
+  fs.writeFileSync(
+    file,
+    `${[...entries].map(([key, value]) => `${key}=${value}`).join("\n")}\n`,
+  );
+}
+
 function ensureWrapper(source: string, target: string): void {
   fs.mkdirSync(path.join(target, "gradle", "wrapper"), { recursive: true });
   for (const file of ["gradle-wrapper.jar", "gradle-wrapper.properties"]) {
@@ -159,21 +185,18 @@ function ensureWrapper(source: string, target: string): void {
 
 export async function runAndroid(options: AndroidOptions = {}): Promise<void> {
   const root = options.root ?? process.cwd();
-  const port = options.port ?? 8081;
-  const context = projectContext(root, port);
+  const configured = await loadOptions(root);
+  const port = options.port ?? configured.port ?? 8081;
+  const context = projectContext(root, port, configured);
   const target = outputDir(root, "android");
 
+  scaffoldAndroid(context);
   const manifest = scaffoldNative(context);
   const cxx = manifest.modules.filter((module) => module.cpp !== undefined);
 
   fs.rmSync(target, { recursive: true, force: true });
   materialize("android", target, context, [
-    [
-      "__FLYPATH_KOTLIN_SRC_DIRS__",
-      kotlinSourceDirs(root)
-        .map((dir) => `      kotlin.directories.add(${JSON.stringify(dir)})`)
-        .join("\n"),
-    ],
+    ["__FLYPATH_APP_GRADLE__", overlay(context, "app.gradle.kts")],
     [
       "__FLYPATH_VIEW_NAMES__",
       manifest.modules
@@ -202,6 +225,7 @@ export async function runAndroid(options: AndroidOptions = {}): Promise<void> {
     `sdk.dir=${androidHome()}\n`,
   );
 
+  mergeProperties(context, target);
   writeAutolinkingConfig(target, context);
   await ensureKeystore(root, target);
   ensureWrapper(context.gradlePluginDir, target);

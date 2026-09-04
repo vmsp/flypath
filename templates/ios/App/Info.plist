@@ -18,9 +18,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>__FLYPATH_VERSION__</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>__FLYPATH_BUILD__</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true />
 	<key>NSAppTransportSecurity</key>
@@ -38,9 +38,7 @@
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
+__FLYPATH_ORIENTATIONS__
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false />

@@ -3,24 +3,30 @@ import { cac } from "cac";
 
 const cli = cac("flypath");
 
+const port = (value: string | undefined): number | undefined =>
+  value === undefined ? undefined : Number(value);
+
 cli
   .command("dev", "Start the dev server (web, flight payloads, native bundles)")
-  .option("--port <port>", "Port to listen on", { default: 8081 })
+  .option("--port <port>", "Port to listen on")
   .option("--host [host]", "Expose the server on the network")
-  .action(async (options: { port: number; host?: boolean | string }) => {
+  .action(async (options: { port?: string; host?: boolean | string }) => {
     const { createServer } = await import("vite");
     const server = await createServer({
-      server: { port: Number(options.port), host: options.host },
+      server: { port: port(options.port), host: options.host },
     });
     await server.listen();
     server.printUrls();
   });
 
 cli.command("build", "Build for production").action(async () => {
+  const { loadOptions } = await import("./native/config.ts");
   const { scaffoldNative } = await import("./native/scaffold.ts");
   const { projectContext } = await import("./native/template.ts");
+  const root = process.cwd();
   try {
-    scaffoldNative(projectContext(process.cwd(), 8081));
+    const options = await loadOptions(root);
+    scaffoldNative(projectContext(root, options.port ?? 8081, options));
   } catch (error) {
     if (!(error instanceof Error) || !error.message.includes("react-native")) {
       throw error;
@@ -35,18 +41,18 @@ cli.command("build", "Build for production").action(async () => {
 cli
   .command("ios", "Build and launch the iOS shell")
   .option("--device <name>", "Simulator device name")
-  .option("--port <port>", "Dev server port", { default: 8081 })
-  .action(async (options: { device?: string; port: number }) => {
+  .option("--port <port>", "Dev server port")
+  .action(async (options: { device?: string; port?: string }) => {
     const { runIos } = await import("./native/ios.ts");
-    await runIos({ device: options.device, port: Number(options.port) });
+    await runIos({ device: options.device, port: port(options.port) });
   });
 
 cli
   .command("android", "Build and launch the Android shell")
-  .option("--port <port>", "Dev server port", { default: 8081 })
-  .action(async (options: { port: number }) => {
+  .option("--port <port>", "Dev server port")
+  .action(async (options: { port?: string }) => {
     const { runAndroid } = await import("./native/android.ts");
-    await runAndroid({ port: Number(options.port) });
+    await runAndroid({ port: port(options.port) });
   });
 
 cli.help();

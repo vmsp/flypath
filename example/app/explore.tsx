@@ -20,6 +20,19 @@ export default async function Explore() {
         }}
       >
         <h1 style={{ color: colors.text, fontSize: 24 }}>Explore</h1>
+        <a
+          href={href("/camera")}
+          style={{
+            backgroundColor: colors.primary,
+            borderRadius: 10,
+            color: "#fff",
+            padding: 14,
+            textAlign: "center",
+            textDecorationLine: "none",
+          }}
+        >
+          open the camera
+        </a>
         <div
           style={{
             display: "flex",

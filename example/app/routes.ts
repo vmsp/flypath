@@ -33,6 +33,9 @@ const config = routes({ middleware: [request] }, [
           ],
         ),
         route("login", () => import("./login.tsx"), { safeArea: ["top"] }),
+        route("camera", () => import("./viewfinder.tsx"), {
+          safeArea: ["top"],
+        }),
         route("settings", () => import("./settings.tsx"), {
           middleware: [auth],
           safeArea: ["top"],

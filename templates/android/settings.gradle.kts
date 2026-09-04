@@ -19,6 +19,12 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "__FLYPATH_APP_NAME__"
+rootProject.name = "__FLYPATH_PROJECT_NAME__"
+
+include(":flypath")
+
+include(":native")
+
+project(":native").projectDir = file("__FLYPATH_NATIVE_DIR__")
 
 include(":app")

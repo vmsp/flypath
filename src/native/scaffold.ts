@@ -7,7 +7,8 @@ import { generateKotlin } from "./generate-kotlin.ts";
 import { generateSwift } from "./generate-swift.ts";
 import type { NativeManifest } from "./manifest.ts";
 import { buildManifest } from "./manifest.ts";
-import { packageRoot } from "./template.ts";
+import type { ProjectContext } from "./template.ts";
+import { packageRoot, scaffoldTemplate } from "./template.ts";
 
 const GENERATED = "generated";
 
@@ -64,9 +65,19 @@ let package = Package(
 `;
 }
 
+export function scaffoldAndroid(context: ProjectContext): void {
+  scaffoldTemplate("android", nativeDir(context.root, "android"), context, [
+    ["__FLYPATH_NATIVE_NAMESPACE__", `${context.androidPackage}.nativemodules`],
+  ]);
+}
+
+export function scaffoldApple(context: ProjectContext): void {
+  scaffoldTemplate("apple", nativeDir(context.root, "apple"), context);
+}
+
 export type ScaffoldOptions = {
   root: string;
-  appName: string;
+  projectName: string;
 };
 
 export function scaffoldNative(options: ScaffoldOptions): NativeManifest {
@@ -99,7 +110,7 @@ export function scaffoldNative(options: ScaffoldOptions): NativeManifest {
 
   if (platform.length === 0) return manifest;
 
-  const target = appleTargetName(options.appName);
+  const target = appleTargetName(options.projectName);
   const apple = nativeDir(options.root, "apple");
   const sources = path.join(apple, "Sources");
 
@@ -186,9 +197,4 @@ export function cxxSources(root: string): string[] {
     }
   }
   return files.sort();
-}
-
-export function kotlinSourceDirs(root: string): string[] {
-  const kotlin = path.join(nativeDir(root, "android"), "src", "main", "kotlin");
-  return fs.existsSync(kotlin) ? [kotlin] : [];
 }

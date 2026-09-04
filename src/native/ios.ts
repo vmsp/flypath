@@ -2,20 +2,25 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { generateCorePackage } from "./apple.ts";
+import { loadOptions } from "./config.ts";
 import { run } from "./exec.ts";
 import {
   generateAppleComponents,
   generateAppleRegistry,
 } from "./generate-cpp.ts";
 import { generateCxxAdapters } from "./generate-cxx.ts";
+import { formatPlist, mergePlist, parsePlist } from "./plist.ts";
 import {
   appleTargetName,
   cxxSources,
   nativeDir,
+  scaffoldApple,
   scaffoldNative,
   writeSourcekitConfig,
 } from "./scaffold.ts";
+import type { ProjectContext } from "./template.ts";
 import {
+  iosOrientations,
   materialize,
   outputDir,
   packageRoot,
@@ -66,12 +71,38 @@ async function pickSimulator(name?: string): Promise<Simulator> {
   return match;
 }
 
+function applyOverlay(context: ProjectContext, target: string): void {
+  const apple = nativeDir(context.root, "apple");
+  const app = path.join(target, "App");
+
+  fs.rmSync(path.join(app, "Resources"), { recursive: true, force: true });
+  fs.symlinkSync(path.join(apple, "Resources"), path.join(app, "Resources"));
+
+  const plist = path.join(app, "Info.plist");
+  fs.writeFileSync(
+    plist,
+    formatPlist(
+      mergePlist(
+        parsePlist(fs.readFileSync(plist, "utf8")),
+        parsePlist(fs.readFileSync(path.join(apple, "Info.plist"), "utf8")),
+      ),
+    ),
+  );
+
+  fs.copyFileSync(
+    path.join(apple, "App.entitlements"),
+    path.join(app, "App.entitlements"),
+  );
+}
+
 export async function runIos(options: IosOptions = {}): Promise<void> {
   const root = options.root ?? process.cwd();
-  const port = options.port ?? 8081;
-  const context = projectContext(root, port);
+  const configured = await loadOptions(root);
+  const port = options.port ?? configured.port ?? 8081;
+  const context = projectContext(root, port, configured);
   const target = outputDir(root, "ios");
 
+  scaffoldApple(context);
   const manifest = scaffoldNative(context);
   const cxx = manifest.modules.filter((module) => module.cpp !== undefined);
   const platform = manifest.modules.filter(
@@ -79,7 +110,15 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
   );
 
   fs.rmSync(target, { recursive: true, force: true });
-  materialize("ios", target, context);
+  materialize("ios", target, context, [
+    [
+      "__FLYPATH_ORIENTATIONS__",
+      iosOrientations(context)
+        .map((entry) => `\t\t<string>${entry}</string>`)
+        .join("\n"),
+    ],
+  ]);
+  applyOverlay(context, target);
 
   generateCorePackage({
     target,
@@ -87,7 +126,7 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
       platform.length === 0
         ? undefined
         : {
-            name: appleTargetName(context.appName),
+            name: appleTargetName(context.projectName),
             dir: nativeDir(root, "apple"),
           },
     extra: cxx.length === 0 ? [] : cxxSources(root),
@@ -141,6 +180,7 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
 
   const simulator = await pickSimulator(options.device);
   const derived = path.join(target, "derived");
+  const xcconfig = path.join(nativeDir(root, "apple"), "App.xcconfig");
 
   await run(
     "xcodebuild",
@@ -157,6 +197,7 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
       `id=${simulator.udid}`,
       "-derivedDataPath",
       derived,
+      ...(fs.existsSync(xcconfig) ? ["-xcconfig", xcconfig] : []),
       "build",
     ],
     { cwd: target },

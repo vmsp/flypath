@@ -5,6 +5,8 @@ import react from "@vitejs/plugin-react";
 import rsc from "@vitejs/plugin-rsc";
 import type { Plugin, PluginOption } from "vite";
 
+import type { FlypathOptions } from "../native/config.ts";
+import { CONFIG_PLUGIN } from "../native/config.ts";
 import { TAG_DEFAULTS } from "../styles/defaults.ts";
 import { flowStrip } from "./flow.ts";
 import { metroEndpoints } from "./metro-endpoints.ts";
@@ -21,9 +23,7 @@ import { styles } from "./styles.ts";
 
 const distDir = path.dirname(import.meta.dirname);
 
-export type FlypathOptions = {
-  port?: number;
-};
+export type { FlypathOptions } from "../native/config.ts";
 
 export function flypathPaths(): {
   distDir: string;
@@ -110,16 +110,21 @@ function nativeStub(): Plugin {
 
 let resolvedRoot = process.cwd();
 
-function flypathConfig(port: number): Plugin {
+function flypathConfig(options: FlypathOptions, port: number): Plugin {
   return {
-    name: "flypath:config",
+    name: CONFIG_PLUGIN,
+    api: options,
     configResolved(config) {
       resolvedRoot = config.root;
     },
-    config(_userConfig, env) {
+    config(userConfig, env) {
       return {
         appType: "custom" as const,
-        server: { host: true, port, strictPort: true },
+        server: {
+          host: true,
+          port: userConfig.server?.port ?? port,
+          strictPort: true,
+        },
         oxc: { jsx: { importSource: "flypath" } },
         environments:
           env.command === "serve"
@@ -140,7 +145,7 @@ export function flypath(options: FlypathOptions = {}): PluginOption[] {
   const entry = (name: string) => path.join(distDir, "runtime", name);
 
   return [
-    flypathConfig(port),
+    flypathConfig(options, port),
     nativeStub(),
     clientReferences(),
     routes(),
