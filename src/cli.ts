@@ -26,7 +26,7 @@ cli.command("build", "Build for production").action(async () => {
   const root = process.cwd();
   try {
     const options = await loadOptions(root);
-    scaffoldNative(projectContext(root, options.port ?? 8081, options));
+    scaffoldNative(projectContext(root, options.port, options));
   } catch (error) {
     if (!(error instanceof Error) || !error.message.includes("react-native")) {
       throw error;

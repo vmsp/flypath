@@ -98,7 +98,7 @@ function applyOverlay(context: ProjectContext, target: string): void {
 export async function runIos(options: IosOptions = {}): Promise<void> {
   const root = options.root ?? process.cwd();
   const configured = await loadOptions(root);
-  const port = options.port ?? configured.port ?? 8081;
+  const port = options.port ?? configured.port;
   const context = projectContext(root, port, configured);
   const target = outputDir(root, "ios");
 

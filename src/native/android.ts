@@ -186,7 +186,7 @@ function ensureWrapper(source: string, target: string): void {
 export async function runAndroid(options: AndroidOptions = {}): Promise<void> {
   const root = options.root ?? process.cwd();
   const configured = await loadOptions(root);
-  const port = options.port ?? configured.port ?? 8081;
+  const port = options.port ?? configured.port;
   const context = projectContext(root, port, configured);
   const target = outputDir(root, "android");
 

@@ -173,7 +173,7 @@ export function projectContext(
     bundleId: options.ios?.bundleId ?? bundleId,
     androidPackage: options.android?.applicationId ?? bundleId,
     version: options.version ?? marketingVersion(manifest.version),
-    build: options.build ?? 1,
+    build: options.buildNumber ?? 1,
     minSdk: options.android?.minSdk ?? 24,
     deploymentTarget: options.ios?.minimumVersion ?? "16.0",
     orientations: options.ios?.orientations ?? DEFAULT_ORIENTATIONS,

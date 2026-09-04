@@ -3,10 +3,10 @@ import path from "node:path";
 
 import react from "@vitejs/plugin-react";
 import rsc from "@vitejs/plugin-rsc";
-import type { Plugin, PluginOption } from "vite";
+import type { ConfigEnv, Plugin, PluginOption, UserConfig } from "vite";
 
 import type { FlypathOptions } from "../native/config.ts";
-import { CONFIG_PLUGIN } from "../native/config.ts";
+import { CONFIG_PLUGIN, DEFAULT_PORT } from "../native/config.ts";
 import { TAG_DEFAULTS } from "../styles/defaults.ts";
 import { flowStrip } from "./flow.ts";
 import { metroEndpoints } from "./metro-endpoints.ts";
@@ -110,7 +110,7 @@ function nativeStub(): Plugin {
 
 let resolvedRoot = process.cwd();
 
-function flypathConfig(options: FlypathOptions, port: number): Plugin {
+function flypathConfig(options: FlypathOptions): Plugin {
   return {
     name: CONFIG_PLUGIN,
     api: options,
@@ -122,7 +122,7 @@ function flypathConfig(options: FlypathOptions, port: number): Plugin {
         appType: "custom" as const,
         server: {
           host: true,
-          port: userConfig.server?.port ?? port,
+          port: userConfig.server?.port ?? DEFAULT_PORT,
           strictPort: true,
         },
         oxc: { jsx: { importSource: "flypath" } },
@@ -140,12 +140,15 @@ function flypathConfig(options: FlypathOptions, port: number): Plugin {
   };
 }
 
+/**
+ * Flypath's Vite plugins. Only needed to compose flypath into an existing Vite
+ * config; `defineConfig` already includes them.
+ */
 export function flypath(options: FlypathOptions = {}): PluginOption[] {
-  const port = options.port ?? 8081;
   const entry = (name: string) => path.join(distDir, "runtime", name);
 
   return [
-    flypathConfig(options, port),
+    flypathConfig(options),
     nativeStub(),
     clientReferences(),
     routes(),
@@ -166,4 +169,59 @@ export function flypath(options: FlypathOptions = {}): PluginOption[] {
       },
     }),
   ];
+}
+
+export type FlypathConfig = UserConfig & FlypathOptions;
+
+type FlypathConfigExport =
+  | FlypathConfig
+  | Promise<FlypathConfig>
+  | ((env: ConfigEnv) => FlypathConfig | Promise<FlypathConfig>);
+
+function withFlypath(config: FlypathConfig): UserConfig {
+  const { appName, version, buildNumber, bundleId, ios, android, ...vite } =
+    config;
+
+  return {
+    ...vite,
+    plugins: [
+      flypath({ appName, version, buildNumber, bundleId, ios, android }),
+      vite.plugins,
+    ],
+  };
+}
+
+/**
+ * Configuration helper to use in `vite.config.ts`. Automatically adds all
+ * options and plugins needed by flypath.
+ *
+ * ```ts
+ * // vite.config.ts
+ * import { defineConfig } from "flypath/vite";
+ *
+ * export default defineConfig({
+ *   appName: "Example",
+ *   version: "2.1",
+ *   buildNumber: 8,
+ * });
+ * ```
+ */
+export function defineConfig(config: FlypathConfig): UserConfig;
+export function defineConfig(
+  config: Promise<FlypathConfig>,
+): Promise<UserConfig>;
+export function defineConfig(
+  config: (env: ConfigEnv) => FlypathConfig | Promise<FlypathConfig>,
+): (env: ConfigEnv) => Promise<UserConfig>;
+export function defineConfig(
+  config: FlypathConfigExport,
+):
+  | UserConfig
+  | Promise<UserConfig>
+  | ((env: ConfigEnv) => Promise<UserConfig>) {
+  if (typeof config === "function") {
+    return async (env: ConfigEnv) => withFlypath(await config(env));
+  }
+  if (config instanceof Promise) return config.then(withFlypath);
+  return withFlypath(config);
 }
