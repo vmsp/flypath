@@ -28,6 +28,8 @@ declare module "text-encoding" {
 
 declare module "virtual:flypath/styles.css" {}
 
+declare module "virtual:flypath/database" {}
+
 declare module "virtual:vite-rsc/client-references" {
   const references: Record<string, () => Promise<unknown>>;
   export default references;

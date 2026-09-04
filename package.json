@@ -31,6 +31,17 @@
     "templates"
   ],
   "type": "module",
+  "sideEffects": [
+    "./dist/cli.js",
+    "./dist/native/spm-config.js",
+    "./dist/runtime/jsx-dev-runtime.native.js",
+    "./dist/runtime/jsx-runtime.native.js",
+    "./dist/runtime/native-entry.js",
+    "./dist/runtime/platform-store.js",
+    "./dist/runtime/server-entry.js",
+    "./dist/runtime/web-entry.js",
+    "./dist/runtime/web-references.js"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -38,6 +49,9 @@
       "default": "./dist/index.js"
     },
     "./router": "./dist/router/index.js",
+    "./schema": "./dist/schema/index.js",
+    "./sql": "./dist/sql.js",
+    "./migrations": "./dist/migrations/index.js",
     "./vite": "./dist/vite/index.js",
     "./jsx-runtime": {
       "react-server": "./dist/runtime/jsx-runtime.server.js",
@@ -59,7 +73,9 @@
     "fmt:check": "oxfmt --check && git ls-files -co --exclude-standard -z '*.c' '*.h' '*.cpp' '*.hpp' '*.m' '*.mm' | xargs -0 clang-format --dry-run -Werror && git ls-files -co --exclude-standard -z '*.swift' | xargs -0 swift format lint --strict --parallel && git ls-files -co --exclude-standard -z '*.kt' '*.kts' | xargs -0 ktfmt --dry-run --google-style --enable-editorconfig --set-exit-if-changed --quiet",
     "lint": "knip",
     "lint:fix": "knip --fix",
-    "knip": "knip"
+    "knip": "knip",
+    "test": "vitest run --typecheck",
+    "test:watch": "vitest --typecheck"
   },
   "dependencies": {
     "@babel/core": "^7.28.4",
@@ -77,6 +93,7 @@
     "magic-string": "^0.30.21",
     "metro-runtime": "0.87.0",
     "oxc-parser": "^0.146.0",
+    "postgres": "^3.4.9",
     "react-native-fetch-api": "^3.0.0",
     "react-server-dom-webpack": "^19.2.8",
     "rsc-html-stream": "^0.0.8",
@@ -96,7 +113,8 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-native": "0.87.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
   },
   "peerDependencies": {
     "react": "*",

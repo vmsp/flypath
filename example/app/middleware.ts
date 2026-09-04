@@ -9,7 +9,7 @@ export const request: Middleware = async (next) => {
   served += 1;
   const id = `req-${String(served)}`;
   requestId.set(id);
-  visitor.set(userFromSession() ?? null);
+  visitor.set((await userFromSession()) ?? null);
 
   headers.set("x-request-id", id);
   if (isPrefetch()) headers.set("x-request-prefetch", "1");
@@ -19,8 +19,8 @@ export const request: Middleware = async (next) => {
   headers.set("x-request-ms", String(Date.now() - started));
 };
 
-export const auth: Middleware = () => {
-  const user = userFromSession();
+export const auth: Middleware = async () => {
+  const user = await userFromSession();
   if (!user) return navigate("/login");
   session.set(user);
 };

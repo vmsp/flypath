@@ -9,7 +9,7 @@ export default function LikeButton({
   id,
   likes,
 }: {
-  id: string;
+  id: number;
   likes: number;
 }) {
   const [count, setCount] = useState(likes);

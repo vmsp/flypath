@@ -9,6 +9,19 @@ export type Orientation =
   | "landscapeRight";
 
 export type FlypathOptions = {
+  /** Named databases and their pool options. */
+  databases?: Record<
+    string,
+    {
+      url?: string | undefined;
+      max?: number;
+      idleTimeout?: number;
+      connectTimeout?: number;
+      searchPath?: string;
+      ssl?: boolean | "require" | "prefer";
+    }
+  >;
+
   /** User-facing name for the application. */
   appName?: string;
 

@@ -47,7 +47,7 @@ export default async function Feed() {
             </span>
             <span style={{ color: colors.text }}>{post.body}</span>
             <span style={{ color: colors.muted, fontSize: 13 }}>
-              {post.likes} likes
+              {post.likes ?? 0} likes
             </span>
           </a>
         ))}

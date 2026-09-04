@@ -49,6 +49,8 @@ import {
   withSafeArea,
 } from "./router-server.tsx";
 
+import "virtual:flypath/database";
+
 import "virtual:flypath/styles.css";
 
 const FLIGHT_CONTENT_TYPE = "text/x-component;charset=utf-8";

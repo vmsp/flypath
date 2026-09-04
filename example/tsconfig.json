@@ -21,5 +21,5 @@
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["app", "vite.config.ts"]
+  "include": ["app", "db", "vite.config.ts"]
 }

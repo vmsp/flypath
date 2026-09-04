@@ -1,48 +1,54 @@
+import { db, transaction } from "flypath";
+import { count } from "flypath/sql";
+
 export type Post = {
-  id: string;
+  id: number;
   author: string;
   body: string;
-  likes: number;
+  likes: number | null;
 };
 
-const POSTS: Post[] = [
-  {
-    id: "1",
-    author: "ada",
-    body: "The Analytical Engine weaves algebraic patterns.",
-    likes: 128,
-  },
-  {
-    id: "2",
-    author: "grace",
-    body: "A ship in port is safe, but that is not what ships are built for.",
-    likes: 94,
-  },
-  {
-    id: "3",
-    author: "alan",
-    body: "We can only see a short distance ahead.",
-    likes: 61,
-  },
-  {
-    id: "4",
-    author: "barbara",
-    body: "You have to have a feeling for the organism.",
-    likes: 43,
-  },
-];
+const likeCounts = () =>
+  db()
+    .from("likes")
+    .groupBy("postId")
+    .aggregate(count().as("likes"))
+    .as("counts");
+
+const feed = () =>
+  db()
+    .from("posts")
+    .join("users", "users.id", "posts.authorId")
+    .leftJoin(likeCounts(), "counts.postId", "posts.id")
+    .select("posts.id", "users.handle as author", "posts.body", "counts.likes");
 
 export async function listPosts(): Promise<Post[]> {
-  return POSTS;
+  return feed().orderBy("id", "desc").limit(50);
 }
 
-export async function getPost(id: string): Promise<Post | undefined> {
-  return POSTS.find((post) => post.id === id);
+export async function getPost(id: number): Promise<Post | undefined> {
+  return db()
+    .from("posts")
+    .join("users", "users.id", "posts.authorId")
+    .leftJoin(likeCounts(), "counts.postId", "posts.id")
+    .where("posts.id", "=", id)
+    .select("posts.id", "users.handle as author", "posts.body", "counts.likes")
+    .first();
 }
 
-export function addLike(id: string): number {
-  const post = POSTS.find((entry) => entry.id === id);
-  if (!post) return 0;
-  post.likes += 1;
-  return post.likes;
+export async function addLike(postId: number, userId: number): Promise<number> {
+  return transaction(async () => {
+    await db()
+      .into("likes")
+      .insert({ postId, userId })
+      .onConflict(["postId", "userId"])
+      .doNothing();
+
+    const [row] = await db()
+      .from("likes")
+      .where("postId", "=", postId)
+      .aggregate(count().as("likes"));
+
+    return row?.likes ?? 0;
+  });
 }

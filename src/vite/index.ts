@@ -72,6 +72,37 @@ function clientReferences(): Plugin {
   };
 }
 
+const DATABASE = "virtual:flypath/database";
+const DATABASE_ID = `\0${DATABASE}`;
+
+function database(options: FlypathOptions): Plugin {
+  let root = process.cwd();
+
+  return {
+    name: "flypath:database",
+    configResolved(config) {
+      root = config.root;
+    },
+    resolveId(source) {
+      if (source === DATABASE) return DATABASE_ID;
+      return undefined;
+    },
+    load(id) {
+      if (id !== DATABASE_ID) return;
+      const configModule = path.join(distDir, "db", "config.js");
+      const lines = [
+        `import { configureDatabases } from ${JSON.stringify(configModule)};`,
+        `configureDatabases(${JSON.stringify(options.databases ?? {})});`,
+      ];
+      const schema = path.join(root, "db", "schema.ts");
+      if (fs.existsSync(schema)) {
+        lines.unshift(`import ${JSON.stringify(schema)};`);
+      }
+      return lines.join("\n") + "\n";
+    },
+  };
+}
+
 const STUB_ID = "\0flypath:native-stub";
 
 const STUB_EXPORTS = ["BranchesHost", "StackHost"];
@@ -149,6 +180,7 @@ export function flypath(options: FlypathOptions = {}): PluginOption[] {
 
   return [
     flypathConfig(options),
+    database(options),
     nativeStub(),
     clientReferences(),
     routes(),
@@ -179,13 +211,29 @@ type FlypathConfigExport =
   | ((env: ConfigEnv) => FlypathConfig | Promise<FlypathConfig>);
 
 function withFlypath(config: FlypathConfig): UserConfig {
-  const { appName, version, buildNumber, bundleId, ios, android, ...vite } =
-    config;
+  const {
+    appName,
+    version,
+    buildNumber,
+    bundleId,
+    databases,
+    ios,
+    android,
+    ...vite
+  } = config;
 
   return {
     ...vite,
     plugins: [
-      flypath({ appName, version, buildNumber, bundleId, ios, android }),
+      flypath({
+        appName,
+        version,
+        buildNumber,
+        bundleId,
+        databases,
+        ios,
+        android,
+      }),
       vite.plugins,
     ],
   };

@@ -1,9 +1,9 @@
+- Check RouteOptions
 - Release build (Phase 5 of PLAN_CLIENT.md)
 - Lock down dev-only network config in release builds - templates/android/app/src/main/AndroidManifest.xml ships android:usesCleartextTraffic="true" and templates/ios/App/Info.plist ships NSAllowsArbitraryLoads=true, both application-wide. Debug-variant manifest / network security config scoped to the dev host on Android, localhost ATS exception on iOS (arbitrary loads is an App Store review flag)
 - Skew
 - Unify logging on the framework
 - Run on device
-- DB, Migrations
 - Jobs, Crons
 - Email
 - I18N - https://github.com/facebook/fbt, https://generaltranslation.com/

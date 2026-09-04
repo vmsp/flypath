@@ -8,7 +8,8 @@
         "src/runtime/jsx-runtime.{client,native,server}.ts",
         "src/runtime/jsx-dev-runtime.{client,native,server}.ts",
         "src/runtime/{server,ssr,web,native}-entry.tsx",
-        "src/components/native/*.{ts,tsx}"
+        "src/components/native/*.{ts,tsx}",
+        "src/**/*.test-d.ts"
       ],
       "project": ["src/**/*.{ts,tsx}"],
       "ignoreDependencies": [

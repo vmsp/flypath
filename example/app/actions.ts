@@ -1,19 +1,19 @@
 "use server";
 
-import { cookies, navigate, revalidate } from "flypath";
+import { cookies, db, navigate, revalidate } from "flypath";
 
 import { addLike } from "./posts.ts";
 import type { User } from "./session.ts";
-import { findUser, session, SESSION_COOKIE } from "./session.ts";
+import { findUser, session, SESSION_COOKIE, visitor } from "./session.ts";
 
-type Note = { author: string; body: string };
-
-let signatures: string[] = [];
-
-let notes: Note[] = [];
+export type Note = { id: number; author: string; body: string };
 
 export async function entries(): Promise<string[]> {
-  return signatures;
+  const rows = await db()
+    .from("signatures")
+    .select("id", "name")
+    .orderBy("id", "asc");
+  return rows.map((row) => row.name);
 }
 
 export async function sign(
@@ -22,7 +22,7 @@ export async function sign(
 ): Promise<string | null> {
   const name = String(formData.get("name") ?? "").trim();
   if (name === "") return "name required";
-  signatures = [...signatures, name];
+  await db().into("signatures").insert({ name });
   return null;
 }
 
@@ -31,24 +31,28 @@ export async function signForm(formData: FormData): Promise<void> {
 }
 
 export async function listNotes(): Promise<Note[]> {
-  return notes;
+  return db()
+    .from("notes")
+    .join("users", "users.id", "notes.authorId")
+    .select("notes.id", "users.name as author", "notes.body")
+    .orderBy("id", "asc");
 }
 
 export async function postNote(formData: FormData): Promise<void> {
   const body = String(formData.get("note") ?? "").trim();
   if (body === "") return;
-  notes = [...notes, { author: session().name, body }];
+  await db().into("notes").insert({ authorId: session().id, body });
   navigate("back");
 }
 
 export async function signIn(formData: FormData): Promise<void> {
-  const id = String(formData.get("user") ?? "")
+  const handle = String(formData.get("user") ?? "")
     .trim()
     .toLowerCase();
-  const user: User | undefined = findUser(id);
+  const user: User | undefined = await findUser(handle);
   if (!user) return;
 
-  cookies.set(SESSION_COOKIE, user.id, {
+  cookies.set(SESSION_COOKIE, user.handle, {
     httpOnly: true,
     maxAge: 604800,
     path: "/",
@@ -63,7 +67,9 @@ export async function signOut(): Promise<void> {
   navigate("/");
 }
 
-export async function likePost(id: string): Promise<number> {
+export async function likePost(id: number): Promise<number> {
   revalidate.none();
-  return addLike(id);
+  const user = visitor();
+  if (!user) return 0;
+  return addLike(id, user.id);
 }

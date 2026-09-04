@@ -7,7 +7,7 @@ import { getPost } from "./posts.ts";
 import { colors } from "./vars.css.ts";
 
 export default async function PostPage() {
-  const id = params("id");
+  const id = Number(params("id"));
   const post = await getPost(id);
   if (!post) navigate("not-found");
 
@@ -28,7 +28,7 @@ export default async function PostPage() {
         <BackLink>← back</BackLink>
         <h1 style={{ color: colors.text, fontSize: 22 }}>@{post.author}</h1>
         <p style={{ color: colors.text, fontSize: 18 }}>{post.body}</p>
-        <LikeButton id={post.id} likes={post.likes} />
+        <LikeButton id={post.id} likes={post.likes ?? 0} />
         <PostParams />
       </article>
     </>
