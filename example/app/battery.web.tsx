@@ -28,6 +28,7 @@ export function WebView({
     <div style={style}>
       {createElement("iframe", {
         onLoad: () => onLoad?.(url),
+        sandbox: "allow-forms allow-popups allow-scripts",
         src: url,
         style: { border: "none", height: "100%", width: "100%" },
       })}

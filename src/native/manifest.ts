@@ -128,7 +128,7 @@ function posix(value: string): string {
 }
 
 function slugFor(source: string): string {
-  return source.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9]+/g, "_");
+  return source.replace(/\.[^.]+$/, "").replaceAll(/[^A-Za-z0-9]+/g, "_");
 }
 
 export function componentName(slug: string, name: string): string {
@@ -411,6 +411,15 @@ function literalUnion(node: Node | undefined): string[] | undefined {
   return values.length === 0 ? undefined : values;
 }
 
+function unsupportedStatement(file: string, statement: Node): never {
+  throw new ManifestError(
+    'flypath: a "use native" module may only contain "import type", ' +
+      '"export declare" and type declarations',
+    file,
+    statement,
+  );
+}
+
 function declarationOf(statement: Node): Node | undefined {
   if (statement["type"] === "ExportNamedDeclaration") {
     return statement["declaration"] as Node | undefined;
@@ -492,11 +501,12 @@ function parseModule(
     if (type === "ExpressionStatement") continue;
 
     const declaration = declarationOf(statement);
-    const kind = String(declaration?.["type"] ?? "");
+    if (!declaration) unsupportedStatement(file, statement);
+    const kind = String(declaration["type"]);
 
     if (kind === "TSInterfaceDeclaration") {
-      const name = String((declaration?.["id"] as Node)["name"]);
-      const members = ((declaration?.["body"] as Node)["body"] as Node[]) ?? [];
+      const name = String((declaration["id"] as Node)["name"]);
+      const members = ((declaration["body"] as Node)["body"] as Node[]) ?? [];
       propsByName.set(
         name,
         readComponentMembers(members, file, names, `interface "${name}"`),
@@ -509,8 +519,8 @@ function parseModule(
     }
 
     if (kind === "TSTypeAliasDeclaration") {
-      const name = String((declaration?.["id"] as Node)["name"]);
-      const annotation = declaration?.["typeAnnotation"] as Node;
+      const name = String((declaration["id"] as Node)["name"]);
+      const annotation = declaration["typeAnnotation"] as Node;
       const values = literalUnion(annotation);
       if (values) {
         enums.push({ name, values });
@@ -543,7 +553,7 @@ function parseModule(
           statement,
         );
       }
-      const name = String((declaration?.["id"] as Node)["name"]);
+      const name = String((declaration["id"] as Node)["name"]);
       const { result, async } = readResult(
         returnTypeOf(declaration),
         file,
@@ -553,7 +563,7 @@ function parseModule(
       functions.push({
         name,
         params: readParams(
-          (declaration?.["params"] as Node[]) ?? [],
+          (declaration["params"] as Node[]) ?? [],
           file,
           names,
           `${name}()`,
@@ -572,8 +582,7 @@ function parseModule(
           statement,
         );
       }
-      for (const declarator of (declaration?.["declarations"] as Node[]) ??
-        []) {
+      for (const declarator of (declaration["declarations"] as Node[]) ?? []) {
         const id = declarator["id"] as Node;
         const name = String(id["name"]);
         const annotation = annotationOf(id);
@@ -598,12 +607,7 @@ function parseModule(
       continue;
     }
 
-    throw new ManifestError(
-      'flypath: a "use native" module may only contain "import type", ' +
-        '"export declare" and type declarations',
-      file,
-      statement,
-    );
+    unsupportedStatement(file, statement);
   }
 
   for (const entry of pending) {
@@ -708,12 +712,12 @@ function assertNoCaptures(
   file: string,
   name: string,
 ): void {
-  const locals = new Set<string>(
-    ((node["params"] as Node[]) ?? []).flatMap((param) =>
+  const locals = new Set<string>([
+    name,
+    ...((node["params"] as Node[]) ?? []).flatMap((param) =>
       param["type"] === "Identifier" ? [String(param["name"])] : [],
     ),
-  );
-  locals.add(name);
+  ]);
 
   walk(node["body"], (child) => {
     if (child["type"] === "VariableDeclarator") {
@@ -870,7 +874,7 @@ export function buildManifest(root: string): NativeManifest {
   scan(root, files);
 
   const modules: NativeModuleEntry[] = [];
-  for (const file of files.sort()) {
+  for (const file of files.toSorted()) {
     let code: string;
     try {
       code = fs.readFileSync(file, "utf8");

@@ -45,13 +45,12 @@ export function routes(): Plugin {
     try {
       cached = routeManifest(parseRouteTree(target, code));
     } catch (error) {
-      if (error instanceof StaticError) {
-        throw new Error(
-          `${error.message} (${path.relative(root, target)})\n` +
-            "flypath: route options must be statically analyzable",
-        );
-      }
-      throw error;
+      if (!(error instanceof StaticError)) throw error;
+      throw new Error(
+        `${error.message} (${path.relative(root, target)})\n` +
+          "flypath: route options must be statically analyzable",
+        { cause: error },
+      );
     }
     return cached;
   };

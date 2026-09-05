@@ -145,9 +145,7 @@ export function nativeModules(distDir: string): Plugin[] {
   const generate = (): void => {
     try {
       scaffoldNative(projectContext(root, 8081));
-    } catch {
-      return;
-    }
+    } catch {}
   };
 
   const find = (file: string): NativeModuleEntry | undefined =>

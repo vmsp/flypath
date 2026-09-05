@@ -51,7 +51,7 @@ const types = {
   numeric: {
     to: 1700,
     from: [1700],
-    serialize: (value: string | number): string => String(value),
+    serialize: String,
     parse: (value: string): string => value,
   },
   date: {

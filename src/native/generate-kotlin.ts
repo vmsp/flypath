@@ -105,7 +105,7 @@ function propRead(type: NativeType, name: string): string {
 }
 
 function caseName(value: string): string {
-  const name = value.replace(/[^A-Za-z0-9]+/g, "_").toUpperCase();
+  const name = value.replaceAll(/[^A-Za-z0-9]+/g, "_").toUpperCase();
   return /^[0-9]/.test(name) ? `_${name}` : name;
 }
 

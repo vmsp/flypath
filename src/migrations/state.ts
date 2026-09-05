@@ -78,7 +78,7 @@ export function apply(state: SchemaState, operation: Operation): SchemaState {
       table.indexes = [
         ...table.indexes.filter((index) => index.name !== operation.index.name),
         clone(operation.index),
-      ].sort((left, right) => left.name.localeCompare(right.name));
+      ].toSorted((left, right) => left.name.localeCompare(right.name));
       return state;
     }
     case "dropIndex": {
@@ -95,7 +95,7 @@ export function apply(state: SchemaState, operation: Operation): SchemaState {
           (constraint) => constraint.name !== operation.constraint.name,
         ),
         clone(operation.constraint),
-      ].sort((left, right) => left.name.localeCompare(right.name));
+      ].toSorted((left, right) => left.name.localeCompare(right.name));
       return state;
     }
     case "dropConstraint": {

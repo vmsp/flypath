@@ -213,11 +213,11 @@ function normalizeNativeStyle(
   const { props, theme } = flattenStyle(input);
 
   const animationProps = new Map<string, Scalar>();
-  for (const key of [...props.keys()]) {
+  for (const key of Array.from(props.keys())) {
     if (!key.startsWith("animation")) continue;
     const value = props.get(key);
     if (typeof value === "object") {
-      throw new Error(
+      throw new TypeError(
         `flypath: <${tag}> animation properties do not support conditions`,
       );
     }

@@ -1,6 +1,12 @@
 import { createFromFetch } from "@vitejs/plugin-rsc/react/browser";
 import type { CSSProperties, ReactNode } from "react";
-import { startTransition, useCallback, useEffect, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { manifest } from "virtual:flypath/route-manifest";
 
@@ -325,6 +331,7 @@ function Modal({
       onClick={(event) => {
         if (event.target === event.currentTarget) onDismiss();
       }}
+      role="presentation"
       style={BACKDROP}
     >
       <div style={SHEET}>{children}</div>
@@ -550,9 +557,10 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
     };
   }, [navigate]);
 
-  const runtime: ContainerRuntime = {
-    activeBranch: (id) => state.branches[id],
-  };
+  const runtime: ContainerRuntime = useMemo(
+    () => ({ activeBranch: (id: string) => state.branches[id] }),
+    [state.branches],
+  );
 
   return (
     <ContainerRuntimeContext.Provider value={runtime}>

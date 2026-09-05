@@ -141,145 +141,160 @@ export function metroEndpoints(distDir: string): Plugin {
         })();
       });
 
-      server.middlewares.use(async (request, response, next) => {
-        const url = new URL(request.url ?? "/", baseUrl);
+      server.middlewares.use((request, response, next) => {
+        void (async () => {
+          const url = new URL(request.url ?? "/", baseUrl);
 
-        if (url.pathname === "/status") {
-          response.setHeader(METRO_PROJECT_ROOT_HEADER, server.config.root);
-          send(response, 200, "text/plain", "packager-status:running");
-          return;
-        }
-
-        if (url.pathname === "/flypath-skew") {
-          const body = await readBody(request);
-          let platform = "the app";
-          try {
-            platform = String(
-              (JSON.parse(body) as { platform?: string }).platform ?? platform,
-            );
-          } catch {
-            // keep the default label
+          if (url.pathname === "/status") {
+            response.setHeader(METRO_PROJECT_ROOT_HEADER, server.config.root);
+            send(response, 200, "text/plain", "packager-status:running");
+            return;
           }
-          server.config.logger.warn(
-            `flypath: ${platform} was built from stale "use native" declarations — ` +
-              `run "pnpm ${platform}" to rebuild the app`,
-          );
-          send(response, 200, "text/plain", "OK");
-          return;
-        }
 
-        if (url.pathname === "/reload") {
-          message.reload();
-          send(response, 200, "text/plain", "OK");
-          return;
-        }
+          if (url.pathname === "/flypath-skew") {
+            const body = await readBody(request);
+            let platform = "the app";
+            try {
+              platform = String(
+                (JSON.parse(body) as { platform?: string }).platform ??
+                  platform,
+              );
+            } catch {
+              // keep the default label
+            }
+            server.config.logger.warn(
+              `flypath: ${platform} was built from stale "use native" declarations — ` +
+                `run "pnpm ${platform}" to rebuild the app`,
+            );
+            send(response, 200, "text/plain", "OK");
+            return;
+          }
 
-        const chunkRoute = parseChunkPath(url.pathname);
-        if (chunkRoute) {
-          const { platform, reference, kind } = chunkRoute;
-          try {
-            const chunk = await native.chunk(platform, reference, true);
-            if (kind === "map") {
+          if (url.pathname === "/reload") {
+            message.reload();
+            send(response, 200, "text/plain", "OK");
+            return;
+          }
+
+          const chunkRoute = parseChunkPath(url.pathname);
+          if (chunkRoute) {
+            const { platform, reference, kind } = chunkRoute;
+            try {
+              const chunk = await native.chunk(platform, reference, true);
+              if (kind === "map") {
+                send(
+                  response,
+                  200,
+                  "application/json",
+                  JSON.stringify(chunk.map),
+                );
+                return;
+              }
+              response.setHeader(
+                "SourceMap",
+                chunkMapPath(platform, reference),
+              );
+              send(
+                response,
+                200,
+                "application/javascript",
+                `${chunk.code}\n//# sourceMappingURL=${baseUrl}${chunkMapPath(
+                  platform,
+                  reference,
+                )}\n`,
+              );
+            } catch (error) {
+              server.config.logger.error(
+                `flypath: chunk build failed for ${reference}\n${
+                  error instanceof Error
+                    ? (error.stack ?? error.message)
+                    : error
+                }`,
+              );
+              send(response, 500, "text/plain", String(error));
+            }
+            return;
+          }
+
+          if (url.pathname.endsWith(".bundle")) {
+            const platform = platformOf(url);
+            if (!platform) {
+              send(response, 400, "text/plain", "flypath: unknown platform");
+              return;
+            }
+            const dev = url.searchParams.get(DEV_PARAM) !== "false";
+            try {
+              const built = await native.bundle(platform, dev);
+              response.setHeader(METRO_DELTA_ID_HEADER, built.revisionId);
+              response.setHeader(
+                "SourceMap",
+                `${url.pathname.replace(/\.bundle$/, ".map")}${url.search}`,
+              );
+              send(
+                response,
+                200,
+                "application/javascript",
+                `${built.code}\n//# sourceMappingURL=${url.pathname.replace(
+                  /\.bundle$/,
+                  ".map",
+                )}${url.search}\n`,
+              );
+            } catch (error) {
+              server.config.logger.error(
+                `flypath: native bundle failed\n${
+                  error instanceof Error
+                    ? (error.stack ?? error.message)
+                    : error
+                }`,
+              );
+              send(
+                response,
+                500,
+                "application/javascript",
+                `throw new Error(${JSON.stringify(String(error))});`,
+              );
+            }
+            return;
+          }
+
+          if (url.pathname.endsWith(".map")) {
+            const platform = platformOf(url);
+            if (!platform) {
+              next();
+              return;
+            }
+            const built = await native.bundle(platform, true);
+            send(response, 200, "application/json", JSON.stringify(built.map));
+            return;
+          }
+
+          if (url.pathname === "/symbolicate") {
+            try {
+              const parsed = JSON.parse(await readBody(request)) as {
+                stack: Array<Record<string, unknown>>;
+              };
+              const stack = await native.symbolicate(parsed.stack);
               send(
                 response,
                 200,
                 "application/json",
-                JSON.stringify(chunk.map),
+                JSON.stringify({ stack }),
               );
-              return;
+            } catch (error) {
+              send(
+                response,
+                500,
+                "application/json",
+                JSON.stringify({
+                  error: String(error),
+                }),
+              );
             }
-            response.setHeader("SourceMap", chunkMapPath(platform, reference));
-            send(
-              response,
-              200,
-              "application/javascript",
-              `${chunk.code}\n//# sourceMappingURL=${baseUrl}${chunkMapPath(
-                platform,
-                reference,
-              )}\n`,
-            );
-          } catch (error) {
-            server.config.logger.error(
-              `flypath: chunk build failed for ${reference}\n${
-                error instanceof Error ? (error.stack ?? error.message) : error
-              }`,
-            );
-            send(response, 500, "text/plain", String(error));
-          }
-          return;
-        }
-
-        if (url.pathname.endsWith(".bundle")) {
-          const platform = platformOf(url);
-          if (!platform) {
-            send(response, 400, "text/plain", "flypath: unknown platform");
             return;
           }
-          const dev = url.searchParams.get(DEV_PARAM) !== "false";
-          try {
-            const built = await native.bundle(platform, dev);
-            response.setHeader(METRO_DELTA_ID_HEADER, built.revisionId);
-            response.setHeader(
-              "SourceMap",
-              `${url.pathname.replace(/\.bundle$/, ".map")}${url.search}`,
-            );
-            send(
-              response,
-              200,
-              "application/javascript",
-              `${built.code}\n//# sourceMappingURL=${url.pathname.replace(
-                /\.bundle$/,
-                ".map",
-              )}${url.search}\n`,
-            );
-          } catch (error) {
-            server.config.logger.error(
-              `flypath: native bundle failed\n${
-                error instanceof Error ? (error.stack ?? error.message) : error
-              }`,
-            );
-            send(
-              response,
-              500,
-              "application/javascript",
-              `throw new Error(${JSON.stringify(String(error))});`,
-            );
-          }
-          return;
-        }
 
-        if (url.pathname.endsWith(".map")) {
-          const platform = platformOf(url);
-          if (!platform) {
-            next();
-            return;
-          }
-          const built = await native.bundle(platform, true);
-          send(response, 200, "application/json", JSON.stringify(built.map));
-          return;
-        }
-
-        if (url.pathname === "/symbolicate") {
-          try {
-            const parsed = JSON.parse(await readBody(request)) as {
-              stack: Array<Record<string, unknown>>;
-            };
-            const stack = await native.symbolicate(parsed.stack);
-            send(response, 200, "application/json", JSON.stringify({ stack }));
-          } catch (error) {
-            send(
-              response,
-              500,
-              "application/json",
-              JSON.stringify({
-                error: String(error),
-              }),
-            );
-          }
-          return;
-        }
-
-        next();
+          next();
+        })().catch(next);
       });
     },
   };

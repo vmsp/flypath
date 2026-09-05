@@ -8,8 +8,8 @@ function quote(value: string): string {
 function registration(manifest: NativeManifest, views: boolean): string[] {
   return [
     `  flypath_register_hash(${quote(manifest.hash)});`,
-    ...manifest.modules.flatMap((module) => [
-      ...module.functions.map((entry) =>
+    ...manifest.modules.flatMap((module) =>
+      module.functions.map((entry) =>
         entry.async
           ? `  flypath_register_async(${quote(module.id)}, ${quote(
               entry.name,
@@ -18,7 +18,7 @@ function registration(manifest: NativeManifest, views: boolean): string[] {
               entry.name,
             )}, ${entry.params.length}, &${symbolFor(module.slug, entry.name)});`,
       ),
-    ]),
+    ),
     ...manifest.modules.flatMap((module) =>
       module.components.map(
         (entry) =>

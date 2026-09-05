@@ -7,11 +7,17 @@ import { colors } from "./vars.css.ts";
 
 export default function BackLink({ children }: { children: ReactNode }) {
   return (
-    <a
+    <button
       onClick={() => navigate("back")}
-      style={{ color: colors.primary, textDecorationLine: "none" }}
+      style={{
+        backgroundColor: "transparent",
+        borderWidth: 0,
+        color: colors.primary,
+        padding: 0,
+      }}
+      type="button"
     >
       {children}
-    </a>
+    </button>
   );
 }

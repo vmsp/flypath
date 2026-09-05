@@ -74,7 +74,7 @@ function compileOverride(
       throw new Error(`flypath: css.override got an unknown token "${key}"`);
     }
     if (typeof value === "object") {
-      throw new Error(
+      throw new TypeError(
         `flypath: css.override values must be scalars, got a condition map for "${key}"`,
       );
     }
@@ -144,7 +144,7 @@ function emitCss(
       const declarations = Object.entries(style)
         .map(
           ([property, value]) =>
-            `      ${property.replace(
+            `      ${property.replaceAll(
               /[A-Z]/g,
               (ch) => `-${ch.toLowerCase()}`,
             )}: ${cssValue(property, value)};`,

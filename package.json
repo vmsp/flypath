@@ -71,8 +71,8 @@
     "dev": "tsc -b --watch",
     "fmt": "./scripts/fmt.sh",
     "fmt:check": "./scripts/fmt.sh --check",
-    "lint": "knip",
-    "lint:fix": "knip --fix",
+    "lint": "oxlint && knip",
+    "lint:fix": "oxlint --fix && knip --fix",
     "knip": "knip",
     "test": "vitest run --typecheck",
     "test:watch": "vitest --typecheck"
@@ -110,6 +110,7 @@
     "@types/ws": "^8.18.1",
     "knip": "^6.33.0",
     "oxfmt": "^0.64.0",
+    "oxlint": "^1.81.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-native": "0.87.0",

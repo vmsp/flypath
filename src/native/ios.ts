@@ -50,7 +50,7 @@ async function pickSimulator(name?: string): Promise<Simulator> {
 
   const runtimes = Object.keys(parsed.devices)
     .filter((key) => key.includes("iOS"))
-    .sort();
+    .toSorted();
 
   const all = runtimes
     .flatMap((key) => parsed.devices[key] ?? [])

@@ -60,7 +60,7 @@ export function discover(root: string): MigrationFile[] {
   if (!fs.existsSync(dir)) return [];
 
   const files: MigrationFile[] = [];
-  for (const entry of fs.readdirSync(dir).sort()) {
+  for (const entry of fs.readdirSync(dir).toSorted()) {
     const match = PATTERN.exec(entry);
     if (!match) continue;
     files.push({

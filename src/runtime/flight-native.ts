@@ -60,21 +60,21 @@ class FlypathFormData {
     callback: (value: string, name: string, form: FlypathFormData) => void,
     thisArg?: unknown,
   ): void {
-    for (const [name, value] of [...this.#entries]) {
+    for (const [name, value] of this.#entries.slice()) {
       callback.call(thisArg, value, name, this);
     }
   }
 
   *entries(): IterableIterator<Entry> {
-    yield* [...this.#entries];
+    yield* this.#entries.slice();
   }
 
   *keys(): IterableIterator<string> {
-    for (const [name] of [...this.#entries]) yield name;
+    for (const [name] of this.#entries.slice()) yield name;
   }
 
   *values(): IterableIterator<string> {
-    for (const [, value] of [...this.#entries]) yield value;
+    for (const [, value] of this.#entries.slice()) yield value;
   }
 
   [Symbol.iterator](): IterableIterator<Entry> {

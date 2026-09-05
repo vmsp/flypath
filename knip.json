@@ -14,6 +14,7 @@
       "project": ["src/**/*.{ts,tsx}"],
       "ignoreDependencies": [
         "@babel/preset-flow",
+        "oxfmt",
         "@babel/preset-react",
         "@react-native/babel-plugin-codegen",
         "@react-native/js-polyfills",

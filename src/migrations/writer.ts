@@ -414,7 +414,7 @@ export function migrationSource(operations: readonly Operation[]): string {
     .join("\n");
 
   const imports: string[] = [];
-  const migrationNames = [...writer.migrationImports].sort();
+  const migrationNames = [...writer.migrationImports].toSorted();
   imports.push(
     `import { ${migrationNames.join(", ")} } from ${quoted(MIGRATIONS_MODULE)};`,
   );
@@ -424,7 +424,7 @@ export function migrationSource(operations: readonly Operation[]): string {
     );
     if (schemaNames.length > 0) {
       imports.push(
-        `import { ${schemaNames.sort().join(", ")} } from ${quoted(SCHEMA_MODULE)};`,
+        `import { ${schemaNames.toSorted().join(", ")} } from ${quoted(SCHEMA_MODULE)};`,
       );
     }
     if (writer.schemaImports.has("sql")) {

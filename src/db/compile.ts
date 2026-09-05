@@ -591,7 +591,7 @@ class Compiler {
   private blocked(node: Node, level: Level, mode: Mode): boolean {
     let blockedRef = false;
     walk(node, (child) => {
-      if (child.kind !== "ref") return;
+      if (child.kind !== "ref") return undefined;
       const entry = level.item(child.name);
       if (!entry || entry.kind !== "item" || entry.base) return;
       if (mode === "order") return;
@@ -603,7 +603,7 @@ class Compiler {
 
   private resolve(node: Node, level: Level, mode: Mode): Node {
     return map(node, (child) => {
-      if (child.kind !== "ref") return undefined;
+      if (child.kind !== "ref") return;
       const entry = level.item(child.name);
       if (entry && entry.kind === "item" && !entry.base) {
         if (mode === "order")

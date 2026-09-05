@@ -8,12 +8,8 @@ import { findUser, session, SESSION_COOKIE, visitor } from "./session.ts";
 
 export type Note = { id: number; author: string; body: string };
 
-export async function entries(): Promise<string[]> {
-  const rows = await db()
-    .from("signatures")
-    .select("id", "name")
-    .orderBy("id", "asc");
-  return rows.map((row) => row.name);
+export async function entries(): Promise<{ id: number; name: string }[]> {
+  return db().from("signatures").select("id", "name").orderBy("id", "asc");
 }
 
 export async function sign(

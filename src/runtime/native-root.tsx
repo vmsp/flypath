@@ -301,10 +301,10 @@ export default function Root(): ReactNode {
     const { dev, serverUrl } = nativeConfig();
     if (!dev) return;
     const socket = new WebSocket(`${serverUrl.replace(/^http/, "ws")}/flypath`);
-    socket.onmessage = (event: { data: unknown }) => {
+    socket.addEventListener("message", (event: { data: unknown }) => {
       const data = JSON.parse(String(event.data)) as { type?: string };
       if (data.type === "rsc-update") invalidate(true);
-    };
+    });
     return () => socket.close();
   }, [invalidate]);
 

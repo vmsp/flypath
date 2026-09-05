@@ -1,0 +1,92 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "import",
+    "promise",
+    "node",
+    "react",
+    "jsx-a11y",
+    "vitest"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error",
+    "pedantic": "error"
+  },
+  "rules": {
+    "import/max-dependencies": "off",
+    "import/no-unassigned-import": "off",
+    "max-classes-per-file": "off",
+    "max-depth": "off",
+    "max-lines": "off",
+    "max-lines-per-function": "off",
+    "no-await-in-loop": "off",
+    "no-loop-func": "off",
+    "no-negated-condition": "off",
+    "no-shadow": "off",
+    "no-underscore-dangle": "off",
+    "no-warning-comments": "off",
+    "oxc/no-map-spread": "off",
+    "promise/always-return": "off",
+    "promise/no-callback-in-promise": "off",
+    "promise/no-promise-in-callback": "off",
+    "react/react-in-jsx-scope": "off",
+    "require-await": "off",
+    "require-unicode-regexp": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/no-array-callback-reference": "off",
+    "unicorn/no-negated-condition": "off",
+    "unicorn/no-thenable": "off",
+    "unicorn/no-useless-undefined": "off",
+    "unicorn/prefer-code-point": "off",
+    "unicorn/prefer-top-level-await": "off"
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/components/**",
+        "src/router/**",
+        "src/runtime/**",
+        "src/styles/**",
+        "example/app/**",
+        "templates/**"
+      ],
+      "rules": {
+        "unicorn/no-array-reverse": "off",
+        "unicorn/no-array-sort": "off"
+      }
+    },
+    {
+      "files": ["src/components/**", "src/router/**", "src/runtime/**"],
+      "rules": {
+        "react-hooks/rules-of-hooks": "off",
+        "react/exhaustive-effect-dependencies": "off",
+        "react/hooks": "off",
+        "react/immutability": "off",
+        "react/memo-dependencies": "off",
+        "react/no-children-prop": "off",
+        "react/preserve-manual-memoization": "off",
+        "react/refs": "off",
+        "react/set-state-in-effect": "off",
+        "react/static-components": "off"
+      }
+    },
+    {
+      "files": ["src/runtime/client-references.ts"],
+      "rules": { "no-eval": "off" }
+    },
+    {
+      "files": ["**/*.test-d.ts"],
+      "rules": { "vitest/expect-expect": "off" }
+    },
+    {
+      "files": ["src/db/scope.ts"],
+      "rules": { "typescript/ban-types": "off" }
+    }
+  ],
+  "ignorePatterns": ["dist", "example/dist", "**/generated/**"]
+}

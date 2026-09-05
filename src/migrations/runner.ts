@@ -189,10 +189,12 @@ export async function rollback(
   await client.unsafe(`select pg_advisory_lock(${LOCK_KEY.toString()})`);
   try {
     await ensureTable(database);
-    const applied = (await appliedNames(database)).map((row) => row.name);
+    const applied = new Set(
+      (await appliedNames(database)).map((row) => row.name),
+    );
     const appliedFiles = files
-      .filter((file) => applied.includes(file.id))
-      .sort((left, right) => right.timestamp.localeCompare(left.timestamp));
+      .filter((file) => applied.has(file.id))
+      .toSorted((left, right) => right.timestamp.localeCompare(left.timestamp));
 
     const downTo = options.to;
     const selected =

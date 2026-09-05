@@ -23,7 +23,7 @@ const CODEGEN = localRequire.resolve("@react-native/babel-plugin-codegen");
 function needsFlowStrip(id: string): boolean {
   if (!id.endsWith(".js") && !id.endsWith(".jsx")) return false;
   const parts = id.split("node_modules/");
-  const tail = parts[parts.length - 1];
+  const tail = parts.at(-1);
   if (tail === undefined || parts.length === 1) return false;
   return FLOW_PACKAGES.some((pkg) => tail.startsWith(pkg));
 }

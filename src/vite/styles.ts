@@ -102,11 +102,11 @@ export function styles(distDir: string): Plugin[] {
   const stylesheet = (): string => {
     ensureScan();
     const parts = [RESET];
-    for (const file of [...modules.keys()].sort()) {
+    for (const file of [...modules.keys()].toSorted()) {
       const compiled = modules.get(file);
       if (compiled && compiled.css !== "") parts.push(compiled.css);
     }
-    for (const className of [...atomic.keys()].sort()) {
+    for (const className of [...atomic.keys()].toSorted()) {
       parts.push(atomic.get(className) as string);
     }
     return `${parts.join("\n\n")}\n`;
@@ -171,9 +171,7 @@ export function styles(distDir: string): Plugin[] {
         try {
           const compiled = compile(file);
           if (previous?.css !== compiled?.css) invalidate();
-        } catch {
-          return;
-        }
+        } catch {}
       },
       resolveId(source) {
         const base = clean(source);

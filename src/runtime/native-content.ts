@@ -142,7 +142,7 @@ function publish(next: ContentMap): void {
     for (const key of changed) {
       const group = listeners.get(key);
       if (!group) continue;
-      for (const listener of [...group]) listener(next[key]);
+      for (const listener of Array.from(group)) listener(next[key]);
     }
   });
 }

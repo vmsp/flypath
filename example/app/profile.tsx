@@ -83,9 +83,9 @@ export default async function Profile() {
         <Guestbook />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {signatures.map((name, index) => (
-            <span key={`${name}-${index}`} style={{ color: colors.secondary }}>
-              {name}
+          {signatures.map((signature) => (
+            <span key={signature.id} style={{ color: colors.secondary }}>
+              {signature.name}
             </span>
           ))}
         </div>

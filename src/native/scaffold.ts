@@ -196,5 +196,5 @@ export function cxxSources(root: string): string[] {
       files.push(path.join(base, entry.name));
     }
   }
-  return files.sort();
+  return files.toSorted();
 }

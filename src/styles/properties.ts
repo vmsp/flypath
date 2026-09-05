@@ -162,5 +162,5 @@ export function isUnitless(name: string): boolean {
 export function hyphenate(name: string): string {
   return name.startsWith("--")
     ? name
-    : name.replace(/[A-Z]/g, (ch) => `-${ch.toLowerCase()}`);
+    : name.replaceAll(/[A-Z]/g, (ch) => `-${ch.toLowerCase()}`);
 }

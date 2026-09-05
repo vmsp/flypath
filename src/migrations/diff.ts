@@ -31,8 +31,8 @@ function shape(column: ColumnDef): string {
 
 function tableShape(table: TableDef): string {
   return JSON.stringify(
-    [...table.order]
-      .sort()
+    table.order
+      .toSorted()
       .map((name) => `${name}:${shape(table.columns[name] as ColumnDef)}`),
   );
 }
@@ -151,7 +151,7 @@ export async function diff(
   );
   const renamedTables = new Map<string, string>();
 
-  for (const dropped of [...droppedTables]) {
+  for (const dropped of droppedTables.slice()) {
     const before = from.tables[dropped] as TableDef;
     for (const added of addedTables) {
       const after = to.tables[added] as TableDef;
@@ -196,7 +196,7 @@ export async function diff(
       (column) => !after.columns[column],
     );
 
-    for (const dropped of [...droppedColumns]) {
+    for (const dropped of droppedColumns.slice()) {
       const previous = before.columns[dropped] as ColumnDef;
       for (const added of addedColumns) {
         const next = after.columns[added] as ColumnDef;
@@ -238,21 +238,23 @@ export async function diff(
               "run makemigration interactively",
           );
         }
-        alters.push({
-          kind: "addColumn",
-          table: name,
-          name: column,
-          column: {
-            ...definition,
-            default: { kind: "expression", text: supplied },
+        alters.push(
+          {
+            kind: "addColumn",
+            table: name,
+            name: column,
+            column: {
+              ...definition,
+              default: { kind: "expression", text: supplied },
+            },
           },
-        });
-        alters.push({
-          kind: "alterColumn",
-          table: name,
-          name: column,
-          change: { default: null },
-        });
+          {
+            kind: "alterColumn",
+            table: name,
+            name: column,
+            change: { default: null },
+          },
+        );
         continue;
       }
       alters.push({
@@ -305,12 +307,14 @@ export async function diff(
     if (!current) {
       creates.push({ kind: "createView", view: target });
     } else if (current.query !== target.query) {
-      alters.push({
-        kind: "dropView",
-        name,
-        materialized: current.materialized,
-      });
-      alters.push({ kind: "createView", view: target });
+      alters.push(
+        {
+          kind: "dropView",
+          name,
+          materialized: current.materialized,
+        },
+        { kind: "createView", view: target },
+      );
     }
   }
   for (const [name, current] of Object.entries(from.views)) {
@@ -323,7 +327,7 @@ export async function diff(
     }
   }
 
-  return [...creates, ...alters, ...drops.reverse()];
+  return [...creates, ...alters, ...drops.toReversed()];
 }
 
 function diffNamed<T extends { name: string }>(

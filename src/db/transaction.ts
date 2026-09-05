@@ -49,8 +49,7 @@ export function transaction<T>(
 
   if (existing) {
     return existing.savepoint(async (savepoint) => {
-      const scope: Scope = new Map(outer);
-      scope.set(name, savepoint);
+      const scope: Scope = new Map(outer).set(name, savepoint);
       return storage.run(scope, run);
     }) as Promise<T>;
   }
@@ -64,8 +63,7 @@ export function transaction<T>(
       : pool(name).begin(mode, handler)) as Promise<T>;
 
   return begin(async (tx) => {
-    const scope: Scope = new Map(outer);
-    scope.set(name, tx);
+    const scope: Scope = new Map(outer).set(name, tx);
     return storage.run(scope, run);
   });
 }

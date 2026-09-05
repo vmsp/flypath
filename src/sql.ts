@@ -382,11 +382,13 @@ export function stringAgg(
   separator: string,
   options: { orderBy?: OrderInput | OrderInput[] } = {},
 ): Expression<string> {
-  return aggregate<string>("string_agg", [operand, separator], {
-    ...(options.orderBy === undefined
+  return aggregate<string>(
+    "string_agg",
+    [operand, separator],
+    options.orderBy === undefined
       ? {}
-      : { orderBy: orderList(options.orderBy) }),
-  });
+      : { orderBy: orderList(options.orderBy) },
+  );
 }
 
 type PipeOf<Row> = { readonly ir: QueryIR; readonly row: Row };

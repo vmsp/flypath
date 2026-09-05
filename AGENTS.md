@@ -9,3 +9,6 @@ simulators and devices. The Android CLI is also installed.
 We're currently still developing the framework. There is no need to maintain
 backwards compatibility and re-architecting and re-designing anything is fair
 game.
+
+When starting a long-running process, make sure to attach it to your /tasks so
+it's easy for me to stop it.

@@ -20,5 +20,5 @@ export function list(dir: string, extensions: string[]): string[] {
         entry.isFile() && extensions.includes(path.extname(entry.name)),
     )
     .map((entry) => path.join(dir, entry.name))
-    .sort();
+    .toSorted();
 }

@@ -154,7 +154,7 @@ export function projectContext(
     fs.readFileSync(path.join(root, "package.json"), "utf8"),
   ) as { name?: string; version?: string };
   const rawName = manifest.name ?? path.basename(root);
-  const projectName = rawName.replace(/[^A-Za-z0-9]/g, "") || "FlypathApp";
+  const projectName = rawName.replaceAll(/[^A-Za-z0-9]/g, "") || "FlypathApp";
   const slug = projectName.toLowerCase();
   const bundleId = options.bundleId ?? `dev.flypath.${slug}`;
 
