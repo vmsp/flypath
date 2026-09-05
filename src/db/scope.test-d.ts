@@ -33,7 +33,7 @@ export const notes = table("notes", {
   body: text().notNull(),
 });
 
-declare module "../index.ts" {
+declare module "../index.client.ts" {
   interface Register {
     schema: typeof import("./scope.test-d.ts");
   }

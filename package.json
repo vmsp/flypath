@@ -44,11 +44,11 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/index.client.d.ts",
       "react-server": "./dist/index.server.js",
-      "module": "./dist/index.js",
+      "module": "./dist/index.client.js",
       "node": "./dist/index.server.js",
-      "default": "./dist/index.js"
+      "default": "./dist/index.client.js"
     },
     "./router": "./dist/router/index.js",
     "./schema": "./dist/schema/index.js",

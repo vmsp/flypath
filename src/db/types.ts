@@ -1,4 +1,4 @@
-import type { Register } from "../index.ts";
+import type { Register } from "../index.client.ts";
 import type { Column } from "../schema/column.ts";
 import type { TABLE } from "../schema/table.ts";
 

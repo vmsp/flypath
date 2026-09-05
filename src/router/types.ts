@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import type { Register } from "../index.ts";
+import type { Register } from "../index.client.ts";
 import type { Middleware } from "./middleware.ts";
 
 export type Edge = "top" | "bottom" | "left" | "right";
@@ -12,12 +12,38 @@ export type Transition = "platform" | "fade" | "none";
 export type Revalidation = "stale" | "blocking" | "never";
 
 export type RouteOptions = {
+  /**
+   * Configure screen padding so content does not overlap with system UI. By
+   * default, all edges are padded.
+   */
   safeArea?: boolean | readonly Edge[];
+
+  /**
+   * How a screen is shown. By default, new screens are pushed into the current
+   * navigation stack. `modal` uses a page sheet on iOS, a slide-up on Android
+   * and a dialog on web.
+   */
   presentation?: Presentation;
+
   transition?: Transition;
+
+  /**
+   * Controls if navigation gestures like edge swipe on iOS and back gesture on
+   * Android produce a navigation. Turn it off for a screen taht needs the edge
+   * for something else. Requires `transition: "platform"` on iOS. Does nothing
+   * on web.
+   */
   gesture?: boolean;
+
+  /**
+   * Fetch this route's payload when a link to it is hovered, so the navigation
+   * lands on a warm cache. `isPrefetch()` may be used to detect prefetch
+   * requests. Web only.
+   */
   prefetch?: "hover" | false;
+
   revalidate?: Revalidation;
+
   staleTime?: number;
 };
 
