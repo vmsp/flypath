@@ -46,6 +46,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "react-server": "./dist/index.server.js",
+      "module": "./dist/index.js",
+      "node": "./dist/index.server.js",
       "default": "./dist/index.js"
     },
     "./router": "./dist/router/index.js",

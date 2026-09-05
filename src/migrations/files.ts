@@ -1,42 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-
-import type { ViteDevServer } from "vite";
+import { pathToFileURL } from "node:url";
 
 import type { Migration } from "./operations.ts";
-
-type Runner = { import: (id: string) => Promise<unknown> };
-
-let server: ViteDevServer | undefined;
-
-let runner: Runner | undefined;
-
-async function moduleRunner(): Promise<Runner> {
-  if (runner) return runner;
-  const { createServer, createServerModuleRunner } = await import("vite");
-  server = await createServer({
-    logLevel: "warn",
-    server: { middlewareMode: true, watch: null },
-    environments: {
-      ssr: {
-        resolve: {
-          conditions: ["react-server"],
-          externalConditions: ["react-server"],
-          noExternal: ["flypath"],
-        },
-      },
-    },
-  });
-  runner = createServerModuleRunner(server.environments["ssr"] as never);
-  return runner;
-}
-
-export async function closeLoader(): Promise<void> {
-  runner = undefined;
-  const open = server;
-  server = undefined;
-  if (open) await open.close();
-}
 
 export type MigrationFile = {
   timestamp: string;
@@ -90,8 +56,7 @@ export function discover(root: string): MigrationFile[] {
 export async function importModule(
   file: string,
 ): Promise<Record<string, unknown>> {
-  const target = await moduleRunner();
-  return (await target.import(file)) as Record<string, unknown>;
+  return (await import(pathToFileURL(file).href)) as Record<string, unknown>;
 }
 
 async function loadMigration(file: string): Promise<Migration> {

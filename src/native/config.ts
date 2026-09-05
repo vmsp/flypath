@@ -64,6 +64,9 @@ export type FlypathOptions = {
 export async function loadOptions(
   root: string,
 ): Promise<FlypathOptions & { port: number }> {
+  // TODO: It might be productive to avoid having to load the whole of Vite just
+  // to read our options.
+
   const { resolveConfig } = await import("vite");
   const config = await resolveConfig({ root, logLevel: "warn" }, "build");
   const plugin = config.plugins.find((entry) => entry.name === CONFIG_PLUGIN);

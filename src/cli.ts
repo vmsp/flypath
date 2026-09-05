@@ -146,8 +146,6 @@ cli
         fail(error);
       } finally {
         const { closePools } = await import("./db/client.ts");
-        const { closeLoader } = await import("./migrations/files.ts");
-        await closeLoader();
         await closePools();
       }
     },
@@ -229,8 +227,6 @@ cli
       } catch (error) {
         fail(error);
       } finally {
-        const { closeLoader } = await import("./migrations/files.ts");
-        await closeLoader();
         await closePools();
       }
     },
@@ -261,8 +257,6 @@ cli
       } catch (error) {
         fail(error);
       } finally {
-        const { closeLoader } = await import("./migrations/files.ts");
-        await closeLoader();
         await closePools();
       }
     },
