@@ -69,8 +69,8 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsc -b",
-    "dev": "tsc -b --watch",
+    "build": "tsc -b tsconfig.build.json",
+    "dev": "tsc -b tsconfig.build.json --watch",
     "fmt": "./scripts/fmt.sh",
     "fmt:check": "./scripts/fmt.sh --check",
     "lint": "oxlint && knip",

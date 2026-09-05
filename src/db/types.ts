@@ -7,7 +7,13 @@ type SelectOf<C> = C extends Column<infer S, unknown, boolean> ? S : never;
 type InsertOf<C> = C extends Column<unknown, infer I, boolean> ? I : never;
 
 type OptionalOf<C> =
-  C extends Column<unknown, unknown, infer O extends boolean> ? O : never;
+  C extends Column<unknown, infer I, infer D extends boolean>
+    ? D extends true
+      ? true
+      : [null] extends [I]
+        ? true
+        : false
+    : never;
 
 type ColumnKeys<T> = Exclude<keyof T, typeof TABLE> & string;
 

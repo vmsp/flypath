@@ -33,6 +33,12 @@ export const notes = table("notes", {
   body: text().notNull(),
 });
 
+export const people = table("people", {
+  id: bigint().primaryKey().generatedAlwaysAsIdentity(),
+  name: text().notNull(),
+  tally: bigint().notNull().default(0),
+});
+
 declare module "../index.client.ts" {
   interface Register {
     schema: typeof import("./scope.test-d.ts");
@@ -107,9 +113,9 @@ describe("from", () => {
     // @ts-expect-error id is a number
     db().from("users").where("id", "=", "x");
 
-    // @ts-expect-error id is a number
     db()
       .from("users")
+      // @ts-expect-error id is a number
       .where((t) => eq(t.id, "x"));
   });
 });

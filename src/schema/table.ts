@@ -264,13 +264,13 @@ export function table<const Name extends string, Cols extends Columns>(
 export type EnumType<V extends string> = (() => Column<
   V | null,
   V | null,
-  true
+  false
 >) & { readonly enumDef: EnumDef };
 
 export function enumColumn(
   name: string,
-): Column<string | null, string | null, true> {
-  return new Column<string | null, string | null, true>({
+): Column<string | null, string | null, false> {
+  return new Column<string | null, string | null, false>({
     type: name,
     enum: true,
     array: 0,
@@ -285,8 +285,8 @@ export function enumType<const V extends readonly string[]>(
   values: V,
 ): EnumType<V[number]> {
   const def: EnumDef = { name, values: [...values] };
-  const create = (): Column<V[number] | null, V[number] | null, true> =>
-    new Column<V[number] | null, V[number] | null, true>({
+  const create = (): Column<V[number] | null, V[number] | null, false> =>
+    new Column<V[number] | null, V[number] | null, false>({
       type: name,
       enum: true,
       array: 0,

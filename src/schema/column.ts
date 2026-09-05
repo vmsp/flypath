@@ -18,7 +18,7 @@ export type ReferenceTarget =
   | (() => Column<unknown, unknown, boolean>)
   | { table: string; column: string };
 
-export class Column<S, I, O extends boolean> {
+export class Column<S, I, D extends boolean> {
   readonly flypathColumn = true;
 
   readonly def: ColumnDef;
@@ -33,16 +33,16 @@ export class Column<S, I, O extends boolean> {
     this.def = def;
   }
 
-  private with<NS, NI, NO extends boolean>(
+  private with<NS, NI, ND extends boolean>(
     patch: Partial<ColumnDef>,
-  ): Column<NS, NI, NO> {
-    const next = new Column<NS, NI, NO>({ ...this.def, ...patch });
+  ): Column<NS, NI, ND> {
+    const next = new Column<NS, NI, ND>({ ...this.def, ...patch });
     next.reference = this.reference;
     return next;
   }
 
-  notNull(): Column<NonNullable<S>, NonNullable<I>, O> {
-    return this.with<NonNullable<S>, NonNullable<I>, O>({ notNull: true });
+  notNull(): Column<NonNullable<S>, NonNullable<I>, D> {
+    return this.with<NonNullable<S>, NonNullable<I>, D>({ notNull: true });
   }
 
   default(value: I | Expr<unknown>): Column<S, I, true> {
@@ -55,19 +55,19 @@ export class Column<S, I, O extends boolean> {
     });
   }
 
-  primaryKey(): Column<NonNullable<S>, I, O> {
-    return this.with<NonNullable<S>, I, O>({ primaryKey: true, notNull: true });
+  primaryKey(): Column<NonNullable<S>, I, D> {
+    return this.with<NonNullable<S>, I, D>({ primaryKey: true, notNull: true });
   }
 
-  unique(): Column<S, I, O> {
-    return this.with<S, I, O>({ unique: true });
+  unique(): Column<S, I, D> {
+    return this.with<S, I, D>({ unique: true });
   }
 
   references(
     target: ReferenceTarget,
     options: ReferenceOptions = {},
-  ): Column<S, I, O> {
-    const next = this.with<S, I, O>({});
+  ): Column<S, I, D> {
+    const next = this.with<S, I, D>({});
     next.reference = { target, options };
     return next;
   }
@@ -103,20 +103,20 @@ export class Column<S, I, O extends boolean> {
     return this.with<S, never, true>({ generated: literal(expression.node) });
   }
 
-  collate(collation: string): Column<S, I, O> {
-    return this.with<S, I, O>({ collate: collation });
+  collate(collation: string): Column<S, I, D> {
+    return this.with<S, I, D>({ collate: collation });
   }
 
-  check(expression: Expr<unknown>): Column<S, I, O> {
-    return this.with<S, I, O>({ check: literal(expression.node) });
+  check(expression: Expr<unknown>): Column<S, I, D> {
+    return this.with<S, I, D>({ check: literal(expression.node) });
   }
 
-  comment(text: string): Column<S, I, O> {
-    return this.with<S, I, O>({ comment: text });
+  comment(text: string): Column<S, I, D> {
+    return this.with<S, I, D>({ comment: text });
   }
 
-  array(): Column<NonNullable<S>[] | null, NonNullable<I>[] | null, O> {
-    return this.with<NonNullable<S>[] | null, NonNullable<I>[] | null, O>({
+  array(): Column<NonNullable<S>[] | null, NonNullable<I>[] | null, D> {
+    return this.with<NonNullable<S>[] | null, NonNullable<I>[] | null, D>({
       array: this.def.array + 1,
     });
   }
@@ -137,8 +137,8 @@ function defaultOf(value: unknown): DefaultValue {
   return { kind: "value", value };
 }
 
-function make<S>(type: string): Column<S | null, S | null, true> {
-  return new Column<S | null, S | null, true>({
+function make<S>(type: string): Column<S | null, S | null, false> {
+  return new Column<S | null, S | null, false>({
     type,
     array: 0,
     notNull: false,
@@ -147,7 +147,7 @@ function make<S>(type: string): Column<S | null, S | null, true> {
   });
 }
 
-type Nullish<T> = Column<T | null, T | null, true>;
+type Nullish<T> = Column<T | null, T | null, false>;
 
 export function smallint(): Nullish<number> {
   return make<number>("smallint");

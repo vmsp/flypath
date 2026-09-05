@@ -89,9 +89,11 @@ function list(value: unknown): unknown[] {
   return Array.isArray(value) ? (value as unknown[]) : [value];
 }
 
-export class Query<R, G = R, Grouped = false> implements PromiseLike<
-  Output<R>[]
-> {
+export class Query<
+  in out R,
+  in out G = R,
+  in out Grouped = false,
+> implements PromiseLike<Output<R>[]> {
   readonly ir: QueryIR;
 
   readonly database: string;
