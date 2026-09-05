@@ -31,7 +31,7 @@ import { normalizePath } from "../router/path.ts";
 import type { RevalidateMode } from "../router/revalidate.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext } from "../router/scope.tsx";
-import type { Mode } from "../router/types.ts";
+import type { Mode, Revalidation } from "../router/types.ts";
 import type { RscPayload } from "./payload.ts";
 
 type Branches = Readonly<Record<string, string>>;
@@ -192,12 +192,14 @@ function keep(state: State): Snapshot {
 function optionsFor(pathname: string): {
   presentation: string;
   prefetch: string | false;
+  revalidate: Revalidation;
   route: ManifestRoute | undefined;
 } {
   const route = matchManifest(manifest, pathname);
   return {
     presentation: route?.options.presentation ?? "push",
     prefetch: route?.options.prefetch ?? false,
+    revalidate: route?.options.revalidate ?? "stale",
     route,
   };
 }
@@ -537,9 +539,13 @@ export function WebRouter({ initial }: { initial: RscPayload }): ReactNode {
       const url = currentUrl();
       const at = epoch;
       const snapshot = snapshots.get(key);
-      if (snapshot) {
+      const stale = snapshot !== undefined && snapshot.epoch < at;
+      const mode = optionsFor(
+        normalizePath(window.location.pathname),
+      ).revalidate;
+      if (snapshot && !(stale && mode === "blocking")) {
         startTransition(() => setState({ key, ...snapshot }));
-        if (snapshot.epoch < at) settle(key, snapshot.url, at);
+        if (stale && mode !== "never") settle(key, snapshot.url, at);
         return;
       }
       settle(key, url, at);

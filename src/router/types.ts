@@ -29,7 +29,7 @@ export type RouteOptions = {
 
   /**
    * Controls if navigation gestures like edge swipe on iOS and back gesture on
-   * Android produce a navigation. Turn it off for a screen taht needs the edge
+   * Android produce a navigation. Turn it off for a screen that needs the edge
    * for something else. Requires `transition: "platform"` on iOS. Does nothing
    * on web.
    */
@@ -42,6 +42,12 @@ export type RouteOptions = {
    */
   prefetch?: "hover" | false;
 
+  /**
+   * What a screen does once its content has gone stale. By default the old
+   * render stays up and is swapped when the refetch resolves. `blocking` drops
+   * it and refetches first, for screens where the previous render is a privacy
+   * problem. `never` treats the route as immutable until `revalidate.reset()`.
+   */
   revalidate?: Revalidation;
 
   staleTime?: number;
