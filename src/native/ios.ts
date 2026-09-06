@@ -95,6 +95,45 @@ function applyOverlay(context: ProjectContext, target: string): void {
   );
 }
 
+/**
+ * Handle `/bin/sh` not being `/bin/bash` on macOS like
+ * `generate-spm-xcodeproj.js` expects.
+ *
+ * https://github.com/react/react-native/issues/58359
+ */
+function forceBashScripts(target: string): void {
+  const project = path.join(target, "App.xcodeproj", "project.pbxproj");
+  fs.writeFileSync(
+    project,
+    fs
+      .readFileSync(project, "utf8")
+      .replaceAll("shellPath = /bin/sh;", "shellPath = /bin/bash;"),
+  );
+
+  const schemes = path.join(
+    target,
+    "App.xcodeproj",
+    "xcshareddata",
+    "xcschemes",
+  );
+  if (!fs.existsSync(schemes)) return;
+
+  const guard =
+    "[ -n &quot;${BASH_VERSION-}&quot; ] || [ ! -x /bin/bash ] ||" +
+    " exec /bin/bash &quot;$0&quot; &quot;$@&quot;\n";
+
+  for (const entry of fs.readdirSync(schemes)) {
+    if (!entry.endsWith(".xcscheme")) continue;
+    const scheme = path.join(schemes, entry);
+    fs.writeFileSync(
+      scheme,
+      fs
+        .readFileSync(scheme, "utf8")
+        .replaceAll('scriptText = "', `scriptText = "${guard}`),
+    );
+  }
+}
+
 export async function runIos(options: IosOptions = {}): Promise<void> {
   const root = options.root ?? process.cwd();
   const configured = await loadOptions(root);
@@ -177,6 +216,8 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
     ],
     { cwd: target },
   );
+
+  forceBashScripts(target);
 
   const simulator = await pickSimulator(options.device);
   const derived = path.join(target, "derived");
