@@ -2,25 +2,7 @@ import { setRequireModule } from "@vitejs/plugin-rsc/core/browser";
 import { registry } from "virtual:flypath/client-references";
 import { nativeReferences } from "virtual:flypath/native-references";
 
-type Config = {
-  platform: string;
-  serverUrl: string;
-  dev: boolean;
-};
-
-type Global = {
-  __FLYPATH__: Config;
-  __flypathChunks?: Record<string, number>;
-  __loadBundleAsync?: (path: string) => Promise<void>;
-  __r: (moduleId: number) => unknown;
-  globalEvalWithSourceUrl?: (code: string, url: string) => unknown;
-};
-
-const scope = globalThis as unknown as Global;
-
-function config(): Config {
-  return scope.__FLYPATH__;
-}
+import { nativeConfig } from "./native-config.ts";
 
 function stripReferenceTag(id: string): string {
   let value = id.split("$$")[0] ?? id;
@@ -44,15 +26,15 @@ function assertLocal(reference: string): void {
 }
 
 function evaluateChunk(code: string, url: string): void {
-  const evaluate = scope.globalEvalWithSourceUrl;
+  const evaluate = globalThis.globalEvalWithSourceUrl;
   if (evaluate) evaluate(code, url);
   else (0, eval)(`${code}\n//# sourceURL=${url}\n`);
 }
 
 function installBundleLoader(): void {
-  if (scope.__loadBundleAsync) return;
-  scope.__loadBundleAsync = async (bundlePath: string) => {
-    const url = `${config().serverUrl}${bundlePath}`;
+  if (globalThis.__loadBundleAsync) return;
+  globalThis.__loadBundleAsync = async (bundlePath: string) => {
+    const url = `${nativeConfig().serverUrl}${bundlePath}`;
     const response = await fetch(url);
     if (!response.ok) {
       const reason = await response.text().catch(() => "");
@@ -68,7 +50,7 @@ function installBundleLoader(): void {
 const downloads = new Map<string, Promise<void>>();
 
 function chunkPath(reference: string): string {
-  const { platform } = config();
+  const { platform } = nativeConfig();
   return `/chunk/${platform}/${encodeURIComponent(reference)}.bundle`;
 }
 
@@ -76,7 +58,7 @@ function download(reference: string): Promise<void> {
   const existing = downloads.get(reference);
   if (existing) return existing;
 
-  const load = scope.__loadBundleAsync;
+  const load = globalThis.__loadBundleAsync;
   if (!load) {
     return Promise.reject(
       new Error("flypath: native chunk loader is not installed"),
@@ -93,13 +75,13 @@ function download(reference: string): Promise<void> {
 
 async function loadChunk(reference: string): Promise<unknown> {
   await download(reference);
-  const moduleId = scope.__flypathChunks?.[reference];
+  const moduleId = globalThis.__FLYPATH__?.chunks?.[reference];
   if (moduleId === undefined) {
     throw new Error(
       `flypath: chunk for "${reference}" did not register a module id`,
     );
   }
-  return scope.__r(moduleId);
+  return globalThis.__r(moduleId);
 }
 
 export function installClientReferences(): void {

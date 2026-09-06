@@ -1,13 +1,9 @@
-const KEY = "__flypathTableColumns";
+import { singleton } from "../globals.ts";
 
-type Holder = { [KEY]?: Map<string, readonly string[]> };
-
-const holder = globalThis as unknown as Holder;
-
-const registry: Map<string, readonly string[]> = (holder[KEY] ??= new Map<
-  string,
-  readonly string[]
->());
+const registry: Map<string, readonly string[]> = singleton(
+  "tableColumns",
+  () => new Map<string, readonly string[]>(),
+);
 
 export function registerTable(name: string, columns: readonly string[]): void {
   registry.set(name, columns);

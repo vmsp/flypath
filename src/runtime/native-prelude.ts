@@ -33,6 +33,7 @@ __GLOBAL__.__FLYPATH__ = {
   serverUrl: ${JSON.stringify(options.serverUrl)},
   dev: ${dev},
   manifestHash: ${JSON.stringify(options.manifestHash)},
+  chunks: {},
 };
 (function (global) {
 ${metroRequirePolyfill(options.root)}

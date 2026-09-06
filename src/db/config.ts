@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { globals } from "../globals.ts";
+
 export type DatabaseOptions = {
   url?: string | undefined;
   max?: number;
@@ -12,18 +14,13 @@ export type DatabaseOptions = {
 
 export type Databases = Record<string, DatabaseOptions>;
 
-const KEY = "__flypathDatabases";
-
-type Holder = { [KEY]?: Databases };
-
-const holder = globalThis as unknown as Holder;
-
 export function configureDatabases(databases: Databases): void {
-  holder[KEY] = { ...holder[KEY], ...databases };
+  const state = globals();
+  state.databases = { ...state.databases, ...databases };
 }
 
 export function databaseOptions(name: string): DatabaseOptions {
-  const declared = holder[KEY]?.[name];
+  const declared = globals().databases?.[name];
   if (declared) {
     return { ...declared, url: declared.url ?? urlFromEnv(name) };
   }

@@ -9,24 +9,13 @@ export type NativeRegistry = {
   components: string[];
 };
 
-type Global = {
-  __flypath?: { native?: NativeRegistry };
-  __FLYPATH__?: {
-    manifestHash?: string;
-    serverUrl?: string;
-    platform?: string;
-  };
-};
-
-const scope = globalThis as unknown as Global;
-
 const SKEW =
   'flypath: this build of the app was made from a different set of "use native" ' +
   'declarations than the running server — run "pnpm ios" or "pnpm android"';
 
 function skewed(): boolean {
-  const expected = scope.__FLYPATH__?.manifestHash;
-  const actual = scope.__flypath?.native?.hash;
+  const expected = globalThis.__FLYPATH__?.manifestHash;
+  const actual = globalThis.__FLYPATH__?.native?.hash;
   if (expected === undefined || expected === "" || actual === undefined) {
     return false;
   }
@@ -36,21 +25,21 @@ function skewed(): boolean {
 export function reportNativeSkew(): void {
   if (!skewed()) return;
   console.warn(SKEW);
-  const { serverUrl, platform } = scope.__FLYPATH__ ?? {};
+  const { serverUrl, platform } = globalThis.__FLYPATH__ ?? {};
   if (serverUrl === undefined) return;
   void fetch(`${serverUrl}/flypath-skew`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       platform,
-      binary: scope.__flypath?.native?.hash,
-      server: scope.__FLYPATH__?.manifestHash,
+      binary: globalThis.__FLYPATH__?.native?.hash,
+      server: globalThis.__FLYPATH__?.manifestHash,
     }),
   }).catch(() => undefined);
 }
 
 export function installNativeBindings(): void {
-  if (scope.__flypath?.native) return;
+  if (globalThis.__FLYPATH__?.native) return;
   const module = TurboModuleRegistry.get<
     TurboModule & { install: () => boolean }
   >("Flypath");
@@ -65,7 +54,7 @@ export function installNativeBindings(): void {
 
 export function nativeRegistry(): NativeRegistry {
   installNativeBindings();
-  const registry = scope.__flypath?.native;
+  const registry = globalThis.__FLYPATH__?.native;
   if (!registry) {
     throw new Error("flypath: native bindings failed to install");
   }

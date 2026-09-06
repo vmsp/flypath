@@ -1,18 +1,15 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { singleton } from "../globals.ts";
 import type { Connection, TransactionConnection } from "./client.ts";
 import { pool } from "./client.ts";
 
-const KEY = "__flypathTransactions";
-
 type Scope = Map<string, TransactionConnection>;
 
-type Holder = { [KEY]?: AsyncLocalStorage<Scope> };
-
-const holder = globalThis as unknown as Holder;
-
-const storage: AsyncLocalStorage<Scope> = (holder[KEY] ??=
-  new AsyncLocalStorage<Scope>());
+const storage: AsyncLocalStorage<Scope> = singleton(
+  "transactions",
+  () => new AsyncLocalStorage<Scope>(),
+);
 
 export function currentConnection(name: string): Connection | undefined {
   return storage.getStore()?.get(name) as Connection | undefined;

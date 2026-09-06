@@ -1,9 +1,8 @@
+import { globals } from "../globals.ts";
 import type { ContextStore } from "../router/context.ts";
 import type { RouteInfo } from "../router/types.ts";
 
 export type Platform = "web" | "ios" | "android";
-
-const KEY = "__flypathRequest";
 
 const DEV = process.env.NODE_ENV !== "production";
 
@@ -24,15 +23,8 @@ export type HeaderAccess = {
 
 export type RequestStore = { get: () => RequestInfo | undefined };
 
-type Holder = {
-  [KEY]?: RequestStore;
-  __FLYPATH__?: { platform?: string };
-};
-
-const holder = globalThis as unknown as Holder;
-
 export function setRequestStore(store: RequestStore): void {
-  holder[KEY] = store;
+  globals().request = store;
 }
 
 export function parsePlatform(
@@ -44,13 +36,13 @@ export function parsePlatform(
 }
 
 export function getRequest(): RequestInfo | undefined {
-  return holder[KEY]?.get();
+  return globals().request?.get();
 }
 
 export function platform(): Platform {
   return (
     getRequest()?.platform ??
-    parsePlatform(holder.__FLYPATH__?.platform) ??
+    parsePlatform(globalThis.__FLYPATH__?.platform) ??
     "web"
   );
 }

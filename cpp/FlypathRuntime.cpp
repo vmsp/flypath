@@ -92,9 +92,16 @@ void install(Runtime& runtime,
   native.setProperty(runtime, "modules", std::move(modules));
   native.setProperty(runtime, "components", std::move(components));
 
+  Value existing = runtime.global().getProperty(runtime, "__FLYPATH__");
+  if (existing.isObject()) {
+    existing.getObject(runtime).setProperty(runtime, "native",
+                                            std::move(native));
+    return;
+  }
+
   Object root(runtime);
   root.setProperty(runtime, "native", std::move(native));
-  runtime.global().setProperty(runtime, "__flypath", std::move(root));
+  runtime.global().setProperty(runtime, "__FLYPATH__", std::move(root));
 }
 
 }  // namespace flypath

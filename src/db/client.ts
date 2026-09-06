@@ -1,5 +1,6 @@
 import postgres from "postgres";
 
+import { singleton } from "../globals.ts";
 import { connectionUrl, databaseOptions } from "./config.ts";
 import type { Compiled } from "./ir.ts";
 import { currentConnection } from "./transaction.ts";
@@ -10,16 +11,10 @@ export type TransactionConnection = postgres.TransactionSql<
   Record<string, never>
 >;
 
-const KEY = "__flypathPools";
-
-type Holder = { [KEY]?: Map<string, Connection> };
-
-const holder = globalThis as unknown as Holder;
-
-const pools: Map<string, Connection> = (holder[KEY] ??= new Map<
-  string,
-  Connection
->());
+const pools: Map<string, Connection> = singleton(
+  "pools",
+  () => new Map<string, Connection>(),
+);
 
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
 

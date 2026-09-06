@@ -129,7 +129,7 @@ export class NativeServer {
 
     const id = referenceToId(this.#server.config.root, reference);
     const built: NativeChunk = await this.bundler(platform).buildChunk(id, dev);
-    const registration = `global.__flypathChunks = global.__flypathChunks || {};\nglobal.__flypathChunks[${JSON.stringify(
+    const registration = `global.__FLYPATH__.chunks[${JSON.stringify(
       reference,
     )}] = ${built.moduleId};\n`;
 
