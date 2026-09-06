@@ -27,6 +27,11 @@ declare global {
   var __r: (moduleId: number) => unknown;
   var __loadBundleAsync: ((path: string) => Promise<void>) | undefined;
 
+  // __flypathNamespace and __flypathLazy are also defined. The first adapts
+  // Metro's CJS module registry to ESM namespace semantics. The second does the
+  // same but lazily. They're only referenced from generated code strings so we
+  // don't include them here.
+
   // React Native
   var globalEvalWithSourceUrl:
     | ((code: string, url: string) => unknown)

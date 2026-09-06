@@ -1,3 +1,4 @@
+import type { DbFactory } from "./db/index.ts";
 import type { Db } from "./db/query.ts";
 import type { SqlTag } from "./db/sql.ts";
 import type { TransactionOptions } from "./db/transaction.ts";
@@ -30,9 +31,18 @@ function serverOnly(name: string): never {
   );
 }
 
-export function db(_options?: { name?: string }): Db {
+function create(_options?: { name?: string }): Db {
   return serverOnly("db");
 }
+
+function transaction<T>(
+  _run: () => Promise<T>,
+  _options?: TransactionOptions,
+): Promise<T> {
+  return serverOnly("transaction");
+}
+
+export const db: DbFactory = Object.assign(create, { transaction });
 
 export const sql: SqlTag = Object.assign(
   (() => serverOnly("sql")) as unknown as SqlTag,
@@ -42,10 +52,3 @@ export const sql: SqlTag = Object.assign(
     join: () => serverOnly("sql"),
   },
 );
-
-export function transaction<T>(
-  _run: () => Promise<T>,
-  _options?: TransactionOptions,
-): Promise<T> {
-  return serverOnly("transaction");
-}

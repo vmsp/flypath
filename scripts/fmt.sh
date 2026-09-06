@@ -1,7 +1,6 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# Formats the whole codebase with oxfmt, clang-format, swift-format and ktfmt.
-# Pass --check for dry run.
+# Format the whole codebase. Pass --check for a dry run.
 
 set -euo pipefail
 
@@ -17,7 +16,7 @@ files() {
   git ls-files -co --exclude-standard -z "$@"
 }
 
-if [ "${1-}" = "--check" ]; then
+if [[ "${1-}" = "--check" ]]; then
   oxfmt --check
   files "${native[@]}" |
     xargs -0 clang-format --dry-run -Werror

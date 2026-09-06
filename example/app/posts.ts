@@ -1,4 +1,4 @@
-import { db, transaction } from "flypath";
+import { db } from "flypath";
 import { count } from "flypath/sql";
 
 export type Post = {
@@ -37,7 +37,7 @@ export async function getPost(id: number): Promise<Post | undefined> {
 }
 
 export async function addLike(postId: number, userId: number): Promise<number> {
-  return transaction(async () => {
+  return db.transaction(async () => {
     await db()
       .into("likes")
       .insert({ postId, userId })

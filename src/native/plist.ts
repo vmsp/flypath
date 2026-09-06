@@ -1,3 +1,8 @@
+/**
+ * Functions to manipulate Apple property list (.plist) files like `Info.plist`
+ * and `App.entitlements`.
+ */
+
 export type PlistValue =
   | string
   | number

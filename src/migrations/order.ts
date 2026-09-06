@@ -1,3 +1,14 @@
+/**
+ * Column ordering when creating new PostgreSQL tables.
+ *
+ * Similarly to C structs, the space of a table is influenced by the order of
+ * its columns due to automatically inserted alignment paddings. By ordering
+ * columns based on type size in descending order with variable sizes (e.g.
+ * text) at the end, space can be saved.
+ *
+ * See https://docs.gitlab.com/development/database/ordering_table_columns/
+ */
+
 import type { ColumnDef, TableDef } from "../schema/types.ts";
 
 type Tier = { align: number; size: number };
