@@ -7,6 +7,6 @@
     "noUnusedLocals": false,
     "rootDir": "."
   },
-  "include": ["src"],
+  "include": ["src", "test"],
   "exclude": []
 }

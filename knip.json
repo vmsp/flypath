@@ -9,9 +9,9 @@
         "src/runtime/jsx-dev-runtime.{client,native,server}.ts",
         "src/runtime/{server,ssr,web,native}-entry.tsx",
         "src/components/native/*.{ts,tsx}",
-        "src/**/*.test-d.ts"
+        "test/**/*.test-d.ts"
       ],
-      "project": ["src/**/*.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}", "test/**/*.ts"],
       "ignoreDependencies": [
         "@babel/preset-flow",
         "oxfmt",

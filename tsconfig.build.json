@@ -26,6 +26,5 @@
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test-d.ts"]
+  "include": ["src"]
 }

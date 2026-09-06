@@ -3,7 +3,7 @@ import type { AnyTable } from "../schema/table.ts";
 import { isTable, TABLE, tableDefinition } from "../schema/table.ts";
 import type { SchemaState, TableDef, ViewDef } from "../schema/types.ts";
 import { emptyState } from "../schema/types.ts";
-import type { Migration, Operation } from "./operations.ts";
+import type { Operation } from "./operations.ts";
 
 function clone<T>(value: T): T {
   return structuredClone(value);
@@ -162,14 +162,6 @@ export function apply(state: SchemaState, operation: Operation): SchemaState {
     case "sql":
     case "run":
       return state;
-  }
-  return state;
-}
-
-export function replay(migrations: readonly Migration[]): SchemaState {
-  let state = emptyState();
-  for (const file of migrations) {
-    for (const operation of file.operations) state = apply(state, operation);
   }
   return state;
 }

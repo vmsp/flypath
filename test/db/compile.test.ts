@@ -1,8 +1,8 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, test } from "vitest";
 
-import { registerTable } from "../schema/registry.ts";
-import { count, eq, ilike, max, or, rowNumber } from "../sql.ts";
-import { Db } from "./query.ts";
+import { Db } from "../../src/db/query.ts";
+import { registerTable } from "../../src/schema/registry.ts";
+import { count, eq, ilike, max, or, rowNumber } from "../../src/sql.ts";
 
 const db = (): Db => new Db("default");
 
@@ -13,7 +13,7 @@ beforeAll(() => {
 });
 
 describe("compileQuery", () => {
-  it("folds where before select into one statement", () => {
+  test("folds where before select into one statement", () => {
     expect(
       db().from("users").where("id", "=", 3).select("id", "name").compile(),
     ).toMatchInlineSnapshot(`
@@ -26,7 +26,7 @@ describe("compileQuery", () => {
     `);
   });
 
-  it("folds order by and limit into the same statement", () => {
+  test("folds order by and limit into the same statement", () => {
     const { text, params } = db()
       .from("posts")
       .where("body", "ilike", "%engine%")
@@ -41,7 +41,7 @@ describe("compileQuery", () => {
     expect(params).toEqual(["%engine%", 5]);
   });
 
-  it("wraps a where that follows a window extend", () => {
+  test("wraps a where that follows a window extend", () => {
     const { text } = db()
       .from("posts")
       .extend((t) =>
@@ -61,7 +61,7 @@ describe("compileQuery", () => {
     );
   });
 
-  it("turns a where after an aggregate into having", () => {
+  test("turns a where after an aggregate into having", () => {
     const { text } = db()
       .from("posts")
       .groupBy("authorId")
@@ -76,7 +76,7 @@ describe("compileQuery", () => {
     );
   });
 
-  it("joins a pipe under its alias", () => {
+  test("joins a pipe under its alias", () => {
     const { text } = db()
       .from("posts")
       .join("users", "users.id", "posts.authorId")
@@ -100,7 +100,7 @@ describe("compileQuery", () => {
     );
   });
 
-  it("puts a with clause before the select and numbers its parameters first", () => {
+  test("puts a with clause before the select and numbers its parameters first", () => {
     const { text, params } = db()
       .with("recent", db().from("posts").orderBy("id", "desc").limit(3))
       .from("recent")
@@ -111,7 +111,7 @@ describe("compileQuery", () => {
     expect(params).toEqual([3, "%a%"]);
   });
 
-  it("expands in against an array as = any", () => {
+  test("expands in against an array as = any", () => {
     expect(
       db().from("posts").where("id", "in", [1, 2, 3]).select("id").compile(),
     ).toEqual({
@@ -120,7 +120,7 @@ describe("compileQuery", () => {
     });
   });
 
-  it("renders a callback predicate with the columns in scope", () => {
+  test("renders a callback predicate with the columns in scope", () => {
     const { text, params } = db()
       .from("posts")
       .where((t) => or(eq(t.authorId, 3), ilike(t.body, "%engine%")))
@@ -133,11 +133,11 @@ describe("compileQuery", () => {
     expect(params).toEqual([3, "%engine%"]);
   });
 
-  it("never emits a star for a registered table", () => {
+  test("never emits a star for a registered table", () => {
     expect(db().from("users").compile().text).not.toContain("*");
   });
 
-  it("emits a star for a table the registry does not know", () => {
+  test("emits a star for a table the registry does not know", () => {
     expect(db().from("notes").compile().text).toBe(
       'select "notes".* from "notes"',
     );
@@ -145,7 +145,7 @@ describe("compileQuery", () => {
 });
 
 describe("compileInsert", () => {
-  it("lists the columns of every row and fills the gaps with default", () => {
+  test("lists the columns of every row and fills the gaps with default", () => {
     expect(
       db()
         .into("users")
@@ -157,7 +157,7 @@ describe("compileInsert", () => {
     });
   });
 
-  it("writes on conflict do nothing against a column list", () => {
+  test("writes on conflict do nothing against a column list", () => {
     expect(
       db()
         .into("likes")
@@ -173,7 +173,7 @@ describe("compileInsert", () => {
 });
 
 describe("compileUpdate", () => {
-  it("keeps set and where independent of the order they were written", () => {
+  test("keeps set and where independent of the order they were written", () => {
     const first = db().update("users").where("id", "=", 3).set({ name: "X" });
     const second = db().update("users").set({ name: "X" }).where("id", "=", 3);
     expect(first.compile().text).toBe(second.compile().text);
@@ -181,7 +181,7 @@ describe("compileUpdate", () => {
 });
 
 describe("compileDelete", () => {
-  it("returns the columns it was asked for", () => {
+  test("returns the columns it was asked for", () => {
     expect(
       db().delete("posts").where("id", "=", 3).returning("id").compile().text,
     ).toBe(

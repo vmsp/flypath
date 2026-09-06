@@ -1,23 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 
-import { bigint, text } from "../schema/column.ts";
-import { emptyState } from "../schema/types.ts";
-import { conservative, diff } from "./diff.ts";
-import type { Operation } from "./operations.ts";
+import { conservative, diff } from "../../src/migrations/diff.ts";
+import type { Operation } from "../../src/migrations/operations.ts";
 import {
   addColumn,
   createEnum,
   createTable,
   dropColumn,
-  migration,
-} from "./operations.ts";
+} from "../../src/migrations/operations.ts";
 import {
   apply,
   invert,
   IrreversibleError,
-  replay,
   schemaState,
-} from "./state.ts";
+} from "../../src/migrations/state.ts";
+import { bigint, text } from "../../src/schema/column.ts";
+import { emptyState } from "../../src/schema/types.ts";
 
 const users = createTable("users", {
   id: bigint().primaryKey().generatedAlwaysAsIdentity(),
@@ -31,37 +29,37 @@ function fold(operations: readonly Operation[]) {
 }
 
 describe("apply", () => {
-  it("adds a column to the table an earlier operation created", () => {
+  test("adds a column to the table an earlier operation created", () => {
     const state = fold([users, addColumn("users", "bio", text())]);
     expect(state.tables["users"]?.order).toEqual(["id", "name", "bio"]);
   });
 
-  it("refuses an operation against a table no migration creates", () => {
+  test("refuses an operation against a table no migration creates", () => {
     expect(() => fold([addColumn("nope", "bio", text())])).toThrow(
       /no earlier migration creates/,
     );
   });
-});
 
-describe("replay", () => {
-  it("folds every file in order into one state", () => {
-    const state = replay([
-      migration([createEnum("kind", ["a"]), users]),
-      migration([addColumn("users", "bio", text())]),
+  test("folds a whole sequence of operations into one state", () => {
+    const state = fold([
+      createEnum("kind", ["a"]),
+      users,
+      addColumn("users", "bio", text()),
     ]);
     expect(Object.keys(state.tables)).toEqual(["users"]);
+    expect(state.tables["users"]?.order).toEqual(["id", "name", "bio"]);
     expect(state.enums["kind"]?.values).toEqual(["a"]);
   });
 });
 
 describe("invert", () => {
-  it("reverses a created table into a dropped one", () => {
+  test("reverses a created table into a dropped one", () => {
     expect(invert(users, emptyState())).toEqual([
       { kind: "dropTable", name: "users" },
     ]);
   });
 
-  it("rebuilds a dropped column from the state before it", () => {
+  test("rebuilds a dropped column from the state before it", () => {
     const before = fold([users]);
     expect(invert(dropColumn("users", "name"), before)).toEqual([
       {
@@ -73,7 +71,7 @@ describe("invert", () => {
     ]);
   });
 
-  it("refuses a sql operation with no down", () => {
+  test("refuses a sql operation with no down", () => {
     expect(() => invert({ kind: "sql", up: "select 1" }, emptyState())).toThrow(
       IrreversibleError,
     );
@@ -81,12 +79,12 @@ describe("invert", () => {
 });
 
 describe("diff", () => {
-  it("is empty when the history already matches the schema", async () => {
+  test("is empty when the history already matches the schema", async () => {
     const state = fold([users]);
     expect(await diff(state, structuredClone(state))).toEqual([]);
   });
 
-  it("emits one addColumn for a column the schema gained", async () => {
+  test("emits one addColumn for a column the schema gained", async () => {
     const before = fold([users]);
     const after = fold([users, addColumn("users", "bio", text())]);
     const operations = await diff(before, after);
@@ -98,7 +96,7 @@ describe("diff", () => {
     });
   });
 
-  it("proposes a renameColumn when the prompt says yes", async () => {
+  test("proposes a renameColumn when the prompt says yes", async () => {
     const before = fold([users]);
     const after = fold([
       createTable("users", {
@@ -115,7 +113,7 @@ describe("diff", () => {
     ]);
   });
 
-  it("drops and adds instead of renaming when nothing answers the prompt", async () => {
+  test("drops and adds instead of renaming when nothing answers the prompt", async () => {
     const before = fold([users, addColumn("users", "bio", text())]);
     const after = fold([users, addColumn("users", "about", text())]);
     const kinds = (await diff(before, after, conservative)).map(
@@ -124,7 +122,7 @@ describe("diff", () => {
     expect(kinds).toEqual(["addColumn", "dropColumn"]);
   });
 
-  it("refuses a not-null column with no default and no answer", async () => {
+  test("refuses a not-null column with no default and no answer", async () => {
     const before = fold([users]);
     const after = fold([
       createTable("users", {
@@ -138,7 +136,7 @@ describe("diff", () => {
     );
   });
 
-  it("orders created tables so a reference lands after its target", async () => {
+  test("orders created tables so a reference lands after its target", async () => {
     const target = fold([
       createTable("posts", {
         id: bigint().primaryKey().generatedAlwaysAsIdentity(),
@@ -156,8 +154,8 @@ describe("diff", () => {
 });
 
 describe("schemaState", () => {
-  it("keys tables by their SQL name, not their export name", async () => {
-    const module = await import("../schema/index.ts");
+  test("keys tables by their SQL name, not their export name", async () => {
+    const module = await import("../../src/schema/index.ts");
     const built = schemaState({
       people: module.table("users", { id: module.bigint().primaryKey() }),
     });

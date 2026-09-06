@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 
+import { compactOrder } from "../../src/migrations/order.ts";
 import {
   bigint,
   boolean,
@@ -9,12 +10,11 @@ import {
   text,
   timestamptz,
   uuid,
-} from "../schema/column.ts";
-import { defineTable } from "../schema/table.ts";
-import { compactOrder } from "./order.ts";
+} from "../../src/schema/column.ts";
+import { defineTable } from "../../src/schema/table.ts";
 
 describe("compactOrder", () => {
-  it("puts eight-byte columns before variable-width ones", () => {
+  test("puts eight-byte columns before variable-width ones", () => {
     const table = defineTable("users", {
       email: text().notNull(),
       id: bigint().primaryKey().generatedAlwaysAsIdentity(),
@@ -24,7 +24,7 @@ describe("compactOrder", () => {
     expect(compactOrder(table)).toEqual(["id", "createdAt", "email", "name"]);
   });
 
-  it("orders fixed columns by alignment then size, descending", () => {
+  test("orders fixed columns by alignment then size, descending", () => {
     const table = defineTable("wide", {
       flag: boolean().notNull(),
       key: uuid().notNull(),
@@ -41,7 +41,7 @@ describe("compactOrder", () => {
     ]);
   });
 
-  it("keeps declaration order inside a tier and among variable columns", () => {
+  test("keeps declaration order inside a tier and among variable columns", () => {
     const table = defineTable("notes", {
       body: text().notNull(),
       meta: jsonb().notNull(),
@@ -51,7 +51,7 @@ describe("compactOrder", () => {
     expect(compactOrder(table)).toEqual(["second", "first", "body", "meta"]);
   });
 
-  it("treats an array column as variable width", () => {
+  test("treats an array column as variable width", () => {
     const table = defineTable("tagged", {
       tags: text().array().notNull(),
       id: bigint().notNull(),
