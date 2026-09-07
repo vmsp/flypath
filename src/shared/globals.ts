@@ -7,7 +7,6 @@ type FlypathState = {
     import("../jobs/run.ts").JobContext
   >;
   pools: Map<string, import("../db/client.ts").Connection>;
-  request: import("../runtime/platform.ts").RequestStore;
   requestStorage: import("node:async_hooks").AsyncLocalStorage<
     import("../runtime/platform.ts").RequestInfo
   >;

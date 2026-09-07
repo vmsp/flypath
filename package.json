@@ -37,7 +37,6 @@
     "./dist/runtime/jsx-dev-runtime.native.js",
     "./dist/runtime/jsx-runtime.native.js",
     "./dist/runtime/native-entry.js",
-    "./dist/runtime/platform-store.js",
     "./dist/runtime/server-entry.js",
     "./dist/runtime/web-entry.js",
     "./dist/runtime/web-references.js"

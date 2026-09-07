@@ -1,3 +1,7 @@
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
 import type { JobsOptions } from "../jobs/config.ts";
 
 export const CONFIG_PLUGIN = "flypath:config";
@@ -66,17 +70,83 @@ export type FlypathOptions = {
   };
 };
 
+// We cheat here by not using vite's `loadConfigFromFile` to load flypath's
+// configuration options from `vite.config.ts`. Using a plain import that
+// doesn't load vite makes cli commands that don't require it (like `migrate`,
+// `rollback`, `ios`, ...) much faster.
+
+type Named = { name?: string; api?: unknown };
+
+function isThenable(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { then?: unknown }).then === "function"
+  );
+}
+
+function collectSettled(option: unknown, out: Named[]): void {
+  if (!option || isThenable(option)) return;
+  if (Array.isArray(option)) {
+    for (const entry of option) collectSettled(entry, out);
+    return;
+  }
+  out.push(option as Named);
+}
+
+type Configish = { plugins?: unknown; server?: { port?: number } };
+
+const CONFIG_FILES = [
+  "vite.config.ts",
+  "vite.config.mts",
+  "vite.config.js",
+  "vite.config.mjs",
+  "vite.config.cts",
+  "vite.config.cjs",
+];
+
+const CONFIG_ENV = { command: "build" as const, mode: "production" };
+
+async function importConfig(root: string): Promise<Configish | undefined> {
+  const file = CONFIG_FILES.map((name) => path.join(root, name)).find((entry) =>
+    fs.existsSync(entry),
+  );
+  if (file === undefined) return undefined;
+
+  let exported: unknown;
+  try {
+    const module = (await import(pathToFileURL(file).href)) as {
+      default?: unknown;
+    };
+    exported = await module.default;
+  } catch (error) {
+    throw new Error(
+      `flypath: could not load ${file}. Flypath runs it with Node, so it ` +
+        "cannot use __dirname, require(), or TypeScript that emits code " +
+        "(enum, namespace, parameter properties); use import.meta.dirname " +
+        "and plain type syntax instead",
+      { cause: error },
+    );
+  }
+
+  const config: unknown =
+    typeof exported === "function"
+      ? await (exported as (env: typeof CONFIG_ENV) => unknown)(CONFIG_ENV)
+      : exported;
+  return (config ?? undefined) as Configish | undefined;
+}
+
 export async function loadOptions(
   root: string,
 ): Promise<FlypathOptions & { port: number }> {
-  // TODO: It might be productive to avoid having to load the whole of Vite just
-  // to read our options.
+  const loaded = await importConfig(root);
+  if (!loaded) return { port: DEFAULT_PORT };
 
-  const { resolveConfig } = await import("vite");
-  const config = await resolveConfig({ root, logLevel: "warn" }, "build");
-  const plugin = config.plugins.find((entry) => entry.name === CONFIG_PLUGIN);
+  const plugins: Named[] = [];
+  collectSettled(loaded.plugins, plugins);
+  const plugin = plugins.find((entry) => entry.name === CONFIG_PLUGIN);
   return {
     ...(plugin?.api as FlypathOptions | undefined),
-    port: config.server.port ?? DEFAULT_PORT,
+    port: loaded.server?.port ?? DEFAULT_PORT,
   };
 }

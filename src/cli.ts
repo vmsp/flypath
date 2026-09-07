@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { cac } from "cac";
 
 import type { Worker, WorkOptions } from "./jobs/worker.ts";
+import type { FlypathOptions } from "./native/config.ts";
 
 const cli = cac("flypath");
 
@@ -18,17 +19,30 @@ async function environment(): Promise<string> {
   return root;
 }
 
-async function declareDatabases(root: string): Promise<void> {
-  const { loadOptions } = await import("./native/config.ts");
+async function declareOptions(options: FlypathOptions): Promise<void> {
   const { configureDatabases } = await import("./db/config.ts");
   const { configureJobs } = await import("./jobs/config.ts");
+  if (options.databases) configureDatabases(options.databases);
+  if (options.jobs) configureJobs(options.jobs);
+}
+
+async function declareDatabases(root: string): Promise<void> {
+  const { loadOptions } = await import("./native/config.ts");
   try {
-    const options = await loadOptions(root);
-    if (options.databases) configureDatabases(options.databases);
-    if (options.jobs) configureJobs(options.jobs);
-  } catch {
-    // A project without a resolvable vite config still gets DATABASE_URL.
+    await declareOptions(await loadOptions(root));
+  } catch (error) {
+    console.warn(error instanceof Error ? error.message : String(error));
   }
+}
+
+async function declareFromServer(
+  server: import("vite").ViteDevServer,
+): Promise<void> {
+  const { CONFIG_PLUGIN } = await import("./native/config.ts");
+  const plugin = server.config.plugins.find(
+    (entry) => entry.name === CONFIG_PLUGIN,
+  );
+  await declareOptions((plugin?.api as FlypathOptions | undefined) ?? {});
 }
 
 function untilSignal(worker: Worker): Promise<void> {
@@ -50,7 +64,7 @@ async function startDevWorker(
     const { isRunnableDevEnvironment } = await import("vite");
     const environment = server.environments["rsc"];
     if (!environment || !isRunnableDevEnvironment(environment)) return;
-    const input = environment.config.build.rollupOptions.input;
+    const input = environment.config.build.rolldownOptions.input;
     const source =
       typeof input === "string"
         ? input
@@ -92,6 +106,7 @@ cli
     const server = await createServer({
       server: { port: port(options.port), host: options.host },
     });
+    await declareFromServer(server);
     await server.listen();
     server.printUrls();
 

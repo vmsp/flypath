@@ -13,8 +13,14 @@ import { jobs } from "flypath";
 import { resize } from "./images.ts";
 
 await jobs().enqueue(() => resize(post.id));
-await jobs().enqueue(() => resize(1), () => resize(2), () => resize(3));
-await jobs({ queue: "images", priority: 10 }).enqueue(() => resize(post.id, 1024));
+await jobs().enqueue(
+  () => resize(1),
+  () => resize(2),
+  () => resize(3),
+);
+await jobs({ queue: "images", priority: 10 }).enqueue(() =>
+  resize(post.id, 1024),
+);
 await jobs({ unique: true }).enqueue(refreshFeeds);
 ```
 
@@ -23,7 +29,9 @@ await jobs({ unique: true }).enqueue(refreshFeeds);
 import { cron } from "flypath";
 import { digest } from "./reports.ts";
 
-export default [cron("0 7 * * *", () => digest("daily"), { timezone: "Europe/Lisbon" })];
+export default [
+  cron("0 7 * * *", () => digest("daily"), { timezone: "Europe/Lisbon" }),
+];
 ```
 
 Postgres is the queue: one table, six statements, `FOR UPDATE SKIP
@@ -226,7 +234,7 @@ the `react-server` condition, and now the `enqueue` rewrite), so
 `() => report(1, 2, 3)` there would import application code into the
 wrong world. `app/crons.ts` is loaded by the worker through the same
 environment as routes, next to `app/routes.ts` which already sets the
-convention. Queue *configuration* does go in `vite.config.ts`, beside
+convention. Queue _configuration_ does go in `vite.config.ts`, beside
 `databases`.
 
 ### Schema
@@ -279,10 +287,15 @@ every interface without an index signature, which is all of them).
 import { jobs } from "flypath";
 
 const id = await jobs().enqueue(() => resize(post.id));
-const ids = await jobs().enqueue(() => resize(1), () => resize(2));
+const ids = await jobs().enqueue(
+  () => resize(1),
+  () => resize(2),
+);
 await jobs({ queue: "images", delay: 30 }).enqueue(() => resize(post.id));
 await jobs({ unique: true }).enqueue(cleanup);
-await jobs().enqueue(async () => (await import("./reports.ts")).digest("daily"));
+await jobs().enqueue(async () =>
+  (await import("./reports.ts")).digest("daily"),
+);
 ```
 
 `jobs(options?: EnqueueOptions)` returns `{ enqueue }`. `enqueue` takes
@@ -299,7 +312,7 @@ back with it, and the `NOTIFY` is delivered at commit. Both fall out of
 `connection(name)`, not out of any option.
 
 The types check the call inside the arrow against the function's own
-signature, because it *is* a call to the function as far as TypeScript is
+signature, because it _is_ a call to the function as far as TypeScript is
 concerned. What the types cannot express is "the callee must be a
 project export"; the scan does.
 
@@ -311,7 +324,13 @@ export default defineConfig({
   jobs: {
     queues: {
       default: { concurrency: 5 },
-      images: { concurrency: 2, retries: 5, retryDelay: 30, backoff: true, timeout: 600 },
+      images: {
+        concurrency: 2,
+        retries: 5,
+        retryDelay: 30,
+        backoff: true,
+        timeout: 600,
+      },
       bulk: { concurrency: 1, notify: false, pollInterval: 5 },
     },
   },
@@ -341,7 +360,10 @@ import { cron } from "flypath";
 
 export default [
   cron("*/5 * * * *", () => refreshFeeds()),
-  cron("0 3 * * *", () => prune(30), { timezone: "Europe/Lisbon", name: "nightly-prune" }),
+  cron("0 3 * * *", () => prune(30), {
+    timezone: "Europe/Lisbon",
+    name: "nightly-prune",
+  }),
 ];
 ```
 
@@ -564,13 +586,13 @@ where `<expr>` is a call to the `jobs` binding imported from `"flypath"`
 binding imported from `"flypath"`, and rewrites each argument with
 `magic-string`:
 
-| written | emitted |
-| - | - |
-| `() => resize(a, b)` | `() => [resize, [a, b]]` |
-| `() => ns.resize(a)` | `() => [ns.resize, [a]]` |
-| `async () => (await import("./r.ts")).digest("d")` | `async () => [(await import("./r.ts")).digest, ["d"]]` |
-| `cleanup` | unchanged |
-| `() => { … }`, `() => a(b(c))`, `() => x ? a() : b()` | build error |
+| written                                               | emitted                                                |
+| ----------------------------------------------------- | ------------------------------------------------------ |
+| `() => resize(a, b)`                                  | `() => [resize, [a, b]]`                               |
+| `() => ns.resize(a)`                                  | `() => [ns.resize, [a]]`                               |
+| `async () => (await import("./r.ts")).digest("d")`    | `async () => [(await import("./r.ts")).digest, ["d"]]` |
+| `cleanup`                                             | unchanged                                              |
+| `() => { … }`, `() => a(b(c))`, `() => x ? a() : b()` | build error                                            |
 
 Argument expressions are copied verbatim, so captured variables, spreads
 and defaults evaluate at enqueue time exactly as they would have. The
@@ -600,7 +622,10 @@ variable produces, since the rewrite only sees literals.
 import * as m0 from "/abs/app/images.ts";
 import * as m1 from "/abs/app/maintenance.ts";
 import { register } from "<dist>/jobs/registry.js";
-register({ "app/images.ts#resize": m0.resize, "app/maintenance.ts#prune": m1.prune });
+register({
+  "app/images.ts#resize": m0.resize,
+  "app/maintenance.ts#prune": m1.prune,
+});
 export { default as crons } from "/abs/app/crons.ts";
 ```
 

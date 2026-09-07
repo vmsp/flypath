@@ -1,3 +1,20 @@
+/**
+ * SQL operators to be used in more complicated queries.
+ *
+ * These are kept in their own package so they, being such common identifiers,
+ * don't pollute the main namespace.
+ *
+ * ``` ts
+ * import { db } from "flypath";
+ * import { count } from "flypath/sql";
+ *
+ * await db()
+ *   .from("mentions")
+ *   .groupBy("noteId")
+ *   .aggregate(count().as("mentions"))
+ * ```
+ */
+
 import { Expr, WindowFn, isPipe, toNode } from "./db/expression.ts";
 import type { Aliased, Expression, OrderInput } from "./db/expression.ts";
 import { orderList } from "./db/expression.ts";

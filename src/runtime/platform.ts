@@ -21,12 +21,6 @@ export type HeaderAccess = {
   delete: (name: string) => void;
 };
 
-export type RequestStore = { get: () => RequestInfo | undefined };
-
-export function setRequestStore(store: RequestStore): void {
-  globals().request = store;
-}
-
 export function parsePlatform(
   value: string | null | undefined,
 ): Platform | undefined {
@@ -36,7 +30,7 @@ export function parsePlatform(
 }
 
 export function getRequest(): RequestInfo | undefined {
-  return globals().request?.get();
+  return globals().requestStorage?.getStore();
 }
 
 export function platform(): Platform {
