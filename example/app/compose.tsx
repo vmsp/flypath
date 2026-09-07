@@ -52,7 +52,7 @@ export default async function Compose() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {notes.map((note) => (
             <span key={note.id} style={{ color: colors.secondary }}>
-              {note.author}: {note.body}
+              {note.author}: {note.body} ({note.mentions ?? 0} mentioned)
             </span>
           ))}
         </div>

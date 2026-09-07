@@ -1,12 +1,19 @@
 "use server";
 
-import { cookies, db, navigate, revalidate } from "flypath";
+import { cookies, db, jobs, navigate, revalidate } from "flypath";
+import { count } from "flypath/sql";
 
+import { notifyMentions } from "./jobs.ts";
 import { addLike } from "./posts.ts";
 import type { User } from "./session.ts";
 import { findUser, session, SESSION_COOKIE, visitor } from "./session.ts";
 
-export type Note = { id: number; author: string; body: string };
+export type Note = {
+  id: number;
+  author: string;
+  body: string;
+  mentions: number | null;
+};
 
 export async function entries(): Promise<{ id: number; name: string }[]> {
   return db().from("signatures").select("id", "name").orderBy("id", "asc");
@@ -27,17 +34,35 @@ export async function signForm(formData: FormData): Promise<void> {
 }
 
 export async function listNotes(): Promise<Note[]> {
+  const mentionCounts = db()
+    .from("mentions")
+    .groupBy("noteId")
+    .aggregate(count().as("mentions"))
+    .as("counts");
+
   return db()
     .from("notes")
     .join("users", "users.id", "notes.authorId")
-    .select("notes.id", "users.name as author", "notes.body")
+    .leftJoin(mentionCounts, "counts.noteId", "notes.id")
+    .select("notes.id", "users.name as author", "notes.body", "counts.mentions")
     .orderBy("id", "asc");
 }
 
 export async function postNote(formData: FormData): Promise<void> {
   const body = String(formData.get("note") ?? "").trim();
   if (body === "") return;
-  await db().into("notes").insert({ authorId: session().id, body });
+
+  await db.transaction(async () => {
+    const [note] = await db()
+      .into("notes")
+      .insert({ authorId: session().id, body })
+      .returning("id");
+    if (!note) return;
+    await jobs({ queue: "notifications", unique: true }).enqueue(() =>
+      notifyMentions(note.id),
+    );
+  });
+
   navigate("back");
 }
 

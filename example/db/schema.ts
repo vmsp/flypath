@@ -62,6 +62,20 @@ export const notes = table("notes", {
   body: text().notNull(),
 });
 
+export const mentions = table(
+  "mentions",
+  {
+    createdAt: timestamptz().notNull().defaultNow(),
+    noteId: bigint()
+      .notNull()
+      .references(() => notes.id, { onDelete: "cascade" }),
+    userId: bigint()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey().on(t.noteId, t.userId)],
+);
+
 export const signatures = table("signatures", {
   id: bigint().primaryKey().generatedAlwaysAsIdentity(),
   createdAt: timestamptz().notNull().defaultNow(),

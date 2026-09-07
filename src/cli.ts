@@ -1,5 +1,10 @@
 #!/usr/bin/env node
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
 import { cac } from "cac";
+
+import type { Worker, WorkOptions } from "./jobs/worker.ts";
 
 const cli = cac("flypath");
 
@@ -16,11 +21,59 @@ async function environment(): Promise<string> {
 async function declareDatabases(root: string): Promise<void> {
   const { loadOptions } = await import("./native/config.ts");
   const { configureDatabases } = await import("./db/config.ts");
+  const { configureJobs } = await import("./jobs/config.ts");
   try {
     const options = await loadOptions(root);
     if (options.databases) configureDatabases(options.databases);
+    if (options.jobs) configureJobs(options.jobs);
   } catch {
     // A project without a resolvable vite config still gets DATABASE_URL.
+  }
+}
+
+function untilSignal(worker: Worker): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const stop = (): void => {
+      process.off("SIGINT", stop);
+      process.off("SIGTERM", stop);
+      void worker.stop().then(resolve, resolve);
+    };
+    process.on("SIGINT", stop);
+    process.on("SIGTERM", stop);
+  });
+}
+
+async function startDevWorker(
+  server: import("vite").ViteDevServer,
+): Promise<void> {
+  try {
+    const { isRunnableDevEnvironment } = await import("vite");
+    const environment = server.environments["rsc"];
+    if (!environment || !isRunnableDevEnvironment(environment)) return;
+    const input = environment.config.build.rollupOptions.input;
+    const source =
+      typeof input === "string"
+        ? input
+        : (input as Record<string, string> | undefined)?.["index"];
+    if (source === undefined) return;
+    const resolved = await environment.pluginContainer.resolveId(source);
+    if (!resolved) return;
+    const module = (await environment.runner.import(resolved.id)) as {
+      work?: (options?: WorkOptions) => Promise<Worker>;
+    };
+    if (!module.work) return;
+    const worker = await module.work();
+    const close = server.close.bind(server);
+    server.close = async (): Promise<void> => {
+      await worker.stop();
+      await close();
+    };
+  } catch (error) {
+    console.warn(
+      `flypath: could not start the job worker — ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
   }
 }
 
@@ -43,6 +96,7 @@ cli
     server.printUrls();
 
     if (process.env["DATABASE_URL"]) {
+      await startDevWorker(server);
       const { status } = await import("./migrations/runner.ts");
       try {
         const current = await status(root);
@@ -60,6 +114,40 @@ cli
           }`,
         );
       }
+    }
+  });
+
+cli
+  .command("work", "Run background jobs and crons")
+  .option("--queues <names>", "Comma separated queues this worker serves")
+  .option("--concurrency <n>", "Override every queue's concurrency")
+  .action(async (options: { queues?: string; concurrency?: string }) => {
+    const root = await environment();
+    const entry = path.join(root, "dist", "rsc", "index.js");
+    const { closePools } = await import("./db/client.ts");
+    try {
+      const module = (await import(pathToFileURL(entry).href)) as {
+        work?: (options?: WorkOptions) => Promise<Worker>;
+      };
+      if (!module.work) {
+        throw new Error(
+          `flypath: ${entry} does not export work(); run flypath build`,
+        );
+      }
+      const worker = await module.work({
+        ...(options.queues === undefined
+          ? {}
+          : { queues: options.queues.split(",").map((name) => name.trim()) }),
+        ...(options.concurrency === undefined
+          ? {}
+          : { concurrency: Number(options.concurrency) }),
+      });
+      console.log(`flypath: worker ${worker.id} started`);
+      await untilSignal(worker);
+    } catch (error) {
+      fail(error);
+    } finally {
+      await closePools();
     }
   });
 
@@ -219,6 +307,11 @@ cli
           database,
           ...(options.to === undefined ? {} : { to: options.to }),
         });
+
+        const { jobsDatabase } = await import("./jobs/config.ts");
+        const { install } = await import("./jobs/schema.ts");
+        if (jobsDatabase() === database) await install(database);
+
         if (done.length === 0) {
           console.log("flypath: nothing to migrate");
           return;

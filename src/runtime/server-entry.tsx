@@ -50,8 +50,12 @@ import {
 } from "./router-server.tsx";
 
 import "virtual:flypath/database";
+import "virtual:flypath/jobs";
 
 import "virtual:flypath/styles.css";
+
+export { work } from "../jobs/worker.ts";
+export type { Worker, WorkOptions } from "../jobs/worker.ts";
 
 const FLIGHT_CONTENT_TYPE = "text/x-component;charset=utf-8";
 

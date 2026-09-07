@@ -9,6 +9,8 @@ import type { FlypathOptions } from "../native/config.ts";
 import { CONFIG_PLUGIN, DEFAULT_PORT } from "../native/config.ts";
 import { TAG_DEFAULTS } from "../styles/defaults.ts";
 import { flowStrip } from "./flow.ts";
+import { jobsScan } from "./jobs-scan.ts";
+import { jobsTransform } from "./jobs.ts";
 import { metroEndpoints } from "./metro-endpoints.ts";
 import {
   NATIVE_PLATFORMS,
@@ -23,6 +25,7 @@ import { styles } from "./styles.ts";
 
 const distDir = path.dirname(import.meta.dirname);
 
+export type { JobsOptions, QueueOptions } from "../jobs/config.ts";
 export type { FlypathOptions } from "../native/config.ts";
 
 export function flypathPaths(): {
@@ -184,6 +187,8 @@ export function flypath(options: FlypathOptions = {}): PluginOption[] {
     nativeStub(),
     clientReferences(),
     routes(),
+    jobsTransform(),
+    jobsScan(options.jobs ?? {}),
     ...nativeModules(distDir),
     ...NATIVE_PLATFORMS.map((platform) =>
       nativeResolve(distDir, platform, () => resolvedRoot),
@@ -217,6 +222,7 @@ function withFlypath(config: FlypathConfig): UserConfig {
     buildNumber,
     bundleId,
     databases,
+    jobs,
     ios,
     android,
     ...vite
@@ -231,6 +237,7 @@ function withFlypath(config: FlypathConfig): UserConfig {
         buildNumber,
         bundleId,
         databases,
+        jobs,
         ios,
         android,
       }),

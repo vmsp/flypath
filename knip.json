@@ -22,7 +22,7 @@
       ]
     },
     "example": {
-      "entry": ["app/routes.ts", "app/*.web.{ts,tsx}"],
+      "entry": ["app/routes.ts", "app/crons.ts", "app/*.web.{ts,tsx}"],
       "project": ["app/**/*.{ts,tsx}"]
     }
   }

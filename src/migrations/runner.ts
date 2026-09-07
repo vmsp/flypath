@@ -5,10 +5,9 @@ import { emptyState } from "../schema/types.ts";
 import { statements } from "./ddl.ts";
 import type { MigrationFile } from "./files.ts";
 import { discover, loadAll } from "./files.ts";
+import { LOCK_KEY } from "./lock.ts";
 import type { Migration, Operation } from "./operations.ts";
 import { apply, invert } from "./state.ts";
-
-const LOCK_KEY = 8_263_744_912_015n;
 
 const TABLE = "flypath_migrations";
 

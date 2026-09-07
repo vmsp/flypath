@@ -2,12 +2,27 @@ import type { DbFactory } from "./db/index.ts";
 import type { Db } from "./db/query.ts";
 import type { SqlTag } from "./db/sql.ts";
 import type { TransactionOptions } from "./db/transaction.ts";
+import type {
+  CronEntry,
+  CronOptions,
+  EnqueueOptions,
+  Jobs,
+  Thunk,
+} from "./jobs/enqueue.ts";
+import type { JobContext } from "./jobs/run.ts";
 
 export * from "./index.shared.ts";
 export type { Expression } from "./db/expression.ts";
 export type { Db } from "./db/query.ts";
 export type { NotFoundError } from "./db/sql.ts";
 export type { TransactionOptions } from "./db/transaction.ts";
+export type {
+  CronEntry,
+  CronOptions,
+  EnqueueOptions,
+  Jobs,
+} from "./jobs/enqueue.ts";
+export type { JobContext } from "./jobs/run.ts";
 export type {
   Insertable,
   Row,
@@ -52,3 +67,19 @@ export const sql: SqlTag = Object.assign(
     join: () => serverOnly("sql"),
   },
 );
+
+export function jobs(_options?: EnqueueOptions): Jobs {
+  return serverOnly("jobs");
+}
+
+export function cron(
+  _expression: string,
+  _thunk: Thunk,
+  _options?: CronOptions,
+): CronEntry {
+  return serverOnly("cron");
+}
+
+export function currentJob(): JobContext {
+  return serverOnly("currentJob");
+}

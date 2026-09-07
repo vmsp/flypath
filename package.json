@@ -92,6 +92,7 @@
     "@vitejs/plugin-rsc": "^0.5.34",
     "babel-plugin-syntax-hermes-parser": "0.36.1",
     "cac": "^6.7.14",
+    "croner": "^10.0.1",
     "magic-string": "^0.30.21",
     "metro-runtime": "0.87.0",
     "oxc-parser": "^0.146.0",

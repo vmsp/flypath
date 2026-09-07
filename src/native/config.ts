@@ -1,3 +1,5 @@
+import type { JobsOptions } from "../jobs/config.ts";
+
 export const CONFIG_PLUGIN = "flypath:config";
 
 export const DEFAULT_PORT = 8081;
@@ -21,6 +23,9 @@ export type FlypathOptions = {
       ssl?: boolean | "require" | "prefer";
     }
   >;
+
+  /** Background job queues, their policies and retention. */
+  jobs?: JobsOptions;
 
   /** User-facing name for the application. */
   appName?: string;
