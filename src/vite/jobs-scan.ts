@@ -16,6 +16,7 @@ import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
 
 import type { JobsOptions } from "../jobs/config.ts";
+import { distDir, EXTENSIONS, sources } from "../shared/paths.ts";
 import type { Node } from "./eval.ts";
 import { unwrap } from "./eval.ts";
 import type { ModuleRecord, Parsed } from "./jobs.ts";
@@ -31,49 +32,9 @@ import {
 const JOBS = "virtual:flypath/jobs";
 const JOBS_ID = `\0${JOBS}`;
 
-const distDir = path.dirname(import.meta.dirname);
-
-const SKIP = new Set([
-  ".flypath",
-  ".git",
-  "android",
-  "apple",
-  "build",
-  "cpp",
-  "dist",
-  "node_modules",
-]);
-
-const EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs"]);
-
 const CRON_CANDIDATES = ["app/crons.ts", "app/crons.tsx"];
 
 type Reference = { source: string | null; name: string };
-
-function collect(root: string): string[] {
-  const out: string[] = [];
-  const visit = (directory: string): void => {
-    let entries;
-    try {
-      entries = fs.readdirSync(directory, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      const full = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        if (SKIP.has(entry.name) || entry.name.startsWith(".")) continue;
-        visit(full);
-        continue;
-      }
-      if (!entry.isFile()) continue;
-      if (!EXTENSIONS.has(path.extname(entry.name))) continue;
-      out.push(full);
-    }
-  };
-  visit(root);
-  return out;
-}
 
 function importOf(
   record: ModuleRecord,
@@ -231,7 +192,9 @@ export async function discover(
     return parsed;
   };
 
-  for (const file of collect(root)) {
+  for (const file of sources(root, (name) =>
+    EXTENSIONS.has(path.extname(name)),
+  )) {
     let code;
     try {
       code = fs.readFileSync(file, "utf8");

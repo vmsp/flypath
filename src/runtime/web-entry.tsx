@@ -9,14 +9,14 @@ import {
 import { hydrateRoot } from "react-dom/client";
 import { rscStream } from "rsc-html-stream/client";
 
+import { parseCommand, parseLocation } from "../router/navigation.ts";
+import { parseRevalidate } from "../router/revalidate.ts";
 import {
   ACTION_HEADER,
   LOCATION_HEADER,
   NAVIGATE_HEADER,
   REVALIDATE_HEADER,
-} from "../protocol/headers.ts";
-import { parseCommand, parseLocation } from "../router/navigation.ts";
-import { parseRevalidate } from "../router/revalidate.ts";
+} from "../shared/headers.ts";
 import type { RscPayload } from "./payload.ts";
 import {
   applyCommand,

@@ -1,26 +1,27 @@
+/** Global server-side framework state. Available when executing in Node. */
 type FlypathState = {
-  databases: import("./db/config.ts").Databases;
-  jobsConfig: import("./jobs/config.ts").JobsOptions;
-  jobRegistry: import("./jobs/registry.ts").Registry;
+  databases: import("../db/config.ts").Databases;
+  jobsConfig: import("../jobs/config.ts").JobsOptions;
+  jobRegistry: import("../jobs/registry.ts").Registry;
   jobStorage: import("node:async_hooks").AsyncLocalStorage<
-    import("./jobs/run.ts").JobContext
+    import("../jobs/run.ts").JobContext
   >;
-  pools: Map<string, import("./db/client.ts").Connection>;
-  request: import("./runtime/platform.ts").RequestStore;
+  pools: Map<string, import("../db/client.ts").Connection>;
+  request: import("../runtime/platform.ts").RequestStore;
   requestStorage: import("node:async_hooks").AsyncLocalStorage<
-    import("./runtime/platform.ts").RequestInfo
+    import("../runtime/platform.ts").RequestInfo
   >;
   tableColumns: Map<string, readonly string[]>;
   transactions: import("node:async_hooks").AsyncLocalStorage<
-    Map<string, import("./db/client.ts").TransactionConnection>
+    Map<string, import("../db/client.ts").TransactionConnection>
   >;
 };
 
 declare global {
   /** State injected from outside JS into the runtime. */
   var __FLYPATH__:
-    | (import("./runtime/native-config.ts").NativeConfig & {
-        native?: import("./runtime/native-bindings.ts").NativeRegistry;
+    | (import("../runtime/native-config.ts").NativeConfig & {
+        native?: import("../runtime/native-bindings.ts").NativeRegistry;
         chunks?: Record<string, number>;
       })
     | undefined;

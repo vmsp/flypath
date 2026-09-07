@@ -3,6 +3,7 @@ import path from "node:path";
 
 import type { Plugin, ViteDevServer } from "vite";
 
+import { sources } from "../shared/paths.ts";
 import type { AtomicRule } from "../styles/atomic.ts";
 import { RESET } from "../styles/defaults.ts";
 import { extractStyles } from "./extract.ts";
@@ -11,32 +12,6 @@ import { compileTokens, diagnostic } from "./tokens.ts";
 
 const STYLESHEET = "virtual:flypath/styles.css";
 const STYLESHEET_ID = `\0${STYLESHEET}`;
-
-const SKIP = new Set([
-  "node_modules",
-  "dist",
-  "build",
-  ".git",
-  "android",
-  "apple",
-]);
-
-function scan(dir: string, out: string[]): void {
-  let entries: fs.Dirent[];
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      if (SKIP.has(entry.name) || entry.name.startsWith(".")) continue;
-      scan(path.join(dir, entry.name), out);
-    } else if (entry.name.endsWith(".css.ts")) {
-      out.push(path.join(dir, entry.name));
-    }
-  }
-}
 
 function clean(id: string): string {
   const query = id.indexOf("?");
@@ -87,8 +62,7 @@ export function styles(distDir: string): Plugin[] {
   const ensureScan = () => {
     if (scanned) return;
     scanned = true;
-    const files: string[] = [];
-    scan(root, files);
+    const files = sources(root, (name) => name.endsWith(".css.ts"));
     for (const file of files) {
       if (modules.has(file)) continue;
       try {

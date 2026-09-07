@@ -6,6 +6,10 @@ import {
 } from "@vitejs/plugin-rsc/react/browser";
 
 import { nativeRouter } from "../components/native/router-store.ts";
+import { getRouter } from "../router/dispatch.ts";
+import { ROOT_CONTAINER } from "../router/manifest.ts";
+import { parseCommand, parseLocation } from "../router/navigation.ts";
+import { parseRevalidate } from "../router/revalidate.ts";
 import {
   ACTION_HEADER,
   CHROME_HEADER,
@@ -14,11 +18,7 @@ import {
   PLATFORM_HEADER,
   REVALIDATE_HEADER,
   SCREEN_HEADER,
-} from "../protocol/headers.ts";
-import { getRouter } from "../router/dispatch.ts";
-import { ROOT_CONTAINER } from "../router/manifest.ts";
-import { parseCommand, parseLocation } from "../router/navigation.ts";
-import { parseRevalidate } from "../router/revalidate.ts";
+} from "../shared/headers.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import type { RscPayload } from "./payload.ts";
 

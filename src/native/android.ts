@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { packageRoot } from "../shared/paths.ts";
 import { loadOptions } from "./config.ts";
 import { run } from "./exec.ts";
 import { generateAndroidRegistry } from "./generate-cpp.ts";
@@ -10,12 +11,7 @@ import { link, list } from "./link.ts";
 import { componentName } from "./manifest.ts";
 import { cxxSources, scaffoldAndroid, scaffoldNative } from "./scaffold.ts";
 import type { ProjectContext } from "./template.ts";
-import {
-  materialize,
-  outputDir,
-  packageRoot,
-  projectContext,
-} from "./template.ts";
+import { materialize, outputDir, projectContext } from "./template.ts";
 
 export type AndroidOptions = {
   port?: number;

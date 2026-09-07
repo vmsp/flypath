@@ -1,4 +1,4 @@
-import { isInternalParam } from "../protocol/params.ts";
+import { isInternalParam } from "../shared/params.ts";
 import type { Params, Search } from "./types.ts";
 
 export function normalizePath(pathname: string): string {

@@ -2,11 +2,8 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
+import { packageRoot } from "../shared/paths.ts";
 import type { FlypathOptions, Orientation } from "./config.ts";
-
-export const packageRoot: string = path.dirname(
-  path.dirname(import.meta.dirname),
-);
 
 const templatesDir: string = path.join(packageRoot, "templates");
 

@@ -1,6 +1,6 @@
 import postgres from "postgres";
 
-import { singleton } from "../globals.ts";
+import { singleton } from "../shared/globals.ts";
 import { connectionUrl, databaseOptions } from "./config.ts";
 import type { Compiled } from "./ir.ts";
 import { currentConnection } from "./transaction.ts";

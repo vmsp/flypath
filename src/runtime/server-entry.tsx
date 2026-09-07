@@ -9,18 +9,6 @@ import {
 import type { ReactNode } from "react";
 import { tree } from "virtual:flypath/routes";
 
-import {
-  ACTION_HEADER,
-  CHROME_HEADER,
-  FRAGMENT_HEADER,
-  LOCATION_HEADER,
-  NAVIGATE_HEADER,
-  PLATFORM_HEADER,
-  PREFETCH_HEADER,
-  REVALIDATE_HEADER,
-  SCREEN_HEADER,
-} from "../protocol/headers.ts";
-import { FLIGHT_PARAM } from "../protocol/params.ts";
 import { createContextStore } from "../router/context.ts";
 import type { FlatRoute } from "../router/flatten.ts";
 import { hasChrome, matchRoutes } from "../router/flatten.ts";
@@ -35,6 +23,18 @@ import {
 import { hrefOf, normalizePath, searchOf } from "../router/path.ts";
 import { parseRevalidate } from "../router/revalidate.ts";
 import type { RouteInfo } from "../router/types.ts";
+import {
+  ACTION_HEADER,
+  CHROME_HEADER,
+  FRAGMENT_HEADER,
+  LOCATION_HEADER,
+  NAVIGATE_HEADER,
+  PLATFORM_HEADER,
+  PREFETCH_HEADER,
+  REVALIDATE_HEADER,
+  SCREEN_HEADER,
+} from "../shared/headers.ts";
+import { FLIGHT_PARAM } from "../shared/params.ts";
 import { mergeCookies } from "./cookies.ts";
 import type { RscPayload } from "./payload.ts";
 import { runWithRequest } from "./platform-store.ts";

@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { singleton } from "../globals.ts";
+import { singleton } from "../shared/globals.ts";
 import type { Connection, TransactionConnection } from "./client.ts";
 import { pool } from "./client.ts";
 

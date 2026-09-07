@@ -10,6 +10,7 @@ import path from "node:path";
 
 import { parseSync } from "oxc-parser";
 
+import { sources } from "../shared/paths.ts";
 import { hash } from "../styles/hash.ts";
 import { walk } from "../vite/eval.ts";
 
@@ -75,16 +76,6 @@ export const DIRECTIVE = "use native";
 
 type Node = Record<string, unknown>;
 
-const SKIP = new Set([
-  "node_modules",
-  "dist",
-  "build",
-  ".git",
-  "android",
-  "apple",
-  "cpp",
-]);
-
 const SOURCE_EXTENSIONS = [".ts", ".tsx"];
 
 const WEB_EXTENSIONS = [".web.tsx", ".web.ts", ".web.jsx", ".web.js"];
@@ -99,28 +90,6 @@ export class ManifestError extends Error {
     super(message);
     this.file = file;
     this.start = typeof node?.["start"] === "number" ? node["start"] : 0;
-  }
-}
-
-function scan(dir: string, out: string[]): void {
-  let entries: fs.Dirent[];
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      if (SKIP.has(entry.name) || entry.name.startsWith(".")) continue;
-      scan(path.join(dir, entry.name), out);
-      continue;
-    }
-    const extension = SOURCE_EXTENSIONS.find((value) =>
-      entry.name.endsWith(value),
-    );
-    if (!extension) continue;
-    if (WEB_EXTENSIONS.some((value) => entry.name.endsWith(value))) continue;
-    out.push(path.join(dir, entry.name));
   }
 }
 
@@ -877,8 +846,12 @@ function checkWebParity(module: NativeModuleEntry): void {
 }
 
 export function buildManifest(root: string): NativeManifest {
-  const files: string[] = [];
-  scan(root, files);
+  const files = sources(
+    root,
+    (name) =>
+      SOURCE_EXTENSIONS.some((value) => name.endsWith(value)) &&
+      !WEB_EXTENSIONS.some((value) => name.endsWith(value)),
+  );
 
   const modules: NativeModuleEntry[] = [];
   for (const file of files.toSorted()) {

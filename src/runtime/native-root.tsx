@@ -26,14 +26,6 @@ import type { NavigatorValue } from "../components/native/navigator-context.ts";
 import { NavigatorContext } from "../components/native/navigator-context.ts";
 import { StackHost } from "../components/native/navigator.tsx";
 import { setNativeRouter } from "../components/native/router-store.ts";
-import {
-  CHROME_HEADER,
-  FRAGMENT_HEADER,
-  LOCATION_HEADER,
-  NAVIGATE_HEADER,
-  PLATFORM_HEADER,
-  SCREEN_HEADER,
-} from "../protocol/headers.ts";
 import { setRouter } from "../router/dispatch.ts";
 import { isExternal } from "../router/href.ts";
 import { ROOT_CONTAINER } from "../router/manifest.ts";
@@ -41,6 +33,14 @@ import { parseCommand, parseLocation } from "../router/navigation.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext, ContainerScope } from "../router/scope.tsx";
 import type { Mode } from "../router/types.ts";
+import {
+  CHROME_HEADER,
+  FRAGMENT_HEADER,
+  LOCATION_HEADER,
+  NAVIGATE_HEADER,
+  PLATFORM_HEADER,
+  SCREEN_HEADER,
+} from "../shared/headers.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import type { Fetched } from "./native-content.ts";
 import {

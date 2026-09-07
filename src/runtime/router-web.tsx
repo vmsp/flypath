@@ -10,13 +10,6 @@ import {
 import { createPortal } from "react-dom";
 import { manifest } from "virtual:flypath/route-manifest";
 
-import {
-  LOCATION_HEADER,
-  NAVIGATE_HEADER,
-  PREFETCH_HEADER,
-  SCREEN_HEADER,
-} from "../protocol/headers.ts";
-import { FLIGHT_PARAM } from "../protocol/params.ts";
 import { setRouter } from "../router/dispatch.ts";
 import type { ManifestRoute } from "../router/manifest.ts";
 import {
@@ -32,6 +25,13 @@ import type { RevalidateMode } from "../router/revalidate.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext } from "../router/scope.tsx";
 import type { Mode, Revalidation } from "../router/types.ts";
+import {
+  LOCATION_HEADER,
+  NAVIGATE_HEADER,
+  PREFETCH_HEADER,
+  SCREEN_HEADER,
+} from "../shared/headers.ts";
+import { FLIGHT_PARAM } from "../shared/params.ts";
 import type { RscPayload } from "./payload.ts";
 
 type Branches = Readonly<Record<string, string>>;

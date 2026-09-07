@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { packageRoot } from "../shared/paths.ts";
 import { run } from "./exec.ts";
 import { clangdConfig, generateCxxHeader } from "./generate-cxx.ts";
 import { generateKotlin } from "./generate-kotlin.ts";
@@ -8,7 +9,7 @@ import { generateSwift } from "./generate-swift.ts";
 import type { NativeManifest } from "./manifest.ts";
 import { buildManifest } from "./manifest.ts";
 import type { ProjectContext } from "./template.ts";
-import { packageRoot, scaffoldTemplate } from "./template.ts";
+import { scaffoldTemplate } from "./template.ts";
 
 const GENERATED = "generated";
 

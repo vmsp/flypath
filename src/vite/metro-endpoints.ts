@@ -6,8 +6,8 @@ import type { Plugin, ViteDevServer } from "vite";
 import {
   METRO_DELTA_ID_HEADER,
   METRO_PROJECT_ROOT_HEADER,
-} from "../protocol/headers.ts";
-import { DEV_PARAM, PLATFORM_PARAM } from "../protocol/params.ts";
+} from "../shared/headers.ts";
+import { DEV_PARAM, PLATFORM_PARAM } from "../shared/params.ts";
 import { attachDevMiddleware } from "./dev-middleware.ts";
 import { FlypathSocket, HotSocket, MessageSocket } from "./metro-sockets.ts";
 import type { NativePlatform } from "./native-env.ts";

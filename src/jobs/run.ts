@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { singleton } from "../globals.ts";
+import { singleton } from "../shared/globals.ts";
 import { jobById } from "./registry.ts";
 import type { JobRow } from "./schema.ts";
 import { complete, discard, fail } from "./schema.ts";

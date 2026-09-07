@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { packageRoot } from "../shared/paths.ts";
 import { link, list } from "./link.ts";
-import { packageRoot } from "./template.ts";
 
 const CORE_NAME = "FlypathCore";
 const KIT_NAME = "Flypath";

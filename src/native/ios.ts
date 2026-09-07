@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { packageRoot } from "../shared/paths.ts";
 import { generateCorePackage } from "./apple.ts";
 import { loadOptions } from "./config.ts";
 import { run } from "./exec.ts";
@@ -23,7 +24,6 @@ import {
   iosOrientations,
   materialize,
   outputDir,
-  packageRoot,
   projectContext,
 } from "./template.ts";
 

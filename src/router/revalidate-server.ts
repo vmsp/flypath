@@ -1,5 +1,5 @@
-import { REVALIDATE_HEADER } from "../protocol/headers.ts";
 import { getRequest } from "../runtime/platform.ts";
+import { REVALIDATE_HEADER } from "../shared/headers.ts";
 import { makeRevalidate } from "./revalidate.ts";
 import type { Revalidate } from "./types.ts";
 

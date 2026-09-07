@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { globals } from "../globals.ts";
+import { globals } from "../shared/globals.ts";
 
 export type DatabaseOptions = {
   url?: string | undefined;

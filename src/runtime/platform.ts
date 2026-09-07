@@ -1,6 +1,6 @@
-import { globals } from "../globals.ts";
 import type { ContextStore } from "../router/context.ts";
 import type { RouteInfo } from "../router/types.ts";
+import { globals } from "../shared/globals.ts";
 
 export type Platform = "web" | "ios" | "android";
 

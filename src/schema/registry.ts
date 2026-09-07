@@ -1,4 +1,4 @@
-import { singleton } from "../globals.ts";
+import { singleton } from "../shared/globals.ts";
 
 const registry: Map<string, readonly string[]> = singleton(
   "tableColumns",

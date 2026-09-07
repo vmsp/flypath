@@ -1,4 +1,4 @@
-import { singleton } from "../globals.ts";
+import { singleton } from "../shared/globals.ts";
 import type { CronEntry } from "./enqueue.ts";
 
 export type JobFunction = (...args: never[]) => unknown;

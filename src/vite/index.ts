@@ -7,6 +7,7 @@ import type { ConfigEnv, Plugin, PluginOption, UserConfig } from "vite";
 
 import type { FlypathOptions } from "../native/config.ts";
 import { CONFIG_PLUGIN, DEFAULT_PORT } from "../native/config.ts";
+import { distDir } from "../shared/paths.ts";
 import { TAG_DEFAULTS } from "../styles/defaults.ts";
 import { flowStrip } from "./flow.ts";
 import { jobsScan } from "./jobs-scan.ts";
@@ -22,8 +23,6 @@ import { nativeModules } from "./native-modules.ts";
 import { nativeRefresh } from "./native-refresh.ts";
 import { routes } from "./routes.ts";
 import { styles } from "./styles.ts";
-
-const distDir = path.dirname(import.meta.dirname);
 
 export type { JobsOptions, QueueOptions } from "../jobs/config.ts";
 export type { FlypathOptions } from "../native/config.ts";

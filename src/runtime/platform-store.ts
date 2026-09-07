@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { singleton } from "../globals.ts";
+import { singleton } from "../shared/globals.ts";
 import type { RequestInfo } from "./platform.ts";
 import { setRequestStore } from "./platform.ts";
 

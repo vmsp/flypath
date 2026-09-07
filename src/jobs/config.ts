@@ -1,4 +1,4 @@
-import { globals } from "../globals.ts";
+import { globals } from "../shared/globals.ts";
 
 export type QueueOptions = {
   concurrency?: number;
