@@ -19,9 +19,12 @@ follow a similar pattern.
 
 ## Acknowledgements
 
-Some amazing projects like React, React Native, React Server Components, Vite
-and OXC Transforms form the core of the implementation. React Strict DOM heavily
-inspired the styling engine.
+Some amazing projects like [React](https://react.dev/), [React
+Native](https://reactnative.dev/), [Vite](https://vite.dev/) and
+[OXC](https://oxc.rs/) form the core of the implementation. [React Strict
+DOM](https://react.github.io/react-strict-dom/) heavily inspired the styling
+engine. [Ruby on Rails](https://rubyonrails.org/) guided many of the API
+choices.
 
 ## License
 

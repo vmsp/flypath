@@ -12,5 +12,9 @@
 - "Engines" - i should be able to plugin-in hono for apis
 - Mention that __* on the global namespace is reserved
 - Tests for most code, including native
+- S3?
+- Consumer testing?
 
 Deep links are wired but unexercisable. Linking.getInitialURL() and the url listener are in native-root.tsx, but no URL scheme is registered in templates/ios/App/Info.plist or the Android manifest — so nothing can deliver one. Written, never run.
+
+What we give up: dead-letter queues, worker heartbeats, table partitioning, job flows, the dashboard package, and a decade of edge cases in pg-boss's maintenance and clock-skew code. None of those are in the brief. The DBOS concern is handled identically, as a per-queue notify flag.
