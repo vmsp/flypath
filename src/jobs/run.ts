@@ -6,10 +6,11 @@ import type { JobRow } from "./schema.ts";
 import { complete, discard, fail } from "./schema.ts";
 
 export type JobContext = {
+  /** Job ID. */
   id: number;
-  job: string;
-  queue: string;
+  /** Which attempt this is, starting at 1 on the first run. */
   attempt: number;
+  /** Aborts when the attempt times out or the worker shuts down. */
   signal: AbortSignal;
 };
 
@@ -18,6 +19,14 @@ const storage: AsyncLocalStorage<JobContext> = singleton(
   () => new AsyncLocalStorage<JobContext>(),
 );
 
+/**
+ * Information about the job attempt that's currently executing. Throws when
+ * called outside a job.
+ *
+ * The context is read-only: a job can observe `signal` to stop early when it
+ * times out or the worker shuts down, but it can't change its own retry or
+ * timeout settings.
+ */
 export function currentJob(): JobContext {
   const store = storage.getStore();
   if (!store) {
@@ -53,8 +62,6 @@ export async function runJob(
 
   const context: JobContext = {
     id: row.id,
-    job: row.job,
-    queue: row.queue,
     attempt: row.attempts,
     signal: controller.signal,
   };
