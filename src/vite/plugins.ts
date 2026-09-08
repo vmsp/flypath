@@ -84,6 +84,55 @@ function database(options: FlypathOptions): Plugin {
   };
 }
 
+const MAIL = "virtual:flypath/mail";
+const MAIL_ID = `\0${MAIL}`;
+
+function mail(options: FlypathOptions): Plugin {
+  return {
+    name: "flypath:mail",
+    resolveId(source) {
+      if (source === MAIL) return MAIL_ID;
+      return undefined;
+    },
+    load(id) {
+      if (id !== MAIL_ID) return;
+      const configModule = path.join(distDir, "mail", "config.js");
+      return [
+        `import { configureMail } from ${JSON.stringify(configModule)};`,
+        `configureMail(${JSON.stringify(options.mail ?? {})});`,
+        "",
+      ].join("\n");
+    },
+  };
+}
+
+const SERVER_ONLY = ["nodemailer"];
+
+function serverOnlyDependencies(): Plugin {
+  return {
+    name: "flypath:server-only-dependencies",
+    config() {
+      return {
+        environments: {
+          rsc: { resolve: { external: SERVER_ONLY } },
+          ssr: { resolve: { external: SERVER_ONLY } },
+        },
+      };
+    },
+    resolveId(source) {
+      const name = this.environment?.name;
+      if (name !== "client" && !name?.startsWith("native_")) return undefined;
+      if (!SERVER_ONLY.includes(source)) return undefined;
+      throw new Error(
+        `flypath: "${source}" reached the browser bundle. It is a node ` +
+          "library the server uses to send mail, so an import of it must " +
+          "stay on the server — call sendMail() from a server component, a " +
+          "server action or a job",
+      );
+    },
+  };
+}
+
 const STUB_ID = "\0flypath:native-stub";
 
 const STUB_EXPORTS = ["BranchesHost", "StackHost"];
@@ -128,6 +177,8 @@ export function plugins(
 
   return [
     database(options),
+    mail(options),
+    serverOnlyDependencies(),
     nativeStub(),
     clientReferences(),
     routes(),

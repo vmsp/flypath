@@ -6,6 +6,10 @@ type FlypathState = {
   jobStorage: import("node:async_hooks").AsyncLocalStorage<
     import("../jobs/run.ts").JobContext
   >;
+  mailConfig: import("../mail/config.ts").MailOptions;
+  mailStorage: import("node:async_hooks").AsyncLocalStorage<
+    import("../mail/context.ts").MailContext
+  >;
   pools: Map<string, import("../db/client.ts").Connection>;
   requestStorage: import("node:async_hooks").AsyncLocalStorage<
     import("../runtime/platform.ts").RequestInfo

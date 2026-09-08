@@ -5,6 +5,11 @@ import {
   jsxs as reactJsxs,
 } from "react/jsx-runtime";
 
+import { isEmail } from "../mail/context.ts";
+import {
+  assertNoClientReference,
+  createEmailIntrinsic,
+} from "./element-email.ts";
 import { createNativeIntrinsic } from "./element-native.ts";
 import type { JsxFn } from "./element.ts";
 import { createIntrinsic } from "./element.ts";
@@ -20,7 +25,21 @@ export function jsx(
   props: unknown,
   key?: unknown,
 ): ReactElement {
-  if (typeof type !== "string") return jsxFn(type, props, key);
+  if (typeof type !== "string") {
+    if (isEmail()) assertNoClientReference(type);
+    return jsxFn(type, props, key);
+  }
+  if (isEmail()) {
+    return createEmailIntrinsic(
+      jsxFn,
+      jsxFn,
+      jsxsFn,
+      Fragment,
+      type,
+      props as Record<string, unknown>,
+      key,
+    );
+  }
   if (isNative()) {
     return createNativeIntrinsic(
       jsxFn,
@@ -45,7 +64,21 @@ export function jsxs(
   props: unknown,
   key?: unknown,
 ): ReactElement {
-  if (typeof type !== "string") return jsxsFn(type, props, key);
+  if (typeof type !== "string") {
+    if (isEmail()) assertNoClientReference(type);
+    return jsxsFn(type, props, key);
+  }
+  if (isEmail()) {
+    return createEmailIntrinsic(
+      jsxsFn,
+      jsxFn,
+      jsxsFn,
+      Fragment,
+      type,
+      props as Record<string, unknown>,
+      key,
+    );
+  }
   if (isNative()) {
     return createNativeIntrinsic(
       jsxsFn,

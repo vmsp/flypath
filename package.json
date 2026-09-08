@@ -94,6 +94,7 @@
     "croner": "^10.0.1",
     "magic-string": "^0.30.21",
     "metro-runtime": "0.87.0",
+    "nodemailer": "^10.0.1",
     "oxc-parser": "^0.146.0",
     "postgres": "^3.4.9",
     "react-native-fetch-api": "^3.0.0",

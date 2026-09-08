@@ -11,7 +11,7 @@ export type JsxFn = (
 
 const hoisted = new WeakMap<object, ReactElement[]>();
 
-function styleElements(
+export function styleElements(
   jsx: JsxFn,
   rules: AtomicRule[],
   owner: object,

@@ -3,6 +3,7 @@ import { WebView } from "./battery.ts";
 import Counter from "./counter.tsx";
 import Guestbook from "./guestbook.tsx";
 import Loaded from "./loaded.tsx";
+import { WelcomeBody } from "./mail.tsx";
 import NavDemo from "./nav-demo.tsx";
 import { session } from "./session.ts";
 import { colors, dark } from "./vars.css.ts";
@@ -89,6 +90,8 @@ export default async function Profile() {
             </span>
           ))}
         </div>
+
+        <WelcomeBody name={session().name} />
 
         <Loaded />
 

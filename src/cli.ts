@@ -22,8 +22,10 @@ async function environment(): Promise<string> {
 async function declareOptions(options: FlypathOptions): Promise<void> {
   const { configureDatabases } = await import("./db/config.ts");
   const { configureJobs } = await import("./jobs/config.ts");
+  const { configureMail } = await import("./mail/config.ts");
   if (options.databases) configureDatabases(options.databases);
   if (options.jobs) configureJobs(options.jobs);
+  if (options.mail) configureMail(options.mail);
 }
 
 async function declareDatabases(root: string): Promise<void> {

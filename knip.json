@@ -9,9 +9,12 @@
         "src/runtime/jsx-dev-runtime.{client,native,server}.ts",
         "src/runtime/{server,ssr,web,native}-entry.tsx",
         "src/components/native/*.{ts,tsx}",
-        "test/**/*.test-d.ts"
+        "test/**/*.test-d.ts",
+        "test/native-stub.ts",
+        "test/mail/jsx/*.ts"
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.ts"],
+      "ignoreBinaries": ["mailpit"],
       "ignoreDependencies": [
         "@babel/preset-flow",
         "oxfmt",

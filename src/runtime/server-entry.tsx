@@ -48,9 +48,11 @@ import {
   resolveTree,
   withSafeArea,
 } from "./router-server.tsx";
+import { collect, replay } from "./stream.ts";
 
 import "virtual:flypath/database";
 import "virtual:flypath/jobs";
+import "virtual:flypath/mail";
 
 import "virtual:flypath/styles.css";
 
@@ -142,36 +144,6 @@ async function runAction(
     if (!signal) throw error;
     return { signal };
   }
-}
-
-async function collect(
-  stream: ReadableStream<Uint8Array>,
-): Promise<Uint8Array> {
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  const reader = stream.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    size += value.byteLength;
-  }
-  const out = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    out.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return out;
-}
-
-function replay(bytes: Uint8Array): ReadableStream<Uint8Array> {
-  return new ReadableStream<Uint8Array>({
-    start(controller) {
-      controller.enqueue(bytes);
-      controller.close();
-    },
-  });
 }
 
 type Rendered = {

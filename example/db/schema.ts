@@ -16,6 +16,7 @@ export const users = table("users", {
   createdAt: timestamptz().notNull().defaultNow(),
   handle: text().notNull().unique(),
   name: text().notNull(),
+  email: text().notNull().unique(),
   bio: text(),
 });
 

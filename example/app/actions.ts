@@ -3,7 +3,7 @@
 import { cookies, db, jobs, navigate, revalidate } from "flypath";
 import { count } from "flypath/sql";
 
-import { notifyMentions } from "./jobs.ts";
+import { notifyMentions, sendWelcome } from "./jobs.ts";
 import { addLike } from "./posts.ts";
 import type { User } from "./session.ts";
 import { findUser, session, SESSION_COOKIE, visitor } from "./session.ts";
@@ -79,6 +79,7 @@ export async function signIn(formData: FormData): Promise<void> {
     path: "/",
     sameSite: "lax",
   });
+  await jobs({ queue: "notifications" }).enqueue(() => sendWelcome(user.id));
   navigate("/settings");
 }
 

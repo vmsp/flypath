@@ -1,5 +1,7 @@
 import { currentJob, db } from "flypath";
 
+import { sendMentionEmail, sendWelcomeEmail } from "./mail.tsx";
+
 const HANDLE = /@([a-z0-9_]+)/gi;
 
 export async function notifyMentions(noteId: number): Promise<number> {
@@ -18,7 +20,7 @@ export async function notifyMentions(noteId: number): Promise<number> {
   const mentioned = await db()
     .from("users")
     .where("handle", "in", handles)
-    .select("id");
+    .select("id", "name", "email");
   if (mentioned.length === 0) return 0;
 
   await db()
@@ -27,12 +29,24 @@ export async function notifyMentions(noteId: number): Promise<number> {
     .onConflict(["noteId", "userId"])
     .doNothing();
 
+  for (const user of mentioned) await sendMentionEmail(user, noteId);
+
   console.log(
     `flypath: job ${String(currentJob().id)} noted ${String(
       mentioned.length,
     )} mention(s) on note ${String(noteId)}`,
   );
   return mentioned.length;
+}
+
+export async function sendWelcome(userId: number): Promise<void> {
+  const user = await db()
+    .from("users")
+    .where("id", "=", userId)
+    .select("name", "email")
+    .first();
+  if (!user) return;
+  await sendWelcomeEmail(user);
 }
 
 export async function pruneNotes(days: number): Promise<number> {

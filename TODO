@@ -3,7 +3,6 @@
 - Skew
 - Unify logging on the framework
 - Run on device
-- Email - https://github.com/react/react/tree/main/packages/react-reconciler)
 - I18N - https://github.com/facebook/fbt, https://generaltranslation.com/
 - A11Y
 - LSP on consumer Kotlin code

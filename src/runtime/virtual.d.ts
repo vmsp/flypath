@@ -32,6 +32,8 @@ declare module "virtual:flypath/database" {}
 
 declare module "virtual:flypath/jobs" {}
 
+declare module "virtual:flypath/mail" {}
+
 declare module "virtual:vite-rsc/client-references" {
   const references: Record<string, () => Promise<unknown>>;
   export default references;

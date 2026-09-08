@@ -5,6 +5,7 @@ import {
 import type { ReactNode } from "react";
 import { use } from "react";
 import { renderToReadableStream } from "react-dom/server.edge";
+import { prerender } from "react-dom/static.edge";
 import { injectRSCPayload } from "rsc-html-stream/server";
 
 import type { RscPayload } from "./payload.ts";
@@ -31,4 +32,24 @@ export async function handleSsr(
   } as never);
 
   return html.pipeThrough(injectRSCPayload(forInline));
+}
+
+export async function renderEmailHtml(
+  rscStream: ReadableStream<Uint8Array>,
+): Promise<string> {
+  let payload: Promise<RscPayload> | undefined;
+  function EmailRoot(): ReactNode {
+    payload ??= createFromReadableStream<RscPayload>(rscStream);
+    return use(payload).root;
+  }
+
+  let failure: unknown;
+  const { prelude } = await prerender(<EmailRoot />, {
+    onError: (error: unknown) => {
+      failure ??= error;
+    },
+  } as never);
+  if (failure !== undefined) throw failure;
+
+  return new Response(prelude as ReadableStream<Uint8Array>).text();
 }

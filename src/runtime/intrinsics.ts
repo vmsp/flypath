@@ -1,6 +1,6 @@
 import { nativeIntrinsics } from "../components/native/index.ts";
 
-const METADATA = new Set(["title"]);
+const METADATA = new Set(["link", "meta", "title"]);
 
 export function isMetadata(type: string): boolean {
   return METADATA.has(type);

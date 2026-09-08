@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { DbFactory } from "./db/index.ts";
 import type { Db } from "./db/query.ts";
 import type { SqlTag } from "./db/sql.ts";
@@ -10,6 +12,8 @@ import type {
   Thunk,
 } from "./jobs/enqueue.ts";
 import type { JobContext } from "./jobs/run.ts";
+import type { Text } from "./mail/document.tsx";
+import type { MailMessage, MailResult } from "./mail/transport.ts";
 
 export * from "./index.shared.ts";
 export type { Expression } from "./db/expression.ts";
@@ -23,6 +27,13 @@ export type {
   Jobs,
 } from "./jobs/enqueue.ts";
 export type { JobContext } from "./jobs/run.ts";
+export type {
+  Address,
+  Attachment,
+  MailMessage,
+  MailResult,
+} from "./mail/transport.ts";
+export type { Text } from "./mail/document.tsx";
 export type {
   Insertable,
   Row,
@@ -82,4 +93,16 @@ export function cron(
 
 export function currentJob(): JobContext {
   return serverOnly("currentJob");
+}
+
+export function sendMail(_message: MailMessage): Promise<MailResult> {
+  return serverOnly("sendMail");
+}
+
+export function Subject(_props: { children: Text }): ReactNode {
+  return serverOnly("Subject");
+}
+
+export function Preview(_props: { children: Text }): ReactNode {
+  return serverOnly("Preview");
 }

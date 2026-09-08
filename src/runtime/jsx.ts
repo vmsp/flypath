@@ -13,7 +13,7 @@ type Elements = {
   [K in Tag]: K extends "a"
     ? Anchor
     : Omit<React.JSX.IntrinsicElements[K], "style"> & { style?: StyleProp };
-} & Pick<React.JSX.IntrinsicElements, "title">;
+} & Pick<React.JSX.IntrinsicElements, "link" | "meta" | "title">;
 
 export namespace JSX {
   export type ElementType = React.JSX.ElementType;

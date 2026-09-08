@@ -10,6 +10,15 @@ export type {
   Jobs,
 } from "./jobs/enqueue.ts";
 export { currentJob } from "./jobs/run.ts";
+export { sendMail } from "./mail/index.ts";
+export type {
+  Address,
+  Attachment,
+  MailMessage,
+  MailResult,
+} from "./mail/transport.ts";
+export type { Text } from "./mail/document.tsx";
+export { Preview, Subject } from "./mail/document.tsx";
 export type { JobContext } from "./jobs/run.ts";
 export { navigate } from "./router/navigate-server.ts";
 export { revalidate } from "./router/revalidate-server.ts";

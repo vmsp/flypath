@@ -4,6 +4,10 @@ export default defineConfig({
   appName: "Flypath Example",
   version: "2.1",
   buildNumber: 7,
+  mail: {
+    from: "Flypath <hello@example.com>",
+    baseUrl: "http://localhost:8081",
+  },
   jobs: {
     queues: {
       default: { concurrency: 5 },

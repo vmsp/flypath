@@ -3,6 +3,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { JobsOptions } from "../jobs/config.ts";
+import type { MailOptions } from "../mail/config.ts";
 
 export const CONFIG_PLUGIN = "flypath:config";
 
@@ -30,6 +31,9 @@ export type FlypathOptions = {
 
   /** Background job queues, their policies and retention. */
   jobs?: JobsOptions;
+
+  /** Outgoing mail: the transport url, the default sender and the link base. */
+  mail?: MailOptions;
 
   /** User-facing name for the application. */
   appName?: string;

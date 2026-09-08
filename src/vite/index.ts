@@ -12,6 +12,7 @@ import {
 } from "./native-env.ts";
 
 export type { JobsOptions, QueueOptions } from "../jobs/config.ts";
+export type { MailOptions } from "../mail/config.ts";
 export type { FlypathOptions } from "../native/config.ts";
 
 export function flypathPaths(): {
@@ -97,6 +98,7 @@ function withFlypath(config: FlypathConfig): UserConfig {
     bundleId,
     databases,
     jobs,
+    mail,
     ios,
     android,
     ...vite
@@ -112,6 +114,7 @@ function withFlypath(config: FlypathConfig): UserConfig {
         bundleId,
         databases,
         jobs,
+        mail,
         ios,
         android,
       }),

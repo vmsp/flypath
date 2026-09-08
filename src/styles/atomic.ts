@@ -9,11 +9,18 @@ export type AtomicRule = {
   css: string;
 };
 
+export type RuleOptions = {
+  important?: boolean;
+  skipDefault?: boolean;
+  variant?: string;
+};
+
 function atomicClassName(
   property: string,
   map: Record<string, Scalar>,
+  variant: string,
 ): string {
-  const key = `${property}|${Object.entries(map)
+  const key = `${variant}${property}|${Object.entries(map)
     .map(([k, v]) => `${k}:${String(v)}`)
     .join("|")}`;
   return `fp-${hash(key)}`;
@@ -22,14 +29,18 @@ function atomicClassName(
 export function atomicRule(
   property: string,
   map: Record<string, Scalar>,
+  options: RuleOptions = {},
 ): AtomicRule {
-  const className = atomicClassName(property, map);
+  const { important = false, skipDefault = false, variant = "" } = options;
+  const className = atomicClassName(property, map, variant);
+  const priority = important ? " !important" : "";
   const declaration = (value: Scalar) =>
-    `${hyphenate(property)}: ${cssValue(property, value)};`;
+    `${hyphenate(property)}: ${cssValue(property, value)}${priority};`;
 
   const parts: string[] = [];
   for (const [condition, value] of Object.entries(map)) {
     if (condition === "default") {
+      if (skipDefault) continue;
       parts.push(`.${className} { ${declaration(value)} }`);
     } else if (isPseudo(condition)) {
       parts.push(`.${className}${condition} { ${declaration(value)} }`);
