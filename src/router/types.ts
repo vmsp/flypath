@@ -225,10 +225,18 @@ export type Destination = Href | Pattern | ExternalHref | "back" | "not-found";
 export type Mode = "push" | "replace";
 
 export type Navigate = {
+  /** Answer the request with the not-found route. Server only. */
   (to: "not-found"): never;
+  /**
+   * Go to a route, `"back"`, or an external URL, filling in the params the
+   * pattern declares. Pushes from an action, replaces during a render.
+   */
   <const P extends Destination>(to: P, ...args: HrefArgs<P>): void;
+  /** Navigate, always adding a history entry. */
   push: <const P extends Destination>(to: P, ...args: HrefArgs<P>) => void;
+  /** Navigate, replacing the current history entry. */
   replace: <const P extends Destination>(to: P, ...args: HrefArgs<P>) => void;
+  /** Redirect permanently (HTTP 308). Server only. */
   permanent: <const P extends Destination>(
     to: P,
     ...args: HrefArgs<P>
@@ -236,18 +244,26 @@ export type Navigate = {
 };
 
 export type Revalidate = {
+  /** Mark what a mutation invalidated, refetching the visible screens. */
   (): void;
+  /** Also drop cached screens that aren't visible. */
   reset: () => void;
+  /** Keep everything; the mutation changed nothing that is rendered. */
   none: () => void;
 };
 
 export type ParamsReader = {
+  /** Read one path param of the current route. */
   (name: string): string;
+  /** Read every path param of the current route. */
   (): Params;
 };
 
 export type QueryReader = {
+  /** Read the first value of a search param. */
   (name: string): string | undefined;
+  /** Read the whole query string. */
   (): SearchParams;
+  /** Read every value of a repeated search param. */
   all: (name: string) => readonly string[];
 };

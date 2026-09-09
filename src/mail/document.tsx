@@ -11,6 +11,7 @@ function joinText(children: Text): string {
     : String(children);
 }
 
+/** Sets the subject of the mail being rendered. */
 export function Subject({ children }: { children: Text }): ReactNode {
   const context = requireMail("<Subject>");
   const text = joinText(children);
@@ -30,6 +31,7 @@ const PREHEADER = {
 
 const PADDING = "\u200B\u00A0".repeat(120);
 
+/** Sets the preheader clients show next to the subject. */
 export function Preview({ children }: { children: Text }): ReactNode {
   requireMail("<Preview>");
   return (

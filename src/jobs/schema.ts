@@ -42,6 +42,9 @@ export type NewJob = {
   timeout: number;
 };
 
+// TODO: Perhaps it'd be more practical to have the jobs schema use our
+// migration system.
+
 const DDL: readonly string[] = [
   `create table if not exists ${TABLE} (
   id           bigint generated always as identity primary key,

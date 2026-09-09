@@ -1,6 +1,7 @@
 /**
- * Outputs a JSON configuration object to be passed to `setup-apple-spm.js`'s
- * `--config-command` option. It's a stand in for `npx react-native config`.
+ * @fileoverview Outputs a JSON configuration object to be passed to
+ * `setup-apple-spm.js`'s `--config-command` option. It's a stand in for `npx
+ * react-native config`.
  */
 
 function main(): void {

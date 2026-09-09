@@ -134,6 +134,12 @@ async function enqueueAll(
   return ids;
 }
 
+/**
+ * Enqueue background jobs: `jobs({ queue: "mail" }).enqueue(() => send(id))`.
+ *
+ * The thunk's callee and arguments are what gets stored, so it must call an
+ * exported function with serializable arguments.
+ */
 export function jobs(options: EnqueueOptions = {}): Jobs {
   const enqueue = async (
     ...thunks: readonly Thunk[]
@@ -144,6 +150,10 @@ export function jobs(options: EnqueueOptions = {}): Jobs {
   return { enqueue: enqueue as unknown as Enqueue };
 }
 
+/**
+ * Declare a job that runs on a cron schedule. Entries are picked up from the
+ * default export of `app/crons.ts`.
+ */
 export function cron(
   expression: string,
   thunk: Thunk,

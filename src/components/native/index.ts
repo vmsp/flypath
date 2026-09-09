@@ -35,6 +35,7 @@ import {
   Textarea,
 } from "./elements.tsx";
 
+/** HTML tag names mapped to the native components the JSX runtime renders. */
 export const nativeIntrinsics: Record<Tag, unknown> = {
   a: A,
   article: Article,

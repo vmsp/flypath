@@ -69,12 +69,19 @@ function tag<T = Record<string, unknown>>(
 }
 
 export type SqlTag = {
+  /**
+   * Write raw SQL as a tagged template. Interpolated values become bound
+   * parameters. The result is awaitable and composes into other queries.
+   */
   <T = Record<string, unknown>>(
     parts: TemplateStringsArray,
     ...values: unknown[]
   ): Fragment<T>;
+  /** Quote a dotted name as an identifier. */
   ref: (name: string) => Expr<unknown>;
+  /** Splice text in verbatim, without quoting or binding. */
   raw: (text: string) => Expr<unknown>;
+  /** Interpolate every item, separated by `separator`. */
   join: (items: readonly unknown[], separator?: string) => Expr<unknown>;
 };
 

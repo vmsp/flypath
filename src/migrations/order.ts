@@ -1,5 +1,5 @@
 /**
- * Column ordering when creating new PostgreSQL tables.
+ * @fileoverview Column ordering when creating new PostgreSQL tables.
  *
  * Similarly to C structs, the space of a table is influenced by the order of
  * its columns due to automatically inserted alignment paddings. By ordering

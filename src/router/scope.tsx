@@ -104,6 +104,10 @@ function declaredBranch(
   return branch === SHARED ? undefined : branch;
 }
 
+/**
+ * The branches of the enclosing `branches()` container, each with its href and
+ * whether it is the active one.
+ */
 export function useBranches(): readonly Branch[] {
   const scopeId = useContext(ContainerScopeContext);
   const runtime = useContext(ContainerRuntimeContext);

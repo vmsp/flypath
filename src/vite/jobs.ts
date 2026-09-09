@@ -1,5 +1,6 @@
 /**
- * The `enqueue` and `cron` call-site rewrite, on the rsc environment.
+ * @fileoverview The `enqueue` and `cron` call-site rewrite, on the rsc
+ * environment.
  *
  * `() => resize(a, b)` becomes `() => [resize, [a, b]]`. Call-sites stay simple
  * and can leverage the usual type-checking infrastructure. Captured variables

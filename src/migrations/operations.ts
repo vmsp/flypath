@@ -1,3 +1,10 @@
+/**
+ * @fileoverview The DDL operations a migration is made of.
+ *
+ * Each builder returns a plain {@link Operation} that {@link migration}
+ * collects, runs in order, and reverses when rolling back.
+ */
+
 import type { AnyColumn } from "../schema/column.ts";
 import type { Columns, Extra } from "../schema/table.ts";
 import { defineTable } from "../schema/table.ts";
@@ -56,6 +63,10 @@ export type Migration = {
   transaction: boolean;
 };
 
+/**
+ * A migration. The default export of a file in `migrations/`. Operations run in
+ * one transaction unless `transaction` is false.
+ */
 export function migration(
   operations: readonly Operation[],
   options: { transaction?: boolean } = {},
@@ -102,6 +113,9 @@ export function renameColumn(
   return { kind: "renameColumn", table, from, to };
 }
 
+/**
+ * Change a column's type, nullability or default; `using` casts existing rows.
+ */
 export function alterColumn(
   table: string,
   name: string,
@@ -133,6 +147,7 @@ export function createEnum(name: string, values: string[]): Operation {
   return { kind: "createEnum", name, values };
 }
 
+/** Add a value to an enum type, at the end unless positioned. */
 export function addEnumValue(
   name: string,
   value: string,
@@ -193,10 +208,12 @@ export function dropMaterializedView(name: string): Operation {
   return { kind: "dropView", name, materialized: true };
 }
 
+/** Raw SQL for what the builders don't cover. */
 export function sql(options: { up: string; down?: string }): Operation {
   return { kind: "sql", ...options };
 }
 
+/** Arbitrary code, for data backfills and other non-DDL work. */
 export function run(options: {
   up: () => Promise<void>;
   down?: () => Promise<void>;

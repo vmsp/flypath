@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Column builders, one per PostgreSQL type.
+ *
+ * Each returns a nullable column that is refined by chaining: `.notNull()`,
+ * `.default()`, `.primaryKey()`, `.references()`, `.array()`.
+ */
+
 import { literal } from "../db/compile.ts";
 import type { Expr } from "../db/expression.ts";
 import { isExpression } from "../db/expression.ts";
@@ -311,6 +318,7 @@ export function point(): Nullish<{ x: number; y: number }> {
   return make<{ x: number; y: number }>("point");
 }
 
+/** A column of any other SQL type, typed as `T`. */
 export function custom<T>(sqlType: string): Nullish<T> {
   return make<T>(sqlType);
 }

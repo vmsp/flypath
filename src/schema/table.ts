@@ -34,6 +34,7 @@ export type Table<Name extends string, Cols extends Columns> = Cols & {
 
 export type AnyTable = Table<string, Columns>;
 
+/** Whether a value came from {@link table}. */
 export function isTable(value: unknown): value is AnyTable {
   return (
     typeof value === "object" && value !== null && TABLE in (value as object)
@@ -213,26 +214,35 @@ class CheckBuilder {
 
 export type Extra = IndexBuilder | ConstraintBuilder | CheckBuilder;
 
+/** A non-unique index, named automatically unless `name` is given. */
 export function index(name?: string): IndexBuilder {
   return new IndexBuilder(name, false);
 }
 
+/** A unique index. */
 export function unique(name?: string): IndexBuilder {
   return new IndexBuilder(name, true);
 }
 
+/** A composite primary key over the columns it is given. */
 export function primaryKey(name?: string): ConstraintBuilder {
   return new ConstraintBuilder("primaryKey", name);
 }
 
+/** A composite foreign key. Single-column references live on the column. */
 export function foreignKey(name?: string): ConstraintBuilder {
   return new ConstraintBuilder("foreignKey", name);
 }
 
+/** A table check constraint. */
 export function check(name: string, expression: Expr<unknown>): CheckBuilder {
   return new CheckBuilder(name, expression);
 }
 
+/**
+ * Declare a table. `columns` maps column names to builders, and `extras` adds
+ * indexes and table-level constraints over them.
+ */
 export function table<const Name extends string, Cols extends Columns>(
   name: Name,
   columns: Cols,
@@ -267,6 +277,7 @@ export type EnumType<V extends string> = (() => Column<
   false
 >) & { readonly enumDef: EnumDef };
 
+/** A column of an enum type declared elsewhere, by name. */
 export function enumColumn(
   name: string,
 ): Column<string | null, string | null, false> {
@@ -280,6 +291,7 @@ export function enumColumn(
   });
 }
 
+/** Declare an enum type. Call the result to make a column of it. */
 export function enumType<const V extends readonly string[]>(
   name: string,
   values: V,
@@ -299,6 +311,7 @@ export function enumType<const V extends readonly string[]>(
 
 export type Extension = { flypath: "extension"; name: string };
 
+/** Require a PostgreSQL extension. */
 export function extension(name: string): Extension {
   return { flypath: "extension", name };
 }
@@ -313,6 +326,7 @@ export type SchemaNamespace = {
   ) => Table<Name, Cols>;
 };
 
+/** A named schema. Its `table` puts the tables it builds inside it. */
 export function schema(name: string): SchemaNamespace {
   return {
     flypath: "schema",
@@ -327,6 +341,7 @@ export function schema(name: string): SchemaNamespace {
 
 export type Sequence = { flypath: "sequence" } & SequenceDef;
 
+/** Declare a standalone sequence. */
 export function sequence(
   name: string,
   options: { type?: string; start?: number; increment?: number } = {},
@@ -348,6 +363,7 @@ function columnsOfPipe(ir: QueryIR): readonly string[] {
   return queryColumns(ir) ?? [];
 }
 
+/** A view over a query, typed by the query's row. */
 export function view<const Name extends string, Row>(
   name: Name,
   query: Pipe<Row>,
@@ -356,6 +372,7 @@ export function view<const Name extends string, Row>(
   return { flypath: "view", name, materialized: false, ir: query.ir };
 }
 
+/** Like {@link view}, but materialized. */
 export function materializedView<const Name extends string, Row>(
   name: Name,
   query: Pipe<Row>,

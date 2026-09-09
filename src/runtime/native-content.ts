@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Cache of rendered RSC content for the native router, keyed by
+ * screen key or `chrome:<id>` fragment.
+ *
+ * Staleness is decided by epochs: bumping the epoch invalidates everything, and
+ * each route's `revalidate` option says whether a bump reaches it. Content is
+ * published immutably, and the cache is bounded by {@link CONTENT_LIMIT}.
+ */
+
 import type { ReactNode } from "react";
 import { startTransition } from "react";
 import { manifest } from "virtual:flypath/route-manifest";
@@ -55,24 +64,45 @@ type Running = { id: number; url: string; epoch: number };
 
 type Seed = { payload: RscPayload; epoch: number };
 
+/** Host bridge for fetching and settling; undefined while detached. */
 let bridge: Bridge | undefined;
 
+/**
+ * Currently published content, keyed by screen key or `chrome:<id>`. Replaced
+ * wholesale, never mutated.
+ */
 let content: ContentMap = {};
 
+/** Monotonic revalidation counter. Content from an earlier epoch is stale. */
 let epoch = 0;
 
+/**
+ * Epoch of the last forced bump. Routes with `revalidate: "never"` only refetch
+ * past this.
+ */
 let forced = 0;
 
+/** Monotonic request id, used to ignore responses from superseded fetches. */
 let requests = 0;
 
+/** Whether a {@link resync} microtask is already queued. */
 let scheduled = false;
 
 type Listener = (value: Content | undefined) => void;
 
+/** Per-key subscribers, notified when that key's content changes. */
 const listeners = new Map<string, Set<Listener>>();
 
+/**
+ * In-flight fetch per key, so duplicate requests are skipped and late ones
+ * discarded.
+ */
 const inflight = new Map<string, Running>();
 
+/**
+ * Payloads fetched for a destination before its screen exists (redirects),
+ * keyed by container and url, capped at {@link SEED_LIMIT}.
+ */
 const seeds = new Map<string, Seed>();
 
 function isChrome(key: string): boolean {
@@ -84,10 +114,12 @@ function log(message: string): void {
   console.log(`flypath: ${message}`);
 }
 
+/** Read the cached content for a key, if any. */
 export function contentAt(key: string): Content | undefined {
   return content[key];
 }
 
+/** Listen for changes to one key's content. Returns an unsubscribe. */
 export function subscribe(key: string, listener: Listener): () => void {
   let group = listeners.get(key);
   if (!group) {
@@ -162,6 +194,10 @@ function seedKey(container: string, url: string): string {
   return `${container}:${normalizePath(path)}${search}`;
 }
 
+/**
+ * Hold a payload for a destination the router hasn't mounted yet, so the screen
+ * that follows a redirect can adopt it instead of refetching.
+ */
 export function seedPayload(
   location: Location,
   payload: RscPayload,
@@ -447,6 +483,7 @@ function needChrome(id: string, url: string, at: number): boolean {
   return !running(key, url, at);
 }
 
+/** Drop content for screens the router no longer keeps, then trim to budget. */
 function evict(router: Router): void {
   const live = liveKeys(router);
   const seen = new Set(visible(router).screens.map((entry) => entry.key));
@@ -481,6 +518,11 @@ function evict(router: Router): void {
   publish(next);
 }
 
+/**
+ * Compare what the router says is visible against the cache and fetch whatever
+ * is missing or stale through the host {@link Bridge}, bundling a focused
+ * screen's chrome into its request.
+ */
 export function sync(router: Router): void {
   const link = bridge;
   if (!link) return;

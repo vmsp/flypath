@@ -1,8 +1,9 @@
 /**
- * Frontend for the "use native" compiler. It scans the app's code, parses every
- * native declaration, validates its signature against supported types and
- * produces a `NativeManifest` to be used by codegen and the
- * `flypath:native-modules` Vite plugin.
+ * @fileoverview Frontend for the "use native" compiler.
+ *
+ * It scans the app's code, parses every native declaration, validates its
+ * signature against supported types and produces a `NativeManifest` to be used
+ * by codegen and the `flypath:native-modules` Vite plugin.
  */
 
 import fs from "node:fs";

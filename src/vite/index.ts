@@ -15,6 +15,7 @@ export type { JobsOptions, QueueOptions } from "../jobs/config.ts";
 export type { MailOptions } from "../mail/config.ts";
 export type { FlypathOptions } from "../native/config.ts";
 
+/** Where flypath's built runtime lives, for plugins that need to resolve it. */
 export function flypathPaths(): {
   distDir: string;
   runtimeDir: string;

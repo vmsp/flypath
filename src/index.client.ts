@@ -79,10 +79,12 @@ export const sql: SqlTag = Object.assign(
   },
 );
 
+/** Enqueue background jobs. Server only. */
 export function jobs(_options?: EnqueueOptions): Jobs {
   return serverOnly("jobs");
 }
 
+/** Declare a job that runs on a cron schedule. Server only. */
 export function cron(
   _expression: string,
   _thunk: Thunk,
@@ -91,18 +93,24 @@ export function cron(
   return serverOnly("cron");
 }
 
+/**
+ * Information about the job attempt that's currently executing. Server only.
+ */
 export function currentJob(): JobContext {
   return serverOnly("currentJob");
 }
 
+/** Send an email message. Server only. */
 export function sendMail(_message: MailMessage): Promise<MailResult> {
   return serverOnly("sendMail");
 }
 
+/** Sets the subject of the mail being rendered. Server only. */
 export function Subject(_props: { children: Text }): ReactNode {
   return serverOnly("Subject");
 }
 
+/** Sets the preheader clients show next to the subject. Server only. */
 export function Preview(_props: { children: Text }): ReactNode {
   return serverOnly("Preview");
 }

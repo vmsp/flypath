@@ -1,5 +1,6 @@
 /**
- * Job discovery, and the `virtual:flypath/jobs` module it generates.
+ * @fileoverview Job discovery, and the `virtual:flypath/jobs` module it
+ * generates.
  *
  * Resolves jobs calls, set by `jobs.ts`. Walks the project, resolves every
  * `enqueue` and `cron` callee to a file plus an export name, and emits a module
