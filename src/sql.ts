@@ -1,5 +1,5 @@
 /**
- * SQL operators to be used in more complicated queries.
+ * @fileoverview SQL operators to be used in more complicated queries.
  *
  * These are kept in their own package so they, being such common identifiers,
  * don't pollute the main namespace.

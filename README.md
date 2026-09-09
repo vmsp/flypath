@@ -24,7 +24,8 @@ Native](https://reactnative.dev/), [Vite](https://vite.dev/) and
 [OXC](https://oxc.rs/) form the core of the implementation. [React Strict
 DOM](https://react.github.io/react-strict-dom/) heavily inspired the styling
 engine. [Ruby on Rails](https://rubyonrails.org/) guided many of the API
-choices.
+choices. The migration system comes from
+[Django.](https://www.djangoproject.com/)
 
 ## License
 

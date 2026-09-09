@@ -206,53 +206,47 @@ ${mod.isCjs ? `$$module.exports = module.exports;` : ""}
 }
 
 export class NativeBundler {
-  #environment: DevEnvironment;
-  #root: string;
-  #modules = new Map<string, NativeModule>();
-  #ids = new Map<string, number>();
-  #urlToId = new Map<string, string>();
-  #pending = new Map<string, Promise<void>>();
-  #idToModule = new Map<number, string>();
-  #base = new Set<string>();
-  #revision = 0;
+  readonly modules: Map<string, NativeModule> = new Map<string, NativeModule>();
+  private readonly ids = new Map<string, number>();
+  private readonly urlToId = new Map<string, string>();
+  private readonly pending = new Map<string, Promise<void>>();
+  private readonly idToModule = new Map<number, string>();
+  private base = new Set<string>();
+  private revision = 0;
 
-  constructor(environment: DevEnvironment, root: string) {
-    this.#environment = environment;
-    this.#root = root;
-  }
-
-  get modules(): Map<string, NativeModule> {
-    return this.#modules;
-  }
+  constructor(
+    private readonly environment: DevEnvironment,
+    private readonly root: string,
+  ) {}
 
   moduleId(id: string): number {
-    const cached = this.#ids.get(id);
+    const cached = this.ids.get(id);
     if (cached !== undefined) return cached;
     const value = numericId(this.moduleKey(id));
-    const clash = this.#idToModule.get(value);
+    const clash = this.idToModule.get(value);
     if (clash !== undefined && clash !== id) {
       throw new Error(
         `flypath: native module id collision between ${clash} and ${id}`,
       );
     }
-    this.#ids.set(id, value);
-    this.#idToModule.set(value, id);
+    this.ids.set(id, value);
+    this.idToModule.set(value, id);
     return value;
   }
 
   moduleKey(id: string): string {
-    if (id.startsWith(this.#root + path.sep)) {
-      return path.relative(this.#root, id).replaceAll(path.sep, "/");
+    if (id.startsWith(this.root + path.sep)) {
+      return path.relative(this.root, id).replaceAll(path.sep, "/");
     }
     return id.replaceAll(path.sep, "/");
   }
 
   isChunkModule(id: string): boolean {
-    return this.#modules.has(id) && !this.#base.has(id);
+    return this.modules.has(id) && !this.base.has(id);
   }
 
   moduleById(moduleId: number): NativeModule | undefined {
-    for (const mod of this.#modules.values()) {
+    for (const mod of this.modules.values()) {
       if (mod.moduleId === moduleId) return mod;
     }
     return undefined;
@@ -261,18 +255,18 @@ export class NativeBundler {
   invalidate(ids: Iterable<string>): NativeModule[] {
     const removed: NativeModule[] = [];
     for (const id of ids) {
-      const mod = this.#modules.get(id);
+      const mod = this.modules.get(id);
       if (!mod) continue;
       removed.push(mod);
-      this.#modules.delete(id);
-      this.#pending.delete(id);
-      this.#invalidateGraph(id);
+      this.modules.delete(id);
+      this.pending.delete(id);
+      this.invalidateGraph(id);
     }
     return removed;
   }
 
-  #invalidateGraph(id: string): void {
-    const graph = this.#environment.moduleGraph;
+  private invalidateGraph(id: string): void {
+    const graph = this.environment.moduleGraph;
     const nodes = graph.getModulesByFile(id);
     if (!nodes) return;
     for (const node of nodes) graph.invalidateModule(node);
@@ -288,7 +282,7 @@ export class NativeBundler {
       if (seen.has(current)) continue;
       seen.add(current);
       const parents: number[] = [];
-      for (const mod of this.#modules.values()) {
+      for (const mod of this.modules.values()) {
         if (mod.deps.includes(current)) {
           parents.push(mod.moduleId);
           queue.push(mod.moduleId);
@@ -300,8 +294,11 @@ export class NativeBundler {
     return inverse;
   }
 
-  async #resolve(source: string, importer?: string): Promise<string | null> {
-    const resolved = await this.#environment.pluginContainer.resolveId(
+  private async resolve(
+    source: string,
+    importer?: string,
+  ): Promise<string | null> {
+    const resolved = await this.environment.pluginContainer.resolveId(
       source,
       importer,
     );
@@ -312,33 +309,33 @@ export class NativeBundler {
     if (id.startsWith("\0")) return id;
     if (id.startsWith("/@")) return id;
     if (!path.isAbsolute(id)) return `/@id/${id}`;
-    if (id.startsWith(this.#root + path.sep)) {
-      return `/${path.relative(this.#root, id).replaceAll(path.sep, "/")}`;
+    if (id.startsWith(this.root + path.sep)) {
+      return `/${path.relative(this.root, id).replaceAll(path.sep, "/")}`;
     }
     return `/@fs${id}`;
   }
 
   async load(id: string): Promise<void> {
-    if (this.#modules.has(id)) return;
-    const existing = this.#pending.get(id);
+    if (this.modules.has(id)) return;
+    const existing = this.pending.get(id);
     if (existing) return existing;
-    const task = this.#transform(id).finally(() => {
-      this.#pending.delete(id);
+    const task = this.transform(id).finally(() => {
+      this.pending.delete(id);
     });
-    this.#pending.set(id, task);
+    this.pending.set(id, task);
     return task;
   }
 
   async transformOne(id: string): Promise<NativeModule> {
-    await this.#transform(id);
-    const mod = this.#modules.get(id);
+    await this.transform(id);
+    const mod = this.modules.get(id);
     if (!mod) throw new Error(`flypath: failed to build ${id}`);
     return mod;
   }
 
-  async #transform(id: string): Promise<void> {
+  private async transform(id: string): Promise<void> {
     const url = this.urlFor(id);
-    const result = await this.#environment.transformRequest(url);
+    const result = await this.environment.transformRequest(url);
     if (!result) throw new Error(`flypath: failed to transform ${id}`);
 
     const deps = new Set<string>();
@@ -354,11 +351,11 @@ export class NativeBundler {
     const rawDeps = [...(result.deps ?? []), ...(result.dynamicDeps ?? [])];
     for (const dep of rawDeps) {
       const depId =
-        this.#urlToId.get(dep) ??
+        this.urlToId.get(dep) ??
         decodeViteUrl(dep) ??
-        (await this.#resolve(dep, id)) ??
+        (await this.resolve(dep, id)) ??
         dep;
-      this.#urlToId.set(dep, depId);
+      this.urlToId.set(dep, depId);
       deps.add(depId);
       const numeric = this.moduleId(depId);
       code = code.replaceAll(
@@ -384,7 +381,7 @@ export class NativeBundler {
     if (requires.length > 0) {
       const magic = new MagicString(code);
       for (const node of requires) {
-        const depId = await this.#resolve(node.value, id);
+        const depId = await this.resolve(node.value, id);
         if (!depId) continue;
         deps.add(depId);
         magic.overwrite(node.start, node.end, String(this.moduleId(depId)));
@@ -394,7 +391,7 @@ export class NativeBundler {
 
     assertServerProxy(id, code);
 
-    this.#modules.set(id, {
+    this.modules.set(id, {
       id,
       moduleId: this.moduleId(id),
       url,
@@ -411,21 +408,21 @@ export class NativeBundler {
   async resolveEntry(entry: string): Promise<string> {
     const id = path.isAbsolute(entry)
       ? entry
-      : await this.#resolve(entry, path.join(this.#root, "index.js"));
+      : await this.resolve(entry, path.join(this.root, "index.js"));
     if (!id) throw new Error(`flypath: cannot resolve native entry ${entry}`);
     return id;
   }
 
-  #closure(entryIds: string[]): NativeModule[] {
+  private closure(entryIds: string[]): NativeModule[] {
     const seen = new Set<string>();
     const out: NativeModule[] = [];
     const byId = new Map<number, NativeModule>();
-    for (const mod of this.#modules.values()) byId.set(mod.moduleId, mod);
+    for (const mod of this.modules.values()) byId.set(mod.moduleId, mod);
 
     const visit = (id: string): void => {
       if (seen.has(id)) return;
       seen.add(id);
-      const mod = this.#modules.get(id);
+      const mod = this.modules.get(id);
       if (!mod) return;
       out.push(mod);
       for (const dep of mod.deps) {
@@ -447,15 +444,15 @@ export class NativeBundler {
     }
 
     const prelude = nativePrelude({
-      root: this.#root,
+      root: this.root,
       platform: options.platform,
       dev: options.dev,
       serverUrl: options.serverUrl,
       manifestHash: options.manifestHash,
     });
 
-    const modules = this.#closure(entryIds);
-    this.#base = new Set(modules.map((mod) => mod.id));
+    const modules = this.closure(entryIds);
+    this.base = new Set(modules.map((mod) => mod.id));
 
     const generator = new GenMapping();
     const chunks: string[] = [prelude];
@@ -475,22 +472,16 @@ export class NativeBundler {
     return {
       code: chunks.join(""),
       map: toEncodedMap(generator) as NativeSourceMap,
-      revisionId: String(this.#revision++),
+      revisionId: String(this.revision++),
       moduleIds: entryIds.map((id) => this.moduleId(id)),
     };
-  }
-
-  get base(): ReadonlySet<string> {
-    return this.#base;
   }
 
   async buildChunk(entry: string, dev: boolean): Promise<NativeChunk> {
     const id = await this.resolveEntry(entry);
     await this.load(id);
 
-    const modules = this.#closure([id]).filter(
-      (mod) => !this.#base.has(mod.id),
-    );
+    const modules = this.closure([id]).filter((mod) => !this.base.has(mod.id));
 
     const generator = new GenMapping();
     const parts: string[] = [];

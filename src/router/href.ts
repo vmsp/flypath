@@ -43,6 +43,7 @@ export function buildHref(
   return query === "" ? path : `${path}?${query}`;
 }
 
+/** Build the URL for a route pattern, filling in the params it declares. */
 export function href<const P extends Pattern>(
   pattern: P,
   ...args: HrefArgs<P>

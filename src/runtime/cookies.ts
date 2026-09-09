@@ -14,9 +14,16 @@ export type CookieOptions = {
 };
 
 export type Cookies = {
+  /** Read one cookie sent with the request. */
   (name: string): string | undefined;
+
+  /** Read every cookie sent with the request. */
   (): Readonly<Record<string, string>>;
+
+  /** Write a cookie on the response. */
   set: (name: string, value: string, options?: CookieOptions) => void;
+
+  /** Expire a cookie on the response. */
   clear: (name: string, options?: CookieOptions) => void;
 };
 

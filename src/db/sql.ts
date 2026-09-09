@@ -15,11 +15,11 @@ function toNode(value: unknown): Node {
 }
 
 export class Fragment<T> extends Expr<T> implements PromiseLike<T[]> {
-  readonly database: string;
-
-  constructor(node: Node, database = "default") {
+  constructor(
+    node: Node,
+    readonly database = "default",
+  ) {
     super(node);
-    this.database = database;
   }
 
   compile(): Compiled {

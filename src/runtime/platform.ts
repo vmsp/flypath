@@ -16,8 +16,13 @@ export type RequestInfo = RouteInfo & {
 };
 
 export type HeaderAccess = {
+  /** The incoming request's headers. */
   (): Headers;
+
+  /** Set a header on the response. */
   set: (name: string, value: string) => void;
+
+  /** Remove a header from the response. */
   delete: (name: string) => void;
 };
 
@@ -33,6 +38,7 @@ export function getRequest(): RequestInfo | undefined {
   return globals().requestStorage?.getStore();
 }
 
+/** Where the current render runs. */
 export function platform(): Platform {
   return (
     getRequest()?.platform ??
@@ -126,18 +132,22 @@ export const headers: HeaderAccess = Object.assign(
   },
 );
 
+/** Whether this render only warms a cache and isn't shown yet. */
 export function isPrefetch(): boolean {
   return getRequest()?.prefetch ?? false;
 }
 
+/** Whether the current platform is iOS or Android. */
 export function isNative(): boolean {
   return platform() !== "web";
 }
 
+/** Whether the current platform is iOS. */
 export function isIos(): boolean {
   return platform() === "ios";
 }
 
+/** Whether the current platform is Android. */
 export function isAndroid(): boolean {
   return platform() === "android";
 }

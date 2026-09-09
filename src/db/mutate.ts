@@ -56,14 +56,10 @@ function projections(keys: readonly string[]): Projection[] {
 }
 
 export class Insert<N extends TableName, Res> implements PromiseLike<Res> {
-  readonly ir: InsertIR;
-
-  readonly database: string;
-
-  constructor(ir: InsertIR, database: string) {
-    this.ir = ir;
-    this.database = database;
-  }
+  constructor(
+    readonly ir: InsertIR,
+    readonly database: string,
+  ) {}
 
   onConflict(
     target?:
@@ -135,14 +131,10 @@ export class Insert<N extends TableName, Res> implements PromiseLike<Res> {
 }
 
 export class Conflicting<N extends TableName, Res> {
-  private readonly insert: Insert<N, Res>;
-
-  private readonly conflict: Conflict;
-
-  constructor(insert: Insert<N, Res>, conflict: Conflict) {
-    this.insert = insert;
-    this.conflict = conflict;
-  }
+  constructor(
+    private readonly insert: Insert<N, Res>,
+    private readonly conflict: Conflict,
+  ) {}
 
   doNothing(): Insert<N, Res> {
     return this.insert.withConflict({ ...this.conflict, action: "nothing" });
@@ -169,14 +161,10 @@ export class Conflicting<N extends TableName, Res> {
 }
 
 export class InsertTarget<N extends TableName> {
-  private readonly table: N;
-
-  private readonly database: string;
-
-  constructor(table: N, database: string) {
-    this.table = table;
-    this.database = database;
-  }
+  constructor(
+    private readonly table: N,
+    private readonly database: string,
+  ) {}
 
   insert(
     values: Insertable<TableOf<N>> | readonly Insertable<TableOf<N>>[] | Pipe,
@@ -214,14 +202,10 @@ export class InsertTarget<N extends TableName> {
 }
 
 export class Update<N extends TableName, Res> implements PromiseLike<Res> {
-  readonly ir: UpdateIR;
-
-  readonly database: string;
-
-  constructor(ir: UpdateIR, database: string) {
-    this.ir = ir;
-    this.database = database;
-  }
+  constructor(
+    readonly ir: UpdateIR,
+    readonly database: string,
+  ) {}
 
   private next<R2>(patch: Partial<UpdateIR>): Update<N, R2> {
     return new Update<N, R2>({ ...this.ir, ...patch }, this.database);
@@ -298,14 +282,10 @@ export class Update<N extends TableName, Res> implements PromiseLike<Res> {
 }
 
 export class Delete<N extends TableName, Res> implements PromiseLike<Res> {
-  readonly ir: DeleteIR;
-
-  readonly database: string;
-
-  constructor(ir: DeleteIR, database: string) {
-    this.ir = ir;
-    this.database = database;
-  }
+  constructor(
+    readonly ir: DeleteIR,
+    readonly database: string,
+  ) {}
 
   private next<R2>(patch: Partial<DeleteIR>): Delete<N, R2> {
     return new Delete<N, R2>({ ...this.ir, ...patch }, this.database);

@@ -18,22 +18,22 @@ type Mutable = Record<string, unknown>;
 type Entry = [string, string];
 
 class FlypathFormData {
-  #entries: Entry[] = [];
+  private items: Entry[] = [];
 
   append(name: string, value: unknown): void {
-    this.#entries.push([String(name), String(value)]);
+    this.items.push([String(name), String(value)]);
   }
 
   set(name: string, value: unknown): void {
     const key = String(name);
-    const next = this.#entries.filter(([entry]) => entry !== key);
+    const next = this.items.filter(([entry]) => entry !== key);
     next.push([key, String(value)]);
-    this.#entries = next;
+    this.items = next;
   }
 
   get(name: string): string | null {
     const key = String(name);
-    for (const [entry, value] of this.#entries) {
+    for (const [entry, value] of this.items) {
       if (entry === key) return value;
     }
     return null;
@@ -41,40 +41,40 @@ class FlypathFormData {
 
   getAll(name: string): string[] {
     const key = String(name);
-    return this.#entries
+    return this.items
       .filter(([entry]) => entry === key)
       .map(([, value]) => value);
   }
 
   has(name: string): boolean {
     const key = String(name);
-    return this.#entries.some(([entry]) => entry === key);
+    return this.items.some(([entry]) => entry === key);
   }
 
   delete(name: string): void {
     const key = String(name);
-    this.#entries = this.#entries.filter(([entry]) => entry !== key);
+    this.items = this.items.filter(([entry]) => entry !== key);
   }
 
   forEach(
     callback: (value: string, name: string, form: FlypathFormData) => void,
     thisArg?: unknown,
   ): void {
-    for (const [name, value] of this.#entries.slice()) {
+    for (const [name, value] of this.items.slice()) {
       callback.call(thisArg, value, name, this);
     }
   }
 
   *entries(): IterableIterator<Entry> {
-    yield* this.#entries.slice();
+    yield* this.items.slice();
   }
 
   *keys(): IterableIterator<string> {
-    for (const [name] of this.#entries.slice()) yield name;
+    for (const [name] of this.items.slice()) yield name;
   }
 
   *values(): IterableIterator<string> {
-    for (const [, value] of this.#entries.slice()) yield value;
+    for (const [, value] of this.items.slice()) yield value;
   }
 
   [Symbol.iterator](): IterableIterator<Entry> {

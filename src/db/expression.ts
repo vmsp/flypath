@@ -5,11 +5,7 @@ export class Expr<T> {
 
   declare readonly $type?: T;
 
-  readonly node: Node;
-
-  constructor(node: Node) {
-    this.node = node;
-  }
+  constructor(readonly node: Node) {}
 
   as<A extends string>(alias: A): Aliased<T, A> {
     return new Aliased<T, A>(this.node, alias);
@@ -21,14 +17,10 @@ export class Aliased<T, A extends string> {
 
   declare readonly $type?: T;
 
-  readonly node: Node;
-
-  readonly alias: A;
-
-  constructor(node: Node, alias: A) {
-    this.node = node;
-    this.alias = alias;
-  }
+  constructor(
+    readonly node: Node,
+    readonly alias: A,
+  ) {}
 }
 
 export class WindowFn<T> extends Expr<T> {

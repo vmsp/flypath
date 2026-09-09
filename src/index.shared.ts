@@ -40,6 +40,7 @@ export type {
   SearchParams,
 } from "./router/types.ts";
 
+/** A component that accepts flypath's `style` prop alongside its own props. */
 export type NativeComponent<Props> = ComponentType<
   Props & { style?: StyleProp }
 >;

@@ -39,11 +39,11 @@ export type Parsed = { program: Node; module: ModuleRecord };
 export type Site = { thunk: Node; kind: "enqueue" | "cron" };
 
 export class JobError extends Error {
-  readonly start: number;
-
-  constructor(message: string, start: number) {
+  constructor(
+    message: string,
+    readonly start: number,
+  ) {
     super(message);
-    this.start = start;
   }
 }
 

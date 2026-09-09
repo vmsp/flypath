@@ -1,3 +1,12 @@
+/**
+ * @fileoverview The native half of the `style` prop.
+ *
+ * CSS properties translated to their React Native equivalents, split between
+ * the view and its text, with `var()`, `rem`, `em` and conditions kept as
+ * descriptors the component resolves per render. See `vite/styles.ts` for the
+ * pipeline that precedes this.
+ */
+
 import type { Predicate } from "./conditions.ts";
 import { parseCondition } from "./conditions.ts";
 import { FLEX_DEFAULTS } from "./defaults.ts";

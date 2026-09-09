@@ -28,17 +28,13 @@ export type ReferenceTarget =
 export class Column<S, I, D extends boolean> {
   readonly flypathColumn = true;
 
-  readonly def: ColumnDef;
-
   reference: { target: ReferenceTarget; options: ReferenceOptions } | undefined;
 
   table = "";
 
   name = "";
 
-  constructor(def: ColumnDef) {
-    this.def = def;
-  }
+  constructor(readonly def: ColumnDef) {}
 
   private with<NS, NI, ND extends boolean>(
     patch: Partial<ColumnDef>,

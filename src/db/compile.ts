@@ -44,8 +44,6 @@ type Entry =
 type Resolved = { node: Node; base: boolean };
 
 class Level {
-  readonly parent: Level | undefined;
-
   sources: { alias: string; columns: readonly string[] | null }[] = [];
 
   entries: Entry[] = [];
@@ -84,9 +82,7 @@ class Level {
 
   rank = FROM;
 
-  constructor(parent?: Level) {
-    this.parent = parent;
-  }
+  constructor(readonly parent?: Level) {}
 
   addSource(alias: string, source: Source): void {
     const columns = sourceColumns(source);
@@ -273,13 +269,9 @@ function containsWindow(node: Node): boolean {
 type Mode = "value" | "having" | "order";
 
 class Compiler {
-  readonly params: Params;
-
   private scope: Level | undefined;
 
-  constructor(params: Params) {
-    this.params = params;
-  }
+  constructor(readonly params: Params) {}
 
   query(ir: QueryIR, parent?: Level): string {
     const restore: [string, readonly string[] | null | undefined][] = [];

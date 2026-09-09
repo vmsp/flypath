@@ -75,11 +75,8 @@ export type HotUpdate = {
 };
 
 export class HotSocket extends SocketEndpoint {
-  #logger: Logger;
-
-  constructor(logger: Logger) {
+  constructor(private readonly logger: Logger) {
     super();
-    this.#logger = logger;
   }
 
   protected override onConnection(socket: WebSocket): void {
@@ -97,7 +94,7 @@ export class HotSocket extends SocketEndpoint {
       }
 
       if (data.type === "log" && Array.isArray(data.data)) {
-        this.#logger.info(
+        this.logger.info(
           `[native:${data.level ?? "log"}] ${data.data.join(" ")}`,
         );
       }

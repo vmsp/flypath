@@ -1,19 +1,14 @@
-import type { ReactNode } from "react";
-
 import type { DbFactory } from "./db/index.ts";
 import type { Db } from "./db/query.ts";
 import type { SqlTag } from "./db/sql.ts";
 import type { TransactionOptions } from "./db/transaction.ts";
+import type { cron as serverCron, jobs as serverJobs } from "./jobs/enqueue.ts";
+import type { currentJob as serverCurrentJob } from "./jobs/run.ts";
 import type {
-  CronEntry,
-  CronOptions,
-  EnqueueOptions,
-  Jobs,
-  Thunk,
-} from "./jobs/enqueue.ts";
-import type { JobContext } from "./jobs/run.ts";
-import type { Text } from "./mail/document.tsx";
-import type { MailMessage, MailResult } from "./mail/transport.ts";
+  Preview as serverPreview,
+  Subject as serverSubject,
+} from "./mail/document.tsx";
+import type { sendMail as serverSendMail } from "./mail/index.ts";
 
 export * from "./index.shared.ts";
 export type { Expression } from "./db/expression.ts";
@@ -50,6 +45,13 @@ export type { Branch } from "./router/scope.tsx";
 
 export interface Register {}
 
+// Below we disallow usage of server-only functions in clients. We must be
+// careful these re-definitions don't erase jsdocs. This file is the default
+// export and likely to be the one picked up by LSPs.
+//
+// TODO: The checks only fire when the function called. Ideally, they'd
+// automatically trigger as soon as they were added to the client graph.
+
 function serverOnly(name: string): never {
   throw new Error(
     `flypath: ${name}() only runs on the server; call it from a server ` +
@@ -79,38 +81,15 @@ export const sql: SqlTag = Object.assign(
   },
 );
 
-/** Enqueue background jobs. Server only. */
-export function jobs(_options?: EnqueueOptions): Jobs {
-  return serverOnly("jobs");
-}
+export const jobs: typeof serverJobs = () => serverOnly("jobs");
 
-/** Declare a job that runs on a cron schedule. Server only. */
-export function cron(
-  _expression: string,
-  _thunk: Thunk,
-  _options?: CronOptions,
-): CronEntry {
-  return serverOnly("cron");
-}
+export const cron: typeof serverCron = () => serverOnly("cron");
 
-/**
- * Information about the job attempt that's currently executing. Server only.
- */
-export function currentJob(): JobContext {
-  return serverOnly("currentJob");
-}
+export const currentJob: typeof serverCurrentJob = () =>
+  serverOnly("currentJob");
 
-/** Send an email message. Server only. */
-export function sendMail(_message: MailMessage): Promise<MailResult> {
-  return serverOnly("sendMail");
-}
+export const sendMail: typeof serverSendMail = () => serverOnly("sendMail");
 
-/** Sets the subject of the mail being rendered. Server only. */
-export function Subject(_props: { children: Text }): ReactNode {
-  return serverOnly("Subject");
-}
+export const Subject: typeof serverSubject = () => serverOnly("Subject");
 
-/** Sets the preheader clients show next to the subject. Server only. */
-export function Preview(_props: { children: Text }): ReactNode {
-  return serverOnly("Preview");
-}
+export const Preview: typeof serverPreview = () => serverOnly("Preview");

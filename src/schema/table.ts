@@ -116,8 +116,6 @@ class ConstraintBuilder {
 
   name: string;
 
-  private readonly type: "primaryKey" | "unique" | "foreignKey";
-
   columns: string[] = [];
 
   distinct = true;
@@ -130,8 +128,10 @@ class ConstraintBuilder {
     deferrable?: boolean;
   } = {};
 
-  constructor(type: "primaryKey" | "unique" | "foreignKey", name?: string) {
-    this.type = type;
+  constructor(
+    private readonly type: "primaryKey" | "unique" | "foreignKey",
+    name?: string,
+  ) {
     this.name = name ?? "";
   }
 
@@ -202,12 +202,12 @@ class ConstraintBuilder {
 class CheckBuilder {
   readonly kind = "check";
 
-  readonly name: string;
-
   readonly expression: string;
 
-  constructor(name: string, expression: Expr<unknown>) {
-    this.name = name;
+  constructor(
+    readonly name: string,
+    expression: Expr<unknown>,
+  ) {
     this.expression = literal(expression.node);
   }
 }

@@ -84,12 +84,14 @@ const WEB_EXTENSIONS = [".web.tsx", ".web.ts", ".web.jsx", ".web.js"];
 const COMPONENT_TYPES = new Set(["NativeComponent", "ComponentType"]);
 
 export class ManifestError extends Error {
-  readonly file: string;
   readonly start: number;
 
-  constructor(message: string, file: string, node: Node | undefined) {
+  constructor(
+    message: string,
+    readonly file: string,
+    node: Node | undefined,
+  ) {
     super(message);
-    this.file = file;
     this.start = typeof node?.["start"] === "number" ? node["start"] : 0;
   }
 }

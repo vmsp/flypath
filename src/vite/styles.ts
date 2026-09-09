@@ -1,3 +1,29 @@
+/**
+ * @fileoverview What happens to a `style` prop, and the
+ * `virtual:flypath/styles.css` stylesheet this plugin generates.
+ *
+ * Every `*.css.ts` module is compiled by {@link compileTokens}: `css.vars()`
+ * and `css.keyframes()` become real custom properties and `@keyframes`, and the
+ * module is rewritten to export the `var(--…)` names that reference them.
+ *
+ * Every other source file is then scanned by {@link extractStyles}, which
+ * evaluates the `style` props it can read statically and replaces them with
+ * atomic class names. Those rules, the compiled token declarations and the
+ * reset make up the virtual stylesheet: Vite serves it in dev, invalidated over
+ * HMR as new rules appear, and emits it as a CSS asset in the build.
+ *
+ * What survives to runtime is handled per platform. On the web
+ * (`styles/web.ts`, applied in `runtime/element.ts`) a value that could not be
+ * read statically mints its atomic rule at render time, shipped as a `<style>`
+ * React hoists into the head, while plain scalars stay in the inline `style`
+ * attribute. On iOS and Android (`styles/native.ts`) there is no CSS at all:
+ * properties are translated to their React Native equivalents, split between
+ * the view and its text, and `var()`, `rem`, `em` and conditions become
+ * descriptors the component resolves against the registry and the current
+ * theme, interaction and dimensions. A property with no native equivalent
+ * throws in dev and is dropped in release.
+ */
+
 import fs from "node:fs";
 import path from "node:path";
 

@@ -94,18 +94,14 @@ export class Query<
   in out G = R,
   in out Grouped = false,
 > implements PromiseLike<Output<R>[]> {
-  readonly ir: QueryIR;
-
-  readonly database: string;
-
   declare readonly row: Output<R>;
 
   declare readonly scope: R;
 
-  constructor(ir: QueryIR, database: string) {
-    this.ir = ir;
-    this.database = database;
-  }
+  constructor(
+    readonly ir: QueryIR,
+    readonly database: string,
+  ) {}
 
   private next<NR, NG = NR, NGrouped = false>(
     step: Step,
@@ -463,14 +459,10 @@ type FromRow<C, N extends string> = Scope<
 >;
 
 export class Db<C = Record<never, never>> {
-  readonly database: string;
-
-  private readonly ctes: readonly Cte[];
-
-  constructor(database: string, ctes: readonly Cte[] = []) {
-    this.database = database;
-    this.ctes = ctes;
-  }
+  constructor(
+    readonly database: string,
+    private readonly ctes: readonly Cte[] = [],
+  ) {}
 
   with<const N extends string, QR>(
     name: N,

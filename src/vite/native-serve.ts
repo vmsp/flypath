@@ -46,23 +46,21 @@ export type HotModuleUpdate = {
 };
 
 export class NativeServer {
-  #server: ViteDevServer;
-  #distDir: string;
-  #bundlers = new Map<NativePlatform, NativeBundler>();
-  #bundles = new Map<NativePlatform, NativeBundle>();
-  #traces = new Map<NativePlatform, TraceMap>();
-  #dirty = new Set<NativePlatform>();
-  #chunks = new Map<string, ChunkBundle>();
-  #chunkTraces = new Map<string, TraceMap>();
+  private readonly bundlers = new Map<NativePlatform, NativeBundler>();
+  private readonly bundles = new Map<NativePlatform, NativeBundle>();
+  private readonly traces = new Map<NativePlatform, TraceMap>();
+  private readonly dirty = new Set<NativePlatform>();
+  private readonly chunks = new Map<string, ChunkBundle>();
+  private readonly chunkTraces = new Map<string, TraceMap>();
 
-  constructor(server: ViteDevServer, distDir: string) {
-    this.#server = server;
-    this.#distDir = distDir;
-  }
+  constructor(
+    private readonly server: ViteDevServer,
+    private readonly distDir: string,
+  ) {}
 
   environment(platform: NativePlatform): DevEnvironment {
     const name = nativeEnvironmentName(platform);
-    const environment = this.#server.environments[name];
+    const environment = this.server.environments[name];
     if (!environment) {
       throw new Error(`flypath: missing "${name}" environment`);
     }
@@ -70,13 +68,13 @@ export class NativeServer {
   }
 
   bundler(platform: NativePlatform): NativeBundler {
-    let bundler = this.#bundlers.get(platform);
+    let bundler = this.bundlers.get(platform);
     if (!bundler) {
       bundler = new NativeBundler(
         this.environment(platform),
-        this.#server.config.root,
+        this.server.config.root,
       );
-      this.#bundlers.set(platform, bundler);
+      this.bundlers.set(platform, bundler);
     }
     return bundler;
   }
@@ -84,23 +82,23 @@ export class NativeServer {
   entries(): string[] {
     return [
       ...POLYFILLS,
-      path.join(this.#distDir, "runtime", "native-entry.js"),
+      path.join(this.distDir, "runtime", "native-entry.js"),
     ];
   }
 
   serverUrl(): string {
-    const { port, host } = this.#server.config.server;
+    const { port, host } = this.server.config.server;
     const hostname = typeof host === "string" ? host : "localhost";
     return `http://${hostname}:${port ?? 8081}`;
   }
 
   markDirty(platform: NativePlatform): void {
-    this.#dirty.add(platform);
+    this.dirty.add(platform);
   }
 
   async bundle(platform: NativePlatform, dev: boolean): Promise<NativeBundle> {
-    const cached = this.#bundles.get(platform);
-    if (cached && !this.#dirty.has(platform)) return cached;
+    const cached = this.bundles.get(platform);
+    if (cached && !this.dirty.has(platform)) return cached;
 
     const bundle = await this.bundler(platform).build({
       entries: this.entries(),
@@ -110,9 +108,9 @@ export class NativeServer {
       manifestHash: currentManifest()?.hash ?? "",
     });
 
-    this.#bundles.set(platform, bundle);
-    this.#traces.delete(platform);
-    this.#dirty.delete(platform);
+    this.bundles.set(platform, bundle);
+    this.traces.delete(platform);
+    this.dirty.delete(platform);
     return bundle;
   }
 
@@ -122,12 +120,12 @@ export class NativeServer {
     dev: boolean,
   ): Promise<ChunkBundle> {
     const key = `${platform} ${reference}`;
-    const cached = this.#chunks.get(key);
+    const cached = this.chunks.get(key);
     if (cached) return cached;
 
     await this.bundle(platform, dev);
 
-    const id = referenceToId(this.#server.config.root, reference);
+    const id = referenceToId(this.server.config.root, reference);
     const built: NativeChunk = await this.bundler(platform).buildChunk(id, dev);
     const registration = `global.__FLYPATH__.chunks[${JSON.stringify(
       reference,
@@ -137,24 +135,24 @@ export class NativeServer {
       code: `${built.code}${registration}`,
       map: built.map,
     };
-    this.#chunks.set(key, chunk);
+    this.chunks.set(key, chunk);
     return chunk;
   }
 
   isChunkModule(file: string): boolean {
-    for (const bundler of this.#bundlers.values()) {
+    for (const bundler of this.bundlers.values()) {
       if (bundler.isChunkModule(file)) return true;
     }
     return false;
   }
 
   invalidateChunks(): void {
-    this.#chunks.clear();
-    this.#chunkTraces.clear();
+    this.chunks.clear();
+    this.chunkTraces.clear();
   }
 
   platforms(): NativePlatform[] {
-    return [...this.#bundles.keys()];
+    return [...this.bundles.keys()];
   }
 
   async hotUpdate(
@@ -165,7 +163,7 @@ export class NativeServer {
       update: HotModuleUpdate;
     }> = [];
 
-    for (const [platform, bundler] of this.#bundlers) {
+    for (const [platform, bundler] of this.bundlers) {
       if (!bundler.modules.has(file)) continue;
       bundler.invalidate([file]);
       const mod: NativeModule = await bundler.transformOne(file);
@@ -184,17 +182,17 @@ export class NativeServer {
     return updates;
   }
 
-  #trace(platform: NativePlatform): TraceMap | undefined {
-    const cached = this.#traces.get(platform);
+  private trace(platform: NativePlatform): TraceMap | undefined {
+    const cached = this.traces.get(platform);
     if (cached) return cached;
-    const bundle = this.#bundles.get(platform);
+    const bundle = this.bundles.get(platform);
     if (!bundle) return undefined;
     const trace = new TraceMap(bundle.map as never);
-    this.#traces.set(platform, trace);
+    this.traces.set(platform, trace);
     return trace;
   }
 
-  async #chunkTrace(file: string): Promise<TraceMap | undefined> {
+  private async chunkTrace(file: string): Promise<TraceMap | undefined> {
     const query = file.indexOf("?");
     const pathname = query === -1 ? file : file.slice(0, query);
     const match = /\/chunk\/([^/]+)\/(.+)\.bundle$/.exec(pathname);
@@ -204,25 +202,25 @@ export class NativeServer {
     const reference = decodeURIComponent(match[2] as string);
 
     const key = `${platform} ${reference}`;
-    const cached = this.#chunkTraces.get(key);
+    const cached = this.chunkTraces.get(key);
     if (cached) return cached;
     const chunk = await this.chunk(platform as NativePlatform, reference, true);
     const trace = new TraceMap(chunk.map as never);
-    this.#chunkTraces.set(key, trace);
+    this.chunkTraces.set(key, trace);
     return trace;
   }
 
   async symbolicate(stack: StackFrame[]): Promise<StackFrame[]> {
-    const platform = this.#bundles.keys().next().value as
+    const platform = this.bundles.keys().next().value as
       | NativePlatform
       | undefined;
     if (platform) await this.bundle(platform, true);
-    const base = platform ? this.#trace(platform) : undefined;
+    const base = platform ? this.trace(platform) : undefined;
 
     const traces = await Promise.all(
       stack.map((frame) =>
         typeof frame.file === "string"
-          ? this.#chunkTrace(frame.file)
+          ? this.chunkTrace(frame.file)
           : Promise.resolve(undefined),
       ),
     );

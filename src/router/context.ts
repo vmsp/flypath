@@ -1,7 +1,13 @@
 import { getRequest } from "../runtime/platform.ts";
 
+/**
+ * Context lets middleware and server components pass information down the call
+ * stack. Analogous to React's own `Context`.
+ */
 export type Context<T> = {
+  /** Read the value for the request being handled. */
   (): T;
+  /** Set the value for the rest of the request. Middleware only. */
   set: (value: T) => void;
 };
 
@@ -26,6 +32,10 @@ function store(): ContextStore {
   return request.context;
 }
 
+/**
+ * Per-request state, set by a middleware and read anywhere below it. Without a
+ * `fallback`, reading before anything set it throws.
+ */
 export function context<T>(fallback: T): Context<T>;
 export function context<T>(): Context<T>;
 export function context<T>(...fallback: readonly T[]): Context<T> {

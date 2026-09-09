@@ -1,3 +1,11 @@
+/**
+ * @fileoverview The web half of the `style` prop, for what `vite/styles.ts`
+ * could not extract at build time.
+ *
+ * Conditional values mint an atomic rule per render, emitted as a hoisted
+ * `<style>`, and plain scalars stay inline.
+ */
+
 import type { AtomicRule } from "./atomic.ts";
 import { atomicRule } from "./atomic.ts";
 import type { ConditionValues } from "./flatten.ts";

@@ -34,6 +34,17 @@ const PADDING: Record<Edge, string> = {
 const jsxFn = jsx as never as JsxFn;
 const jsxsFn = jsxs as never as JsxFn;
 
+/**
+ * Render children and automatically apply padding to reflect the portion of the
+ * view that is not covered by navigation bars, tab bars, toolbars, and other
+ * ancestor views.
+ *
+ * Safe Area's paddings reflect the physical limitation of the screen, such as
+ * rounded corners or camera notches.
+ *
+ * In flypath, this component is not directly available to consumers and can
+ * only be configured through the router.
+ */
 export function SafeAreaView(props: SafeAreaViewProps): ReactElement {
   const edges = edgeList(props.edges);
 

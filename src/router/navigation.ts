@@ -15,18 +15,15 @@ export type NavigationCommand =
   | { readonly kind: "back" };
 
 export class NavigationError extends Error {
-  readonly flypathSignal: NavigationSignal;
-
-  constructor(signal: NavigationSignal) {
+  constructor(readonly flypathSignal: NavigationSignal) {
     super(
-      signal.kind === "go"
-        ? `flypath: navigate to ${signal.to}`
-        : signal.kind === "back"
+      flypathSignal.kind === "go"
+        ? `flypath: navigate to ${flypathSignal.to}`
+        : flypathSignal.kind === "back"
           ? "flypath: navigate back"
           : "flypath: not found",
     );
     this.name = "NavigationError";
-    this.flypathSignal = signal;
   }
 }
 
