@@ -1,3 +1,4 @@
+import { EFFECT, forbidPrerender } from "../runtime/platform.ts";
 import { execute, executeCount } from "./client.ts";
 import { compileDelete, compileInsert, compileUpdate } from "./compile.ts";
 import { Expr, predicateNode, scopeProxy, toNode } from "./expression.ts";
@@ -115,6 +116,7 @@ export class Insert<N extends TableName, Res> implements PromiseLike<Res> {
   }
 
   async run(): Promise<Res> {
+    forbidPrerender("insert() ran", EFFECT);
     const compiled = this.compile();
     if (!this.ir.returning) {
       return { count: await executeCount(this.database, compiled) } as Res;
@@ -266,6 +268,7 @@ export class Update<N extends TableName, Res> implements PromiseLike<Res> {
   }
 
   async run(): Promise<Res> {
+    forbidPrerender("update() ran", EFFECT);
     const compiled = this.compile();
     if (!this.ir.returning) {
       return { count: await executeCount(this.database, compiled) } as Res;
@@ -334,6 +337,7 @@ export class Delete<N extends TableName, Res> implements PromiseLike<Res> {
   }
 
   async run(): Promise<Res> {
+    forbidPrerender("delete() ran", EFFECT);
     const compiled = this.compile();
     if (!this.ir.returning) {
       return { count: await executeCount(this.database, compiled) } as Res;

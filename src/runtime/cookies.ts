@@ -1,5 +1,5 @@
 import type { RequestInfo } from "./platform.ts";
-import { getRequest } from "./platform.ts";
+import { forbidPrerender, getRequest, VISITOR } from "./platform.ts";
 
 export type SameSite = "lax" | "none" | "strict";
 
@@ -137,15 +137,18 @@ export function mergeCookies(
 const read = (
   name?: string,
 ): string | undefined | Readonly<Record<string, string>> => {
+  forbidPrerender("cookies() was read", VISITOR);
   const jar = parse(request().headers.get("cookie"));
   return name === undefined ? jar : jar[name];
 };
 
 export const cookies: Cookies = Object.assign(read, {
   set: (name: string, value: string, options?: CookieOptions): void => {
+    forbidPrerender("cookies.set() was called", VISITOR);
     write(name, serialize(name, value, options ?? {}));
   },
   clear: (name: string, options?: CookieOptions): void => {
+    forbidPrerender("cookies.clear() was called", VISITOR);
     write(
       name,
       serialize(name, "", { ...options, expires: new Date(0), maxAge: 0 }),

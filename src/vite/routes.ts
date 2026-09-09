@@ -7,6 +7,8 @@ import type { RouteManifest } from "../router/manifest.ts";
 import { StaticError } from "./eval.ts";
 import { parseRouteTree, routeManifest } from "./route-extract.ts";
 
+export const ROUTES_PLUGIN = "flypath:routes";
+
 const ROUTES = "virtual:flypath/routes";
 const ROUTES_ID = `\0${ROUTES}`;
 const MANIFEST = "virtual:flypath/route-manifest";
@@ -66,8 +68,9 @@ export function routes(): Plugin {
   };
 
   return {
-    name: "flypath:routes",
+    name: ROUTES_PLUGIN,
     enforce: "pre",
+    api: { manifest },
     configResolved(config) {
       root = config.root;
     },

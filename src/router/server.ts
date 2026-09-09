@@ -1,4 +1,4 @@
-import { getRequest } from "../runtime/platform.ts";
+import { forbidPrerender, getRequest, VISITOR } from "../runtime/platform.ts";
 import { makeParams, makeQuery } from "./read.ts";
 import type { ParamsReader, QueryReader, RouteInfo } from "./types.ts";
 
@@ -13,6 +13,11 @@ function info(): RouteInfo {
   return value;
 }
 
+function search(): RouteInfo {
+  forbidPrerender("query() was read", VISITOR);
+  return info();
+}
+
 export const params: ParamsReader = makeParams(info);
 
-export const query: QueryReader = makeQuery(info);
+export const query: QueryReader = makeQuery(search);

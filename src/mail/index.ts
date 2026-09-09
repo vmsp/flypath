@@ -1,4 +1,4 @@
-import { getRequest } from "../runtime/platform.ts";
+import { EFFECT, forbidPrerender, getRequest } from "../runtime/platform.ts";
 import { mailConfig, mailFrom, smtpUrl } from "./config.ts";
 import { renderEmail } from "./render.tsx";
 import { htmlToText } from "./text.ts";
@@ -25,6 +25,8 @@ function requestOrigin(): string | undefined {
 
 /** Send an email message. */
 export async function sendMail(message: MailMessage): Promise<MailResult> {
+  forbidPrerender("sendMail() was called", EFFECT);
+
   if ((message.content === undefined) === (message.html === undefined)) {
     throw new Error(
       "flypath: sendMail() takes either content, a react element rendered " +

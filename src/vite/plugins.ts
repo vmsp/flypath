@@ -15,6 +15,7 @@ import { metroEndpoints } from "./metro-endpoints.ts";
 import { NATIVE_PLATFORMS, nativeResolve } from "./native-env.ts";
 import { nativeModules } from "./native-modules.ts";
 import { nativeRefresh } from "./native-refresh.ts";
+import { prerender } from "./prerender.ts";
 import { routes } from "./routes.ts";
 import { styles } from "./styles.ts";
 
@@ -200,5 +201,6 @@ export function plugins(
         client: entry("web-entry.js"),
       },
     }),
+    prerender(),
   ];
 }

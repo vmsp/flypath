@@ -51,10 +51,27 @@ export type RouteOptions = {
   revalidate?: Revalidation;
 
   staleTime?: number;
+
+  /**
+   * Render this route once during `flypath build` and serve the result as a
+   * file. Nothing about the request is readable while it renders — no cookies,
+   * headers or query — and no middleware may run over it, so every visitor gets
+   * the same page. Web only. Native renders it on demand like any other route.
+   */
+  prerender?: boolean;
 };
 
 export type MiddlewareOptions = {
   middleware?: readonly Middleware[];
+};
+
+export type RootOptions = MiddlewareOptions & {
+  /**
+   * Where the native app opens, `"/"` unless set. Web opens whatever URL was
+   * visited, so this moves the app's first screen only. Set it when the index
+   * route is a web page the app should not start on.
+   */
+  launch?: string;
 };
 
 export type NodeOptions = RouteOptions & MiddlewareOptions;
@@ -114,6 +131,7 @@ export type LoadedNode = Exclude<AnyNode, StackNode>;
 
 export type RouteTree = Guarded & {
   readonly kind: "routes";
+  readonly launch?: string;
   readonly children: readonly AnyNode[];
 };
 

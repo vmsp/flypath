@@ -20,6 +20,7 @@ export type {
   NotFoundNode,
   BranchesNode,
   Presentation,
+  RootOptions,
   RouteNode,
   RouteOptions,
   RouteTree,

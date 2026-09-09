@@ -12,6 +12,7 @@ export type RequestInfo = RouteInfo & {
   headers: Headers;
   outgoing: Headers;
   prefetch: boolean;
+  prerender: boolean;
   context: ContextStore;
 };
 
@@ -112,11 +113,32 @@ function reserved(name: string): void {
   }
 }
 
+export const VISITOR: string =
+  "a prerendered page is rendered once and served to everyone, so it cannot " +
+  "depend on who is asking — drop prerender from the route, or move the part " +
+  'that needs the visitor into a "use client" component';
+
+export const EFFECT: string =
+  "a prerendered page is rendered during the build, and again every time the " +
+  "server renders it on demand, so an effect here runs at moments nobody " +
+  "chose — move it into a server action, a job or a middleware";
+
+export function forbidPrerender(call: string, why: string): void {
+  const request = getRequest();
+  if (!request?.prerender) return;
+  throw new Error(
+    `flypath: ${call} while prerendering ${request.pathname}; ${why}`,
+  );
+}
+
 export const headers: HeaderAccess = Object.assign(
-  (): Headers =>
-    snapshot(required("headers() reads the incoming request").headers),
+  (): Headers => {
+    forbidPrerender("headers() was read", VISITOR);
+    return snapshot(required("headers() reads the incoming request").headers);
+  },
   {
     set: (name: string, value: string): void => {
+      forbidPrerender("headers.set() was called", VISITOR);
       reserved(name);
       required("headers.set() writes a header on the response").outgoing.set(
         name,
@@ -124,6 +146,7 @@ export const headers: HeaderAccess = Object.assign(
       );
     },
     delete: (name: string): void => {
+      forbidPrerender("headers.delete() was called", VISITOR);
       reserved(name);
       required(
         "headers.delete() writes a header on the response",
@@ -135,6 +158,11 @@ export const headers: HeaderAccess = Object.assign(
 /** Whether this render only warms a cache and isn't shown yet. */
 export function isPrefetch(): boolean {
   return getRequest()?.prefetch ?? false;
+}
+
+/** Whether this render is a prerender, which reads nothing of the request. */
+export function isPrerendering(): boolean {
+  return getRequest()?.prerender ?? false;
 }
 
 /** Whether the current platform is iOS or Android. */

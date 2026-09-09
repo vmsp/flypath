@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { EFFECT, forbidPrerender } from "../runtime/platform.ts";
 import type { Queue } from "./config.ts";
 import { jobsDatabase, queue as queueConfig } from "./config.ts";
 import { idOf } from "./registry.ts";
@@ -141,6 +142,8 @@ async function enqueueAll(
  * exported function with serializable arguments.
  */
 export function jobs(options: EnqueueOptions = {}): Jobs {
+  forbidPrerender("jobs() was called", EFFECT);
+
   const enqueue = async (
     ...thunks: readonly Thunk[]
   ): Promise<(number | null) | (number | null)[]> => {
@@ -159,5 +162,6 @@ export function cron(
   thunk: Thunk,
   options: CronOptions = {},
 ): CronEntry {
+  forbidPrerender("cron() was called", EFFECT);
   return { expression, thunk, options };
 }

@@ -25,13 +25,13 @@ import type { RevalidateMode } from "../router/revalidate.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext } from "../router/scope.tsx";
 import type { Mode, Revalidation } from "../router/types.ts";
+import { flightPath } from "../shared/flight.ts";
 import {
   LOCATION_HEADER,
   NAVIGATE_HEADER,
   PREFETCH_HEADER,
   SCREEN_HEADER,
 } from "../shared/headers.ts";
-import { FLIGHT_PARAM } from "../shared/params.ts";
 import type { RscPayload } from "./payload.ts";
 
 type Branches = Readonly<Record<string, string>>;
@@ -123,7 +123,7 @@ async function request(
   prefetch: boolean,
 ): Promise<Fetched> {
   const target = new URL(url, window.location.origin);
-  target.searchParams.set(FLIGHT_PARAM, "1");
+  target.pathname = flightPath(target.pathname);
 
   const response = await fetch(target, {
     headers: {

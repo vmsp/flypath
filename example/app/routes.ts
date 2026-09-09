@@ -10,11 +10,11 @@ import {
 
 import { auth, request } from "./middleware.ts";
 
-const config = routes({ middleware: [request] }, [
+const config = routes([
   layout(
     () => import("./shell.tsx"),
     [
-      stack([
+      stack({ middleware: [request] }, [
         branches(
           () => import("./tab-bar.tsx"),
           [
@@ -46,6 +46,7 @@ const config = routes({ middleware: [request] }, [
           safeArea: ["top"],
         }),
       ]),
+      route("about", () => import("./about.tsx"), { prerender: true }),
       notFound(() => import("./not-found.tsx")),
     ],
   ),

@@ -5,6 +5,7 @@ import type {
   MiddlewareOptions,
   NodeOptions,
   NotFoundNode,
+  RootOptions,
   RouteOptions,
   RouteTree,
 } from "./types.ts";
@@ -33,22 +34,31 @@ function listOf(
   return Array.isArray(a) ? a : (b ?? []);
 }
 
+function launch(options: RootOptions | Children | undefined): {
+  launch?: string;
+} {
+  if (options === undefined || Array.isArray(options)) return {};
+  const value = (options as RootOptions).launch;
+  return value === undefined ? {} : { launch: value };
+}
+
 /** Root of the route tree. The default export of `app/routes.ts`. */
 export function routes<const C extends Children>(
   children: C,
 ): { readonly kind: "routes"; readonly children: C };
 export function routes<const C extends Children>(
-  options: MiddlewareOptions,
+  options: RootOptions,
   children: C,
 ): { readonly kind: "routes"; readonly children: C };
 export function routes(
-  options: MiddlewareOptions | Children,
+  options: RootOptions | Children,
   children?: Children,
 ): { readonly kind: "routes"; readonly children: Children } {
   return {
     kind: "routes",
     children: listOf(options, children),
     ...guard(options),
+    ...launch(options),
   };
 }
 

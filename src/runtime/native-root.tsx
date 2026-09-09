@@ -142,7 +142,7 @@ class RootBoundary extends Component<
 
 export default function Root(): ReactNode {
   const [router, setState] = useState<Router>(() => ({
-    ...initialRouter("/"),
+    ...initialRouter(),
     epoch: currentEpoch(),
   }));
   const [insets, setInsets] = useState<Insets>(readInsets);

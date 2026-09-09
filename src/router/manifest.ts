@@ -27,6 +27,7 @@ export type RouteManifest = {
   routes: ManifestRoute[];
   fallback?: ManifestRoute;
   containers: ManifestContainer[];
+  launch?: string;
 };
 
 export function matchManifest(

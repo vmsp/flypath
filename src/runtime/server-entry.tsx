@@ -23,6 +23,7 @@ import {
 import { hrefOf, normalizePath, searchOf } from "../router/path.ts";
 import { parseRevalidate } from "../router/revalidate.ts";
 import type { RouteInfo } from "../router/types.ts";
+import { documentPath, isFlightPath } from "../shared/flight.ts";
 import {
   ACTION_HEADER,
   CHROME_HEADER,
@@ -34,12 +35,13 @@ import {
   REVALIDATE_HEADER,
   SCREEN_HEADER,
 } from "../shared/headers.ts";
-import { FLIGHT_PARAM } from "../shared/params.ts";
 import { mergeCookies } from "./cookies.ts";
 import type { RscPayload } from "./payload.ts";
 import { runWithRequest } from "./platform-store.ts";
 import type { RequestInfo } from "./platform.ts";
 import { parsePlatform } from "./platform.ts";
+import type { Prerendered } from "./prerender.ts";
+import { prerenderPages } from "./prerender.ts";
 import type { ScreenRender } from "./router-server.tsx";
 import {
   renderFragment,
@@ -58,6 +60,7 @@ import "virtual:flypath/styles.css";
 
 export { work } from "../jobs/worker.ts";
 export type { Worker, WorkOptions } from "../jobs/worker.ts";
+export type { Prerendered } from "./prerender.ts";
 
 const FLIGHT_CONTENT_TYPE = "text/x-component;charset=utf-8";
 
@@ -222,6 +225,9 @@ function withOutgoing(response: Response, outgoing: Headers): Response {
 
 export default async function handler(request: Request): Promise<Response> {
   const url = new URL(request.url);
+  const flight = isFlightPath(url.pathname);
+  if (flight) url.pathname = documentPath(url.pathname);
+
   const platform = parsePlatform(request.headers.get(PLATFORM_HEADER)) ?? "web";
 
   const resolved = resolveTree(tree);
@@ -235,7 +241,7 @@ export default async function handler(request: Request): Promise<Response> {
   const wantsFlight =
     platform !== "web" ||
     screen !== null ||
-    url.searchParams.has(FLIGHT_PARAM) ||
+    flight ||
     request.headers.has(ACTION_HEADER);
 
   const document = !wantsFlight;
@@ -268,6 +274,7 @@ export default async function handler(request: Request): Promise<Response> {
       headers: new Headers(incoming),
       outgoing,
       prefetch,
+      prerender: matched?.route.options.prerender === true,
       context: createContextStore(),
     };
 
@@ -378,8 +385,9 @@ export default async function handler(request: Request): Promise<Response> {
 
       const render = async (): Promise<Response> => {
         if (runsAction && request.method === "POST") {
-          action = await runWithRequest({ ...info, phase: "action" }, () =>
-            runAction(request, temporaryReferences),
+          action = await runWithRequest(
+            { ...info, phase: "action", prerender: false },
+            () => runAction(request, temporaryReferences),
           );
         }
 
@@ -533,4 +541,8 @@ export default async function handler(request: Request): Promise<Response> {
       container = containerFor(normalizePath(next.pathname));
     }
   }
+}
+
+export function prerender(paths: readonly string[]): Promise<Prerendered[]> {
+  return prerenderPages(handler, paths);
 }

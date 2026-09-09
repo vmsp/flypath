@@ -1,3 +1,5 @@
+import { href } from "flypath";
+
 import { colors } from "./vars.css.ts";
 
 export default function NotFound() {
@@ -15,8 +17,11 @@ export default function NotFound() {
         }}
       >
         <h1 style={{ color: colors.text, fontSize: 24 }}>Nothing here</h1>
-        <a href="/" style={{ color: colors.primary }}>
+        <a href={href("/")} style={{ color: colors.primary }}>
           go home
+        </a>
+        <a href={href("/about")} style={{ color: colors.primary }}>
+          about this app
         </a>
       </main>
     </>

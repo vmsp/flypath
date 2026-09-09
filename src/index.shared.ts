@@ -19,6 +19,7 @@ export {
   isIos,
   isNative,
   isPrefetch,
+  isPrerendering,
   platform,
 } from "./runtime/platform.ts";
 export type { CookieOptions, Cookies, SameSite } from "./runtime/cookies.ts";

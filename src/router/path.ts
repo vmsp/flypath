@@ -1,4 +1,3 @@
-import { isInternalParam } from "../shared/params.ts";
 import type { Params, Search } from "./types.ts";
 
 export function normalizePath(pathname: string): string {
@@ -41,19 +40,13 @@ export function matchPattern(
 }
 
 export function hrefOf(url: URL): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of url.searchParams) {
-    if (isInternalParam(key)) continue;
-    params.append(key, value);
-  }
-  const query = params.toString();
+  const query = url.searchParams.toString();
   return `${normalizePath(url.pathname)}${query === "" ? "" : `?${query}`}`;
 }
 
 export function searchOf(url: URL): Search {
   const out: Record<string, readonly string[]> = {};
   for (const key of new Set(url.searchParams.keys())) {
-    if (isInternalParam(key)) continue;
     out[key] = url.searchParams.getAll(key);
   }
   return out;

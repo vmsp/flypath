@@ -253,8 +253,8 @@ export function navigate(
   return setStack(next, target, [...kept, makeScreen(url, target)]);
 }
 
-export function initialRouter(url: string): Router {
-  return navigate(EMPTY, url, false);
+export function initialRouter(): Router {
+  return navigate(EMPTY, manifest.launch ?? "/", false);
 }
 
 export function goBack(router: Router): Router | undefined {

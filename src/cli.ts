@@ -183,8 +183,13 @@ cli.command("build", "Build for production").action(async () => {
   }
 
   const { createBuilder } = await import("vite");
+  const { closePools } = await import("./db/client.ts");
   const builder = await createBuilder();
-  await builder.buildApp();
+  try {
+    await builder.buildApp();
+  } finally {
+    await closePools();
+  }
 });
 
 cli

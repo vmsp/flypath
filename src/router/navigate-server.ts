@@ -1,4 +1,4 @@
-import { getRequest } from "../runtime/platform.ts";
+import { forbidPrerender, getRequest } from "../runtime/platform.ts";
 import { buildHref, isExternal } from "./href.ts";
 import { makeNavigate } from "./navigate.ts";
 import { NavigationError } from "./navigation.ts";
@@ -8,8 +8,15 @@ function phase(): "render" | "action" {
   return getRequest()?.phase ?? "render";
 }
 
+const NOWHERE =
+  "a prerendered route is written to a file at its own path, so it has " +
+  "nowhere to send a visitor — drop prerender from the route, or navigate " +
+  "from a server action instead";
+
 export const navigate: Navigate = makeNavigate(
   (to, params, mode, permanent): void => {
+    forbidPrerender("navigate() was called", NOWHERE);
+
     if (to === "not-found") {
       throw new NavigationError({ kind: "not-found" });
     }
