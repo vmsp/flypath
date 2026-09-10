@@ -282,13 +282,13 @@ noted as a future switch; it does not change the shape.
 
 Measured 2026-09-10, `npm i` into an empty project:
 
-| | licence | packages | size | last publish |
-|---|---|---|---|---|
-| `@small-tech/auto-encrypt` 6.2.1 | **AGPL-3.0-or-later** | 4 | 1.8 MB | 2026-09-06 |
-| `acme-client` 5.4.0 | MIT | 48 | 10 MB | 2024-07-16 |
-| `@certd/acme-client` 1.44.3 (a fork) | MIT | 54 | 20 MB | 2026-09-06 |
-| `greenlock` / `acme-v2` / `@root/acme` | MPL-2.0 | 10+ | — | abandoned 2022–24 |
-| `@peculiar/x509` 2.1.0 (CSR only) | MIT | 5 | 4.3 MB | 2026-09-04 |
+|                                        | licence               | packages | size   | last publish      |
+| -------------------------------------- | --------------------- | -------- | ------ | ----------------- |
+| `@small-tech/auto-encrypt` 6.2.1       | **AGPL-3.0-or-later** | 4        | 1.8 MB | 2026-09-06        |
+| `acme-client` 5.4.0                    | MIT                   | 48       | 10 MB  | 2024-07-16        |
+| `@certd/acme-client` 1.44.3 (a fork)   | MIT                   | 54       | 20 MB  | 2026-09-06        |
+| `greenlock` / `acme-v2` / `@root/acme` | MPL-2.0               | 10+      | —      | abandoned 2022–24 |
+| `@peculiar/x509` 2.1.0 (CSR only)      | MIT                   | 5        | 4.3 MB | 2026-09-04        |
 
 **Auto Encrypt is the best-engineered of these and flypath cannot use
 it.** Four packages, ARI-based renewal, Node 24+, actively developed —
@@ -368,7 +368,7 @@ always current, and a cold launch pays a round trip per client
 component before first paint.
 
 **Both.** Chunks are content-addressed and served as immutable files;
-the binary ships the chunks from its own build as a *seed* keyed by
+the binary ships the chunks from its own build as a _seed_ keyed by
 content hash. If the server's hash for a reference matches a seeded
 chunk, it is used with no network at all; if it differs — because the
 component changed since the binary was built — it is fetched. Correct
@@ -734,7 +734,7 @@ the existing `NativeBundler`:
 - `serverUrl` in the prelude becomes `url` from the config. Not
   configured, and a release build is an error that names the key.
 - `baseId` joins the prelude: `hash(platform + rn version + flypath
-  version + sorted module ids of the base closure)`, using
+version + sorted module ids of the base closure)`, using
   `styles/hash.ts` as the native manifest already does.
 
 Output: `dist/native/<platform>/` holding the source bundle, the source
@@ -922,7 +922,7 @@ debug build talking `http://` to a LAN address is precisely what
 sections above build.
 
 **Picking a target.** `--device <name|udid|serial>` selects across
-simulators *and* devices. iOS devices come from
+simulators _and_ devices. iOS devices come from
 `xcrun devicectl list devices --json-output`; Android from
 `adb devices -l`. With no `--device` and more than one candidate, the
 CLI lists them and exits rather than guessing.
@@ -1274,7 +1274,7 @@ camera and the prerendered page.
   exactly is the refinement, and it is deliberately deferred.
 - **A release build that changes a `"use client"` component's props
   contract** ships a new chunk to an old binary. That is correct — the
-  chunk is the new code — but the *server component* calling it is also
+  chunk is the new code — but the _server component_ calling it is also
   new, so the pair is consistent. The genuinely dangerous case is a
   client component that imports a `"use native"` binding the binary
   lacks, which the existing native manifest hash already catches
@@ -1289,7 +1289,7 @@ camera and the prerendered page.
   resolved reflectively, and generated TurboModule registration goes
   through JNI. The keep rules have to be right or the release build
   fails at runtime, on a device, with a class-not-found from native
-  code. Mitigation: phase 6 acceptance runs the *release* APK on a
+  code. Mitigation: phase 6 acceptance runs the _release_ APK on a
   device before the `.aab` is considered done, and `isMinifyEnabled`
   has an escape hatch in `app.gradle.kts` (plan 13, phase 5).
 - **Hermes `eval` in a release runtime** is what the whole chunk story

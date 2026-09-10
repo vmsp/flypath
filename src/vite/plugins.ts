@@ -8,7 +8,6 @@ import type { Plugin, PluginOption } from "vite";
 import type { FlypathOptions } from "../native/config.ts";
 import { appUrl, buildId, setBuildId } from "../shared/env.ts";
 import { distDir } from "../shared/paths.ts";
-import { TAG_DEFAULTS } from "../styles/defaults.ts";
 import { hash } from "../styles/hash.ts";
 import { flowStrip } from "./flow.ts";
 import { jobsScan } from "./jobs-scan.ts";
@@ -17,6 +16,7 @@ import { metroEndpoints } from "./metro-endpoints.ts";
 import { NATIVE_PLATFORMS, nativeResolve } from "./native-env.ts";
 import { nativeModules } from "./native-modules.ts";
 import { nativeRefresh } from "./native-refresh.ts";
+import { nativeStub } from "./native-stub.ts";
 import { prerender } from "./prerender.ts";
 import { routes } from "./routes.ts";
 import { styles } from "./styles.ts";
@@ -173,42 +173,6 @@ function serverOnlyDependencies(): Plugin {
   };
 }
 
-const STUB_ID = "\0flypath:native-stub";
-
-const STUB_EXPORTS = ["BranchesHost", "StackHost"];
-
-function nativeStub(): Plugin {
-  const nativeDir = path.join(distDir, "components", "native") + path.sep;
-
-  return {
-    name: "flypath:native-stub",
-    enforce: "pre",
-    async resolveId(source, importer, options) {
-      const env = this.environment?.name;
-      if (env !== "client" && env !== "ssr") return;
-      const resolved = await this.resolve(source, importer, options);
-      if (!resolved) return;
-      if (!resolved.id.startsWith(nativeDir)) return;
-      return STUB_ID;
-    },
-    load(id) {
-      if (id !== STUB_ID) return;
-      const names = [
-        ...Object.keys(TAG_DEFAULTS).map(
-          (tag) => `${tag[0]?.toUpperCase() ?? ""}${tag.slice(1)}`,
-        ),
-        ...STUB_EXPORTS,
-      ];
-      return [
-        "function FlypathNativeStub() { return null; }",
-        "export default FlypathNativeStub;",
-        "export const nativeIntrinsics = {};",
-        ...names.map((name) => `export const ${name} = FlypathNativeStub;`),
-      ].join("\n");
-    },
-  };
-}
-
 export function plugins(
   options: FlypathOptions,
   root: () => string,
@@ -220,7 +184,7 @@ export function plugins(
     mail(options),
     buildInfo(options),
     serverOnlyDependencies(),
-    nativeStub(),
+    nativeStub(path.join(distDir, "components", "native")),
     clientReferences(),
     routes(),
     jobsTransform(),
