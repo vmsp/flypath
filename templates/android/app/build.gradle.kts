@@ -6,8 +6,19 @@ plugins {
 react {
   root = file("__FLYPATH_PROJECT_ROOT__")
   reactNativeDir = file("__FLYPATH_RN_DIR__")
+  debuggableVariants = listOf("debug", "release")
   autolinkLibrariesWithApp()
 }
+
+val keystoreProperties =
+  java.util.Properties().apply {
+    val file = file("__FLYPATH_NATIVE_DIR__/keystore.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+  }
+
+fun keystore(name: String): String? =
+  System.getenv("FLYPATH_ANDROID_" + name.uppercase())
+    ?: keystoreProperties.getProperty(name)
 
 android {
   namespace = "__FLYPATH_PACKAGE__"
@@ -28,6 +39,15 @@ android {
       keyAlias = "androiddebugkey"
       keyPassword = "android"
     }
+    create("release") {
+      val store = keystore("storeFile")
+      if (store != null) {
+        storeFile = file(store)
+        storePassword = keystore("storePassword")
+        keyAlias = keystore("keyAlias")
+        keyPassword = keystore("keyPassword")
+      }
+    }
   }
 
   buildTypes {
@@ -35,9 +55,21 @@ android {
       signingConfig = signingConfigs.getByName("debug")
     }
     getByName("release") {
-      isMinifyEnabled = false
-      signingConfig = signingConfigs.getByName("debug")
+      isMinifyEnabled = true
+      isShrinkResources = true
+      proguardFiles(
+        getDefaultProguardFile("proguard-android-optimize.txt"),
+        file("__FLYPATH_RN_DIR__/ReactAndroid/proguard-rules.pro"),
+        file("flypath-rules.pro"),
+      )
+      signingConfig =
+        if (keystore("storeFile") != null) signingConfigs.getByName("release")
+        else signingConfigs.getByName("debug")
     }
+  }
+
+  buildFeatures {
+    buildConfig = true
   }
 
   externalNativeBuild {

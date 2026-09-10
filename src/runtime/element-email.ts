@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 
 import { mailContext } from "../mail/context.ts";
 import { isExternal } from "../router/href.ts";
+import { ENV } from "../shared/env.ts";
 import { emailStyle } from "../styles/email.ts";
 import type { JsxFn } from "./element.ts";
 import { styleElements } from "./element.ts";
@@ -41,7 +42,7 @@ function absolute(
     throw new Error(
       `flypath: <${tag} ${attribute}="${value}"> is relative, and an inbox ` +
         "has no page for it to be relative to. Declare mail.baseUrl in " +
-        "vite.config.ts, set APP_URL in .env, or pass baseUrl to sendMail()",
+        `vite.config.ts, set ${ENV.url} in .env, or pass baseUrl to sendMail()`,
     );
   }
   return new URL(value, baseUrl).href;

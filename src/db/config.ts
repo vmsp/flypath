@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { databaseUrl } from "../shared/env.ts";
 import { globals } from "../shared/globals.ts";
 
 export type DatabaseOptions = {
@@ -22,15 +23,9 @@ export function configureDatabases(databases: Databases): void {
 export function databaseOptions(name: string): DatabaseOptions {
   const declared = globals().databases?.[name];
   if (declared) {
-    return { ...declared, url: declared.url ?? urlFromEnv(name) };
+    return { ...declared, url: declared.url ?? databaseUrl(name) };
   }
-  return { url: urlFromEnv(name) };
-}
-
-function urlFromEnv(name: string): string | undefined {
-  if (name === "default") return process.env["DATABASE_URL"];
-  const upper = name.replaceAll(/[^A-Za-z0-9]/g, "_").toUpperCase();
-  return process.env[`${upper}_DATABASE_URL`];
+  return { url: databaseUrl(name) };
 }
 
 export function connectionUrl(name: string): string {

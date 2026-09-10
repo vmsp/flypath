@@ -1,0 +1,6 @@
+.flypath/
+android/keystore.properties
+apple/App.xcconfig
+dist/
+node_modules/
+tsconfig.tsbuildinfo

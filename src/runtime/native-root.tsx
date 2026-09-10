@@ -33,7 +33,11 @@ import { parseCommand, parseLocation } from "../router/navigation.ts";
 import type { ContainerRuntime } from "../router/scope.tsx";
 import { ContainerRuntimeContext, ContainerScope } from "../router/scope.tsx";
 import type { Mode } from "../router/types.ts";
+import { flightPath } from "../shared/flight.ts";
 import {
+  BASE_HEADER,
+  BINARY_HEADER,
+  BUILD_HEADER,
   CHROME_HEADER,
   FRAGMENT_HEADER,
   LOCATION_HEADER,
@@ -41,6 +45,11 @@ import {
   PLATFORM_HEADER,
   SCREEN_HEADER,
 } from "../shared/headers.ts";
+import {
+  noteBuild,
+  updateRequired,
+  UpdateRequired,
+} from "./client-references.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import type { Fetched } from "./native-content.ts";
 import {
@@ -72,10 +81,19 @@ async function flight(
   url: string,
   headers: Record<string, string>,
 ): Promise<Response> {
-  const { serverUrl, platform } = nativeConfig();
-  return fetch(`${serverUrl}${url}`, {
-    headers: { [PLATFORM_HEADER]: platform, ...headers },
+  const { serverUrl, platform, baseId, build } = nativeConfig();
+  const at = new URL(url, serverUrl);
+  at.pathname = flightPath(at.pathname);
+  const response = await fetch(at.href, {
+    headers: {
+      [PLATFORM_HEADER]: platform,
+      [BASE_HEADER]: baseId,
+      [BINARY_HEADER]: build,
+      ...headers,
+    },
   });
+  noteBuild(response.headers.get(BUILD_HEADER));
+  return response;
 }
 
 function decode(response: Response): Promise<RscPayload> {
@@ -132,6 +150,17 @@ class RootBoundary extends Component<
   override render(): ReactNode {
     const { error } = this.state;
     if (!error) return this.props.children;
+    if (error instanceof UpdateRequired || updateRequired()) {
+      return (
+        <View style={styles.center}>
+          <Text style={styles.title}>Update required</Text>
+          <Text style={styles.error}>
+            This version of the app is no longer supported by the server.
+            Install the latest build to carry on.
+          </Text>
+        </View>
+      );
+    }
     return (
       <View style={styles.center}>
         <Text style={styles.error}>{error.message}</Text>
@@ -355,5 +384,12 @@ const styles = StyleSheet.create({
   error: {
     color: "#b00020",
     fontSize: 14,
+    paddingHorizontal: 24,
+    textAlign: "center",
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "600",
+    paddingBottom: 8,
   },
 });

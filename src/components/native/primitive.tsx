@@ -23,6 +23,7 @@ import {
 
 import { getRouter } from "../../router/dispatch.ts";
 import type { Edge } from "../../router/types.ts";
+import { nativeConfig } from "../../runtime/native-config.ts";
 import type { Tag } from "../../styles/defaults.ts";
 import { TAG_DEFAULTS } from "../../styles/defaults.ts";
 import type { Animation, Scroll } from "../../styles/native.ts";
@@ -40,6 +41,17 @@ import { useStyleEnv } from "./env.ts";
 import { insetPadding, useInsets } from "./insets.ts";
 import type { Env, Style } from "./resolve.ts";
 import { resolve, resolveStyle, resolveTheme } from "./resolve.ts";
+
+const ABSOLUTE = /^[a-z][a-z\d+.-]*:|^\/\//i;
+
+function absoluteSource(src: string): string {
+  if (src === "" || ABSOLUTE.test(src) || src.startsWith("data:")) return src;
+  try {
+    return new URL(src, nativeConfig().serverUrl).href;
+  } catch {
+    return src;
+  }
+}
 
 export type PrimitiveProps = {
   $flex?: boolean;
@@ -452,7 +464,7 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
       const Component = animated ? Animated.Image : Image;
       const source =
         typeof attributes["src"] === "string"
-          ? { uri: attributes["src"] }
+          ? { uri: absoluteSource(attributes["src"]) }
           : undefined;
       const { src: _src, ...imageRest } = attributes;
       node = (

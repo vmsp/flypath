@@ -19,6 +19,7 @@ export type ProjectContext = {
   deploymentTarget: string;
   orientations: Orientation[];
   port: number;
+  devHost: string;
   reactNativeRoot: string;
   reactNativeDir: string;
   gradlePluginDir: string;
@@ -67,6 +68,7 @@ function replacements(context: ProjectContext): Array<[string, string]> {
     ["__FLYPATH_DEPLOYMENT_TARGET__", context.deploymentTarget],
     ["__FLYPATH_ORIENTATION__", androidOrientation(context)],
     ["__FLYPATH_PORT__", String(context.port)],
+    ["__FLYPATH_DEV_HOST__", context.devHost],
     ["__FLYPATH_PROJECT_ROOT__", context.root],
     ["__FLYPATH_NATIVE_DIR__", path.join(context.root, "android")],
     ["__FLYPATH_RN_ROOT__", context.reactNativeRoot],
@@ -146,6 +148,7 @@ export function projectContext(
   root: string,
   port: number,
   options: FlypathOptions = {},
+  devHost = "localhost",
 ): ProjectContext {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(root, "package.json"), "utf8"),
@@ -175,6 +178,7 @@ export function projectContext(
     deploymentTarget: options.ios?.minimumVersion ?? "16.0",
     orientations: options.ios?.orientations ?? DEFAULT_ORIENTATIONS,
     port,
+    devHost,
     reactNativeRoot: root,
     reactNativeDir,
     gradlePluginDir: packageDir(

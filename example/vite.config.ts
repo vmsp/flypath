@@ -4,9 +4,20 @@ export default defineConfig({
   appName: "Flypath Example",
   version: "2.1",
   buildNumber: 7,
+  url: "http://localhost:3000",
+  serve: {
+    cluster: true,
+    // tls: {
+    //   acme: {
+    //     email: "ops@example.com",
+    //     domains: ["example.com", "www.example.com"],
+    //     directory: "staging",
+    //     agree: true,
+    //   },
+    // },
+  },
   mail: {
     from: "Flypath <hello@example.com>",
-    baseUrl: "http://localhost:8081",
   },
   jobs: {
     queues: {

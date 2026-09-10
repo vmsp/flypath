@@ -20,7 +20,7 @@ class MainApplication : Application(), ReactApplication {
         PackageList(this).packages +
           FlypathPackage(listOf(__FLYPATH_VIEW_NAMES__)),
         jsRuntimeFactory = FlypathHermesInstance(),
-        useDevSupport = true,
+        useDevSupport = BuildConfig.DEBUG,
       )
 
   override fun onCreate() {

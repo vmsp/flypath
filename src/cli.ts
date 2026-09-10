@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -93,6 +94,84 @@ async function startDevWorker(
   }
 }
 
+function parsePlatforms(value: string | undefined): ("ios" | "android")[] {
+  if (value === undefined) return [];
+  const wanted = value
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry !== "");
+  const out: ("ios" | "android")[] = [];
+  for (const entry of wanted) {
+    if (entry === "ios" || entry === "android") out.push(entry);
+    else if (entry === "all" || entry === "native") out.push("ios", "android");
+    else {
+      throw new Error(
+        `flypath: unknown platform "${entry}"; use ios, android, or all`,
+      );
+    }
+  }
+  return [...new Set(out)];
+}
+
+function writeBuildInfo(
+  root: string,
+  build: string,
+  url: string | undefined,
+): void {
+  const file = path.join(root, "dist", "build.json");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(
+    file,
+    `${JSON.stringify({ build, url: url ?? null, at: new Date().toISOString() }, null, 2)}\n`,
+  );
+}
+
+export type BuildInfo = { build: string; url: string | null };
+
+function readBuildInfo(root: string): BuildInfo | undefined {
+  try {
+    return JSON.parse(
+      fs.readFileSync(path.join(root, "dist", "build.json"), "utf8"),
+    ) as BuildInfo;
+  } catch {
+    return undefined;
+  }
+}
+
+async function publicOrigin(
+  options: FlypathOptions,
+  root: string,
+): Promise<string> {
+  const { appUrl, ENV } = await import("./shared/env.ts");
+  const url = appUrl() ?? options.url ?? readBuildInfo(root)?.url;
+  if (url === undefined || url === null || url.trim() === "") {
+    throw new Error(
+      "flypath: a release build needs the application's public origin — set " +
+        'url in vite.config.ts (url: "https://example.com"), or pass ' +
+        `${ENV.url} in the environment`,
+    );
+  }
+  return url.trim().replace(/\/+$/, "");
+}
+
+async function buildNative(
+  root: string,
+  options: FlypathOptions,
+  platforms: ("ios" | "android")[],
+  build: string,
+): Promise<void> {
+  const { buildNativeRelease } = await import("./native/bundle.ts");
+  await buildNativeRelease({
+    root,
+    platforms,
+    url: await publicOrigin(options, root),
+    build,
+    outDir: path.join(root, "dist", "native"),
+    clientDir: path.join(root, "dist", "client"),
+    rscDir: path.join(root, "dist", "rsc"),
+  });
+}
+
 function fail(error: unknown): never {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
@@ -112,7 +191,8 @@ cli
     await server.listen();
     server.printUrls();
 
-    if (process.env["DATABASE_URL"]) {
+    const { databaseUrl } = await import("./shared/env.ts");
+    if (databaseUrl("default")) {
       await startDevWorker(server);
       const { status } = await import("./migrations/runner.ts");
       try {
@@ -133,6 +213,31 @@ cli
       }
     }
   });
+
+cli
+  .command("start", "Serve the built application")
+  .option("--port <port>", "Port to listen on")
+  .option("--host <host>", "Address to bind")
+  .option("--cluster <n>", "Worker count; 0 or off for a single process")
+  .action(
+    async (options: {
+      port?: string;
+      host?: string;
+      cluster?: string | number;
+    }) => {
+      const { start } = await import("./serve/index.ts");
+      try {
+        await start({
+          port: port(options.port),
+          host: options.host,
+          cluster:
+            options.cluster === undefined ? undefined : String(options.cluster),
+        });
+      } catch (error) {
+        fail(error);
+      }
+    },
+  );
 
 cli
   .command("work", "Run background jobs and crons")
@@ -168,46 +273,114 @@ cli
     }
   });
 
-cli.command("build", "Build for production").action(async () => {
-  const { loadOptions } = await import("./native/config.ts");
-  const { scaffoldNative } = await import("./native/scaffold.ts");
-  const { projectContext } = await import("./native/template.ts");
-  const root = await environment();
-  try {
-    const options = await loadOptions(root);
-    scaffoldNative(projectContext(root, options.port, options));
-  } catch (error) {
-    if (!(error instanceof Error) || !error.message.includes("react-native")) {
-      throw error;
+cli
+  .command("build", "Build for production")
+  .option("--platform <names>", "Also build native bundles: ios, android")
+  .action(async (options: { platform?: string }) => {
+    const { loadOptions } = await import("./native/config.ts");
+    const { scaffoldNative } = await import("./native/scaffold.ts");
+    const { projectContext } = await import("./native/template.ts");
+    const root = await environment();
+    let declared: FlypathOptions = {};
+    try {
+      const loaded = await loadOptions(root);
+      declared = loaded;
+      scaffoldNative(projectContext(root, loaded.port, loaded));
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.includes("react-native")
+      ) {
+        throw error;
+      }
     }
-  }
 
-  const { createBuilder } = await import("vite");
-  const { closePools } = await import("./db/client.ts");
-  const builder = await createBuilder();
-  try {
-    await builder.buildApp();
-  } finally {
-    await closePools();
-  }
-});
+    const platforms = parsePlatforms(options.platform);
+    const { currentBuildId } = await import("./vite/plugins.ts");
+    const build = currentBuildId();
+
+    const { createBuilder } = await import("vite");
+    const { closePools } = await import("./db/client.ts");
+    const builder = await createBuilder();
+    try {
+      await builder.buildApp();
+      writeBuildInfo(root, build, declared.url);
+      if (platforms.length > 0) {
+        await buildNative(root, declared, platforms, build);
+      }
+    } finally {
+      await closePools();
+    }
+  });
 
 cli
   .command("ios", "Build and launch the iOS shell")
-  .option("--device <name>", "Simulator device name")
+  .option("--device <name>", "Simulator or device name, udid, or serial")
+  .option("--host <host>", "Address a device should reach the dev server at")
   .option("--port <port>", "Dev server port")
-  .action(async (options: { device?: string; port?: string }) => {
-    const { runIos } = await import("./native/ios.ts");
-    await runIos({ device: options.device, port: port(options.port) });
-  });
+  .option("--release", "Archive and export a signed build")
+  .option("--archive-only", "Stop at the .xcarchive")
+  .option("--upload", "Hand the export to App Store Connect")
+  .option("--xcode", "Open the project in Xcode as well")
+  .action(
+    async (options: {
+      device?: string;
+      host?: string;
+      port?: string;
+      release?: boolean;
+      archiveOnly?: boolean;
+      upload?: boolean;
+      xcode?: boolean;
+    }) => {
+      const { runIos } = await import("./native/ios.ts");
+      try {
+        await runIos({
+          device: options.device,
+          host: options.host,
+          port: port(options.port),
+          release: options.release,
+          archiveOnly: options.archiveOnly,
+          upload: options.upload,
+          xcode: options.xcode,
+        });
+      } catch (error) {
+        fail(error);
+      }
+    },
+  );
 
 cli
   .command("android", "Build and launch the Android shell")
+  .option("--device <serial>", "Emulator or device serial or model")
+  .option("--host <host>", "Address a device should reach the dev server at")
   .option("--port <port>", "Dev server port")
-  .action(async (options: { port?: string }) => {
-    const { runAndroid } = await import("./native/android.ts");
-    await runAndroid({ port: port(options.port) });
-  });
+  .option("--release", "Build a signed .aab")
+  .option("--apk", "Build a signed .apk instead of an .aab")
+  .option("--studio", "Open the project in Android Studio as well")
+  .action(
+    async (options: {
+      device?: string;
+      host?: string;
+      port?: string;
+      release?: boolean;
+      apk?: boolean;
+      studio?: boolean;
+    }) => {
+      const { runAndroid } = await import("./native/android.ts");
+      try {
+        await runAndroid({
+          device: options.device,
+          host: options.host,
+          port: port(options.port),
+          release: options.release,
+          apk: options.apk,
+          studio: options.studio,
+        });
+      } catch (error) {
+        fail(error);
+      }
+    },
+  );
 
 cli
   .command("makemigration", "Write a migration from db/schema.ts")

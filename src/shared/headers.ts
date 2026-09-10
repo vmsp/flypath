@@ -25,6 +25,15 @@ export const REVALIDATE_HEADER = "x-flypath-revalidate";
 /** Server action id on an action POST, for a client-invoked action. */
 export const ACTION_HEADER = "x-flypath-action";
 
+/** Build id of the running server, on every flight response. */
+export const BUILD_HEADER = "x-flypath-build";
+
+/** Base bundle identity a native client was built against, on its requests. */
+export const BASE_HEADER = "x-flypath-base";
+
+/** Build id baked into a native binary, on its requests. */
+export const BINARY_HEADER = "x-flypath-binary";
+
 /** Project root reported to Metro clients by `/status`. */
 export const METRO_PROJECT_ROOT_HEADER = "X-React-Native-Project-Root";
 

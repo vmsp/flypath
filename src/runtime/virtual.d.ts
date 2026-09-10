@@ -34,6 +34,11 @@ declare module "virtual:flypath/jobs" {}
 
 declare module "virtual:flypath/mail" {}
 
+declare module "virtual:flypath/build" {
+  export const buildId: string;
+  export const appUrl: string;
+}
+
 declare module "virtual:vite-rsc/client-references" {
   const references: Record<string, () => Promise<unknown>>;
   export default references;

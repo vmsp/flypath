@@ -2,6 +2,7 @@ import { setRequireModule } from "@vitejs/plugin-rsc/core/browser";
 import { registry } from "virtual:flypath/client-references";
 import { nativeReferences } from "virtual:flypath/native-references";
 
+import { BASE_HEADER, BINARY_HEADER } from "../shared/headers.ts";
 import { nativeConfig } from "./native-config.ts";
 
 function stripReferenceTag(id: string): string {
@@ -49,13 +50,13 @@ function installBundleLoader(): void {
 
 const downloads = new Map<string, Promise<void>>();
 
-function chunkPath(reference: string): string {
+function chunkPath(file: string): string {
   const { platform } = nativeConfig();
-  return `/chunk/${platform}/${encodeURIComponent(reference)}.bundle`;
+  return `/chunk/${platform}/${file}`;
 }
 
-function download(reference: string): Promise<void> {
-  const existing = downloads.get(reference);
+function download(path: string): Promise<void> {
+  const existing = downloads.get(path);
   if (existing) return existing;
 
   const load = globalThis.__loadBundleAsync;
@@ -65,16 +66,140 @@ function download(reference: string): Promise<void> {
     );
   }
 
-  const task = load(chunkPath(reference)).catch((error: unknown) => {
-    downloads.delete(reference);
+  const task = load(path).catch((error: unknown) => {
+    downloads.delete(path);
     throw error;
   });
-  downloads.set(reference, task);
+  downloads.set(path, task);
   return task;
 }
 
+type ChunkManifest = {
+  baseId: string;
+  build: string;
+  chunks: Record<string, string>;
+};
+
+export class UpdateRequired extends Error {}
+
+let pending: Promise<ChunkManifest> | undefined;
+
+let known: string | undefined;
+
+let reported = false;
+
+let stale = false;
+
+export function noteBuild(build: string | null): void {
+  if (build === null || build === "" || build === known) return;
+  if (known !== undefined) pending = undefined;
+  known = build;
+}
+
+export function updateRequired(): boolean {
+  return stale;
+}
+
+function skewMessage(server: string, binary: string): string {
+  return (
+    "flypath: this build of the app was made against a different base bundle " +
+    `than the running server (app ${binary}, server ${server}) — screens it ` +
+    "already carries keep working; anything new needs a rebuilt app"
+  );
+}
+
+function reportSkew(server: string): void {
+  if (reported) return;
+  reported = true;
+  const { serverUrl, platform, baseId, build } = nativeConfig();
+  console.warn(skewMessage(server, baseId));
+  void fetch(`${serverUrl}/flypath-skew`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      platform,
+      kind: "base",
+      binary: baseId,
+      server,
+      build,
+    }),
+  }).catch(() => undefined);
+}
+
+async function fetchManifest(): Promise<ChunkManifest> {
+  const { serverUrl, platform, baseId, build } = nativeConfig();
+  const response = await fetch(`${serverUrl}/native/${platform}.json`, {
+    headers: { [BASE_HEADER]: baseId, [BINARY_HEADER]: build },
+  });
+
+  if (response.status === 426) {
+    stale = true;
+    throw new UpdateRequired(
+      "flypath: this server no longer supports this version of the app — " +
+        "install the latest build",
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `flypath: could not read the chunk manifest for ${platform} ` +
+        `(${String(response.status)})`,
+    );
+  }
+
+  const manifest = (await response.json()) as ChunkManifest;
+  if (manifest.baseId !== baseId) reportSkew(manifest.baseId);
+  known = manifest.build;
+  return manifest;
+}
+
+function manifest(): Promise<ChunkManifest> {
+  pending ??= fetchManifest().catch((error: unknown) => {
+    pending = undefined;
+    throw error;
+  });
+  return pending;
+}
+
+function seededModule(file: string): number | undefined {
+  return globalThis.__FLYPATH__?.seeded?.[file];
+}
+
 async function loadChunk(reference: string): Promise<unknown> {
-  await download(reference);
+  const held = globalThis.__FLYPATH__?.chunks?.[reference];
+  if (held !== undefined) return globalThis.__r(held);
+
+  if (nativeConfig().dev) {
+    const { platform } = nativeConfig();
+    await download(
+      `/chunk/${platform}/${encodeURIComponent(reference)}.bundle`,
+    );
+    return requireRegistered(reference);
+  }
+
+  const current = await manifest();
+  const file = current.chunks[reference];
+  if (file === undefined) {
+    throw new Error(
+      `flypath: the server has no chunk for client reference "${reference}"` +
+        (current.baseId === nativeConfig().baseId
+          ? ""
+          : ` — ${skewMessage(current.baseId, nativeConfig().baseId)}`),
+    );
+  }
+
+  const seed = seededModule(file);
+  if (seed !== undefined) {
+    const chunks = (globalThis.__FLYPATH__ ??= {} as never).chunks;
+    if (chunks) chunks[reference] = seed;
+    return globalThis.__r(seed);
+  }
+
+  await download(chunkPath(file));
+  return requireRegistered(reference);
+}
+
+function requireRegistered(reference: string): unknown {
   const moduleId = globalThis.__FLYPATH__?.chunks?.[reference];
   if (moduleId === undefined) {
     throw new Error(

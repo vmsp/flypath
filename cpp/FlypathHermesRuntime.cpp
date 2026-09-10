@@ -42,6 +42,14 @@ class HermesJSRuntime : public facebook::react::JSRuntime {
       targetDelegate_;
 };
 
+#if defined(FLYPATH_ENABLE_SAMPLE_PROFILING)
+constexpr bool kEnableSampleProfiling = FLYPATH_ENABLE_SAMPLE_PROFILING;
+#elif defined(NDEBUG)
+constexpr bool kEnableSampleProfiling = false;
+#else
+constexpr bool kEnableSampleProfiling = true;
+#endif
+
 }  // namespace
 
 std::unique_ptr<facebook::react::JSRuntime>
@@ -56,7 +64,7 @@ HermesRuntimeFactory::createJSRuntime(
 
   auto config = ::hermes::vm::RuntimeConfig::Builder()
                     .withGCConfig(gcConfig.build())
-                    .withEnableSampleProfiling(true)
+                    .withEnableSampleProfiling(kEnableSampleProfiling)
                     .withMicrotaskQueue(true)
                     .withES6BlockScoping(true)
                     .build();

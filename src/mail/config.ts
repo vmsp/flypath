@@ -1,3 +1,8 @@
+import {
+  appUrl,
+  mailFrom as mailFromEnv,
+  smtpUrl as smtpUrlEnv,
+} from "../shared/env.ts";
 import { globals } from "../shared/globals.ts";
 
 export type MailOptions = {
@@ -14,9 +19,9 @@ export function configureMail(options: MailOptions): void {
 export function mailConfig(): MailOptions {
   const declared = globals().mailConfig ?? {};
   return {
-    url: declared.url ?? process.env["SMTP_URL"],
-    from: declared.from ?? process.env["MAIL_FROM"],
-    baseUrl: declared.baseUrl ?? process.env["APP_URL"],
+    url: declared.url ?? smtpUrlEnv(),
+    from: declared.from ?? mailFromEnv(),
+    baseUrl: declared.baseUrl ?? appUrl(),
   };
 }
 

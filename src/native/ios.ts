@@ -31,45 +31,13 @@ export type IosOptions = {
   device?: string;
   port?: number;
   root?: string;
+  host?: string;
+  release?: boolean;
+  archiveOnly?: boolean;
+  upload?: boolean;
+  xcode?: boolean;
+  apk?: boolean;
 };
-
-type Simulator = {
-  udid: string;
-  name: string;
-  state: string;
-  isAvailable: boolean;
-};
-
-async function pickSimulator(name?: string): Promise<Simulator> {
-  const raw = await run("xcrun", ["simctl", "list", "devices", "-j"], {
-    capture: true,
-  });
-  const parsed = JSON.parse(raw) as {
-    devices: Record<string, Simulator[]>;
-  };
-
-  const runtimes = Object.keys(parsed.devices)
-    .filter((key) => key.includes("iOS"))
-    .toSorted();
-
-  const all = runtimes
-    .flatMap((key) => parsed.devices[key] ?? [])
-    .filter((device) => device.isAvailable);
-
-  const match = name
-    ? all.find((device) => device.name === name)
-    : (all.find((device) => device.state === "Booted") ??
-      all.findLast((device) => device.name.startsWith("iPhone")));
-
-  if (!match) {
-    throw new Error(
-      name
-        ? `flypath: no available simulator named "${name}"`
-        : "flypath: no available iOS simulator found",
-    );
-  }
-  return match;
-}
 
 function applyOverlay(context: ProjectContext, target: string): void {
   const apple = nativeDir(context.root, "apple");
@@ -78,16 +46,21 @@ function applyOverlay(context: ProjectContext, target: string): void {
   fs.rmSync(path.join(app, "Resources"), { recursive: true, force: true });
   fs.symlinkSync(path.join(apple, "Resources"), path.join(app, "Resources"));
 
-  const plist = path.join(app, "Info.plist");
-  fs.writeFileSync(
-    plist,
-    formatPlist(
-      mergePlist(
-        parsePlist(fs.readFileSync(plist, "utf8")),
-        parsePlist(fs.readFileSync(path.join(apple, "Info.plist"), "utf8")),
-      ),
-    ),
+  const overlay = parsePlist(
+    fs.readFileSync(path.join(apple, "Info.plist"), "utf8"),
   );
+  for (const name of ["Info.plist", "Info.debug.plist"]) {
+    const plist = path.join(app, name);
+    if (!fs.existsSync(plist)) continue;
+    fs.writeFileSync(
+      plist,
+      formatPlist(
+        mergePlist(parsePlist(fs.readFileSync(plist, "utf8")), overlay),
+      ),
+    );
+  }
+
+  fs.mkdirSync(path.join(app, "Bundle"), { recursive: true });
 
   fs.copyFileSync(
     path.join(apple, "App.entitlements"),
@@ -134,11 +107,17 @@ function forceBashScripts(target: string): void {
   }
 }
 
-export async function runIos(options: IosOptions = {}): Promise<void> {
-  const root = options.root ?? process.cwd();
-  const configured = await loadOptions(root);
-  const port = options.port ?? configured.port;
-  const context = projectContext(root, port, configured);
+export type PreparedIos = {
+  target: string;
+  context: ProjectContext;
+  xcconfig: string | undefined;
+  derived: string;
+};
+
+export async function prepareIos(
+  root: string,
+  context: ProjectContext,
+): Promise<PreparedIos> {
   const target = outputDir(root, "ios");
 
   scaffoldApple(context);
@@ -219,49 +198,120 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
 
   forceBashScripts(target);
 
-  const simulator = await pickSimulator(options.device);
-  const derived = path.join(target, "derived");
-  const xcconfig = path.join(nativeDir(root, "apple"), "App.xcconfig");
+  const overlay = path.join(nativeDir(root, "apple"), "App.xcconfig");
+  return {
+    target,
+    context,
+    xcconfig: fs.existsSync(overlay) ? overlay : undefined,
+    derived: path.join(target, "derived"),
+  };
+}
+
+export async function runIos(options: IosOptions = {}): Promise<void> {
+  const root = options.root ?? process.cwd();
+  const configured = await loadOptions(root);
+  const port = options.port ?? configured.port;
+
+  if (options.release === true) {
+    const { releaseIos } = await import("./release-ios.ts");
+    await releaseIos({ ...options, root });
+    return;
+  }
+
+  const { iosTargets, pick, resolveHost } = await import("./device.ts");
+  const wanted = options.device;
+  const targets = await iosTargets(true);
+  const chosen = pick(targets, wanted, undefined);
+  const onDevice = chosen.kind === "device";
+
+  const host = onDevice ? resolveHost(options.host) : "localhost";
+  if (onDevice) {
+    console.log(
+      `flypath: ${chosen.name} will reach the dev server at http://${host}:${String(port)}`,
+    );
+  }
+
+  const context = projectContext(root, port, configured, host);
+  const prepared = await prepareIos(root, context);
 
   await run(
     "xcodebuild",
     [
       "-project",
-      path.join(target, "App.xcodeproj"),
+      path.join(prepared.target, "App.xcodeproj"),
       "-scheme",
       "App",
       "-configuration",
       "Debug",
       "-sdk",
-      "iphonesimulator",
+      onDevice ? "iphoneos" : "iphonesimulator",
       "-destination",
-      `id=${simulator.udid}`,
+      `id=${chosen.id}`,
       "-derivedDataPath",
-      derived,
-      ...(fs.existsSync(xcconfig) ? ["-xcconfig", xcconfig] : []),
+      prepared.derived,
+      ...(prepared.xcconfig === undefined
+        ? []
+        : ["-xcconfig", prepared.xcconfig]),
+      ...(onDevice
+        ? [
+            "-allowProvisioningUpdates",
+            "FLYPATH_CODE_SIGNING_ALLOWED=YES",
+            "FLYPATH_CODE_SIGNING_REQUIRED=YES",
+            ...(configured.ios?.teamId === undefined
+              ? []
+              : [`DEVELOPMENT_TEAM=${configured.ios.teamId}`]),
+          ]
+        : []),
       "build",
     ],
-    { cwd: target },
+    { cwd: prepared.target },
   );
 
   const app = path.join(
-    derived,
+    prepared.derived,
     "Build",
     "Products",
-    "Debug-iphonesimulator",
+    onDevice ? "Debug-iphoneos" : "Debug-iphonesimulator",
     "App.app",
   );
 
-  if (simulator.state !== "Booted") {
-    await run("xcrun", ["simctl", "boot", simulator.udid]);
+  if (onDevice) {
+    await run("xcrun", [
+      "devicectl",
+      "device",
+      "install",
+      "app",
+      "--device",
+      chosen.id,
+      app,
+    ]);
+    console.log(
+      "flypath: iOS asks for local-network permission the first time the app " +
+        "talks to a LAN address; allow it, or the bundle fetch just times out",
+    );
+    await run("xcrun", [
+      "devicectl",
+      "device",
+      "process",
+      "launch",
+      "--console",
+      "--device",
+      chosen.id,
+      context.bundleId,
+    ]);
+    return;
+  }
+
+  if (chosen.state !== "Booted") {
+    await run("xcrun", ["simctl", "boot", chosen.id]);
   }
   await run("open", ["-a", "Simulator"]);
-  await run("xcrun", ["simctl", "install", simulator.udid, app]);
+  await run("xcrun", ["simctl", "install", chosen.id, app]);
   await run("xcrun", [
     "simctl",
     "launch",
     "--console-pty",
-    simulator.udid,
+    chosen.id,
     context.bundleId,
   ]);
 }

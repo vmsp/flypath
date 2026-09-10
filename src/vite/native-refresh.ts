@@ -22,7 +22,8 @@ export function nativeRefresh(): Plugin {
   return {
     name: "flypath:native-refresh",
     enforce: "post",
-    apply: "serve",
+    apply: (_config, env) =>
+      env.command === "serve" && env.mode !== "production",
     applyToEnvironment(environment) {
       return NATIVE_ENVIRONMENTS.has(environment.name);
     },

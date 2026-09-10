@@ -14,7 +14,7 @@
         "test/mail/jsx/*.ts"
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.ts"],
-      "ignoreBinaries": ["mailpit"],
+      "ignoreBinaries": ["mailpit", "openssl"],
       "ignoreDependencies": [
         "@babel/preset-flow",
         "oxfmt",

@@ -1,8 +1,4 @@
-- Release build (Phase 5 of PLAN_CLIENT.md)
-- Lock down dev-only network config in release builds - templates/android/app/src/main/AndroidManifest.xml ships android:usesCleartextTraffic="true" and templates/ios/App/Info.plist ships NSAllowsArbitraryLoads=true, both application-wide. Debug-variant manifest / network security config scoped to the dev host on Android, localhost ATS exception on iOS (arbitrary loads is an App Store review flag)
-- Skew
 - Unify logging on the framework
-- Run on device
 - I18N - https://github.com/facebook/fbt, https://generaltranslation.com/
 - A11Y
 - LSP on consumer Kotlin code
@@ -12,5 +8,14 @@
 - Tests for most code, including native
 - S3?
 - Consumer testing?
+
+- Uploading to Google Play needs the Play Developer API and a service account; flypath produces the .aab and stops
+- A traced, self-contained deploy artefact (Next's output: "standalone"); flypath build prints the copy checklist instead
+- HBC chunks - needs a byte-buffer entry point on cpp/FlypathHermesRuntime.cpp; the base bundle is bytecode and chunks are source today
+- Retaining chunks for more than one build so older binaries can fetch new code; the URL shape already allows it
+- TLS-ALPN-01 and DNS-01 for ACME; HTTP-01 covers a server that owns port 80, DNS-01 is what wildcards need
+- OCSP stapling, HSTS preload, session resumption tuning
+- Zero-downtime phased restart (Puma-style); SIGTERM plus /_flypath/health is what a rolling deploy uses
+- reusePort instead of a cluster primary - a one-line change on Linux when it is worth measuring
 
 Deep links are wired but unexercisable. Linking.getInitialURL() and the url listener are in native-root.tsx, but no URL scheme is registered in templates/ios/App/Info.plist or the Android manifest — so nothing can deliver one. Written, never run.

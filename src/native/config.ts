@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 import type { JobsOptions } from "../jobs/config.ts";
 import type { MailOptions } from "../mail/config.ts";
+import type { ServeOptions } from "../serve/config.ts";
 
 export const CONFIG_PLUGIN = "flypath:config";
 
@@ -34,6 +35,16 @@ export type FlypathOptions = {
 
   /** Outgoing mail: the transport url, the default sender and the link base. */
   mail?: MailOptions;
+
+  /**
+   * The application's public origin, e.g. `https://example.com`. Release
+   * native builds bake it, `mail.baseUrl` defaults to it, and `FLYPATH_URL`
+   * overrides it at build time.
+   */
+  url?: string;
+
+  /** How `flypath start` runs the built application. */
+  serve?: ServeOptions;
 
   /** User-facing name for the application. */
   appName?: string;
@@ -66,6 +77,8 @@ export type FlypathOptions = {
     bundleId?: string;
     minimumVersion?: string;
     orientations?: Orientation[];
+    teamId?: string;
+    distribution?: "app-store" | "ad-hoc" | "development" | "enterprise";
   };
 
   android?: {

@@ -7,6 +7,7 @@ import {
   renderToReadableStream,
 } from "@vitejs/plugin-rsc/rsc";
 import type { ReactNode } from "react";
+import { buildId } from "virtual:flypath/build";
 import { tree } from "virtual:flypath/routes";
 
 import { createContextStore } from "../router/context.ts";
@@ -26,6 +27,7 @@ import type { RouteInfo } from "../router/types.ts";
 import { documentPath, isFlightPath } from "../shared/flight.ts";
 import {
   ACTION_HEADER,
+  BUILD_HEADER,
   CHROME_HEADER,
   FRAGMENT_HEADER,
   LOCATION_HEADER,
@@ -210,11 +212,11 @@ function withCommand(response: Response, signal: Redirect): Response {
 function withOutgoing(response: Response, outgoing: Headers): Response {
   const jar = outgoing.getSetCookie();
   const entries = [...outgoing].filter(([key]) => key !== "set-cookie");
-  if (entries.length === 0 && jar.length === 0) return response;
 
   const headers = new Headers(response.headers);
   for (const [key, value] of entries) headers.set(key, value);
   for (const value of jar) headers.append("set-cookie", value);
+  headers.set(BUILD_HEADER, buildId);
 
   return new Response(response.body, {
     status: response.status,

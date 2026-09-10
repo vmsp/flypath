@@ -61,7 +61,7 @@ function flypathConfig(options: FlypathOptions): Plugin {
             ? Object.fromEntries(
                 NATIVE_PLATFORMS.map((platform) => [
                   nativeEnvironmentName(platform),
-                  nativeEnvironmentOptions(platform),
+                  nativeEnvironmentOptions(platform, env.mode !== "production"),
                 ]),
               )
             : {},
@@ -91,6 +91,20 @@ type FlypathConfigExport =
   | Promise<FlypathConfig>
   | ((env: ConfigEnv) => FlypathConfig | Promise<FlypathConfig>);
 
+const FLYPATH_KEYS = [
+  "url",
+  "serve",
+  "appName",
+  "version",
+  "buildNumber",
+  "bundleId",
+  "databases",
+  "jobs",
+  "mail",
+  "ios",
+  "android",
+] as const;
+
 function withFlypath(config: FlypathConfig): UserConfig {
   const {
     appName,
@@ -102,8 +116,21 @@ function withFlypath(config: FlypathConfig): UserConfig {
     mail,
     ios,
     android,
+    url,
+    serve,
     ...vite
   } = config;
+
+  const stray = FLYPATH_KEYS.filter((key) =>
+    Object.hasOwn(vite.server ?? {}, key),
+  );
+  if (stray.length > 0) {
+    throw new Error(
+      `flypath: ${stray.join(", ")} ${stray.length === 1 ? "is a flypath option" : "are flypath options"} ` +
+        "and must sit beside server, not inside it — Vite owns server, and " +
+        "flypath's production server is configured under serve",
+    );
+  }
 
   return {
     ...vite,
@@ -118,6 +145,8 @@ function withFlypath(config: FlypathConfig): UserConfig {
         mail,
         ios,
         android,
+        url,
+        serve,
       }),
       vite.plugins,
     ],

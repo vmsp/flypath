@@ -22,7 +22,7 @@ class AppDelegate: FlypathAppDelegate {
     #if DEBUG
       return URL(
         string:
-          "http://localhost:__FLYPATH_PORT__/index.bundle?platform=ios&dev=true"
+          "http://__FLYPATH_DEV_HOST__:__FLYPATH_PORT__/index.bundle?platform=ios&dev=true"
       )
     #else
       return Bundle.main.url(forResource: "main", withExtension: "jsbundle")

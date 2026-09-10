@@ -14,11 +14,13 @@
 		A10000000000000000000010 /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000011 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10000000000000000000017 /* Info.debug.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.debug.plist; sourceTree = "<group>"; };
 		A10000000000000000000014 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A10000000000000000000015 /* Resources */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Resources; sourceTree = "<group>"; };
+		A10000000000000000000016 /* Bundle */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Bundle; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,7 +47,9 @@
 			children = (
 				A10000000000000000000011 /* AppDelegate.swift */,
 				A10000000000000000000015 /* Resources */,
+				A10000000000000000000016 /* Bundle */,
 				A10000000000000000000013 /* Info.plist */,
+				A10000000000000000000017 /* Info.debug.plist */,
 				A10000000000000000000014 /* App.entitlements */,
 			);
 			path = App;
@@ -76,6 +80,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				A10000000000000000000015 /* Resources */,
+				A10000000000000000000016 /* Bundle */,
 			);
 			name = App;
 			productName = App;
@@ -188,12 +193,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGNING_ALLOWED = "$(FLYPATH_CODE_SIGNING_ALLOWED)";
+				CODE_SIGNING_REQUIRED = "$(FLYPATH_CODE_SIGNING_REQUIRED)";
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CURRENT_PROJECT_VERSION = __FLYPATH_BUILD__;
+				FLYPATH_CODE_SIGNING_ALLOWED = NO;
+				FLYPATH_CODE_SIGNING_REQUIRED = NO;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_FILE = App/Info.debug.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -212,9 +219,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = __FLYPATH_BUILD__;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = App/Info.plist;

@@ -34,6 +34,8 @@ export type NativeBundle = {
   map: NativeSourceMap;
   revisionId: string;
   moduleIds: number[];
+  baseId: string;
+  baseModules: string[];
 };
 
 export type NativeChunk = {
@@ -49,7 +51,20 @@ export type BuildOptions = {
   dev: boolean;
   serverUrl: string;
   manifestHash: string;
+  build?: string;
+  runtimeVersions?: string;
+  seed?: { entries: string[]; seeded: Record<string, number> };
 };
+
+export function baseIdOf(
+  platform: string,
+  runtimeVersions: string,
+  moduleIds: readonly string[],
+): string {
+  return hash(
+    [platform, runtimeVersions, ...moduleIds.toSorted()].join("\u0000"),
+  );
+}
 
 const WRAPPER_HEADER_LINES = 11;
 
@@ -443,16 +458,26 @@ export class NativeBundler {
       await this.load(id);
     }
 
+    const modules = this.closure(entryIds);
+    this.base = new Set(modules.map((mod) => mod.id));
+
+    const baseModules = modules.map((mod) => this.relative(mod.id)).toSorted();
+    const baseId = baseIdOf(
+      options.platform,
+      options.runtimeVersions ?? "",
+      baseModules,
+    );
+
     const prelude = nativePrelude({
       root: this.root,
       platform: options.platform,
       dev: options.dev,
       serverUrl: options.serverUrl,
       manifestHash: options.manifestHash,
+      baseId,
+      ...(options.build === undefined ? {} : { build: options.build }),
+      ...(options.seed === undefined ? {} : { seeded: options.seed.seeded }),
     });
-
-    const modules = this.closure(entryIds);
-    this.base = new Set(modules.map((mod) => mod.id));
 
     const generator = new GenMapping();
     const chunks: string[] = [prelude];
@@ -465,6 +490,22 @@ export class NativeBundler {
       line += countLines(wrapped);
     }
 
+    if (options.seed) {
+      const seedIds: string[] = [];
+      for (const entry of options.seed.entries) {
+        const id = await this.resolveEntry(entry);
+        seedIds.push(id);
+        await this.load(id);
+      }
+      for (const mod of this.closure(seedIds)) {
+        if (this.base.has(mod.id)) continue;
+        const wrapped = wrapModule(mod, options.dev);
+        chunks.push(wrapped);
+        addModuleMappings(generator, mod, line + WRAPPER_HEADER_LINES);
+        line += countLines(wrapped);
+      }
+    }
+
     for (const id of entryIds) {
       chunks.push(`__r(${this.moduleId(id)});\n`);
     }
@@ -474,7 +515,15 @@ export class NativeBundler {
       map: toEncodedMap(generator) as NativeSourceMap,
       revisionId: String(this.revision++),
       moduleIds: entryIds.map((id) => this.moduleId(id)),
+      baseId,
+      baseModules,
     };
+  }
+
+  relative(id: string): string {
+    if (id.startsWith("\0")) return id;
+    if (!path.isAbsolute(id)) return id;
+    return path.relative(this.root, id).split(path.sep).join("/");
   }
 
   async buildChunk(entry: string, dev: boolean): Promise<NativeChunk> {
@@ -482,6 +531,14 @@ export class NativeBundler {
     await this.load(id);
 
     const modules = this.closure([id]).filter((mod) => !this.base.has(mod.id));
+    for (const mod of modules) {
+      if (!this.base.has(mod.id)) continue;
+      throw new Error(
+        `flypath: the chunk for ${this.relative(id)} would ship ` +
+          `${this.relative(mod.id)}, which the base bundle already provides — ` +
+          "the two copies would be different modules at runtime",
+      );
+    }
 
     const generator = new GenMapping();
     const parts: string[] = [];

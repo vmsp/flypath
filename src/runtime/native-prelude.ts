@@ -8,6 +8,9 @@ export type PreludeOptions = {
   dev: boolean;
   serverUrl: string;
   manifestHash: string;
+  baseId?: string;
+  build?: string;
+  seeded?: Record<string, number>;
 };
 
 function metroRequirePolyfill(root: string): string {
@@ -33,7 +36,10 @@ __GLOBAL__.__FLYPATH__ = {
   serverUrl: ${JSON.stringify(options.serverUrl)},
   dev: ${dev},
   manifestHash: ${JSON.stringify(options.manifestHash)},
+  baseId: ${JSON.stringify(options.baseId ?? "")},
+  build: ${JSON.stringify(options.build ?? "")},
   chunks: {},
+  seeded: ${JSON.stringify(options.seeded ?? {})},
 };
 (function (global) {
 ${metroRequirePolyfill(options.root)}

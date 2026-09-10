@@ -12,6 +12,9 @@ import { parseCommand, parseLocation } from "../router/navigation.ts";
 import { parseRevalidate } from "../router/revalidate.ts";
 import {
   ACTION_HEADER,
+  BASE_HEADER,
+  BINARY_HEADER,
+  BUILD_HEADER,
   CHROME_HEADER,
   LOCATION_HEADER,
   NAVIGATE_HEADER,
@@ -19,12 +22,13 @@ import {
   REVALIDATE_HEADER,
   SCREEN_HEADER,
 } from "../shared/headers.ts";
+import { noteBuild } from "./client-references.ts";
 import { findSourceMapURL, nativeConfig } from "./native-config.ts";
 import type { RscPayload } from "./payload.ts";
 
 export function installServerCallback(): void {
   setServerCallback(async (id: string, args: unknown[]) => {
-    const { serverUrl, platform } = nativeConfig();
+    const { serverUrl, platform, baseId, build } = nativeConfig();
     const router = nativeRouter();
     const temporaryReferences = createTemporaryReferenceSet();
     const body = await encodeReply(args, { temporaryReferences });
@@ -38,10 +42,14 @@ export function installServerCallback(): void {
       headers: {
         [ACTION_HEADER]: id,
         [PLATFORM_HEADER]: platform,
+        [BASE_HEADER]: baseId,
+        [BINARY_HEADER]: build,
         [SCREEN_HEADER]: router?.currentContainer() ?? ROOT_CONTAINER,
         ...(chrome.length === 0 ? {} : { [CHROME_HEADER]: chrome.join(",") }),
       },
     });
+
+    noteBuild(response.headers.get(BUILD_HEADER));
 
     const command = parseCommand(response.headers.get(NAVIGATE_HEADER));
     const location = parseLocation(response.headers.get(LOCATION_HEADER));

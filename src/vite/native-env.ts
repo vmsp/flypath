@@ -31,13 +31,16 @@ function extensionsFor(platform: NativePlatform): string[] {
 
 export function nativeEnvironmentOptions(
   platform: NativePlatform,
+  dev = true,
 ): EnvironmentOptions {
   return {
     consumer: "server",
     keepProcessEnv: false,
     define: {
-      __DEV__: "globalThis.__DEV__",
-      "process.env.NODE_ENV": JSON.stringify("development"),
+      __DEV__: dev ? "globalThis.__DEV__" : "false",
+      "process.env.NODE_ENV": JSON.stringify(
+        dev ? "development" : "production",
+      ),
     },
     resolve: {
       extensions: extensionsFor(platform),

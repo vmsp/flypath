@@ -106,6 +106,7 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@peculiar/x509": "^2.1.0",
     "@types/babel__core": "^7.20.5",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
@@ -117,19 +118,28 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-native": "0.87.0",
+    "reflect-metadata": "^0.2.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
   },
   "peerDependencies": {
+    "@peculiar/x509": "^2.1.0",
     "react": "*",
     "react-dom": "*",
-    "react-native": "*"
+    "react-native": "*",
+    "reflect-metadata": "^0.2.2"
   },
   "peerDependenciesMeta": {
     "react-dom": {
       "optional": true
     },
     "react-native": {
+      "optional": true
+    },
+    "@peculiar/x509": {
+      "optional": true
+    },
+    "reflect-metadata": {
       "optional": true
     }
   },

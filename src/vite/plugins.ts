@@ -6,8 +6,10 @@ import rsc from "@vitejs/plugin-rsc";
 import type { Plugin, PluginOption } from "vite";
 
 import type { FlypathOptions } from "../native/config.ts";
+import { appUrl, buildId, setBuildId } from "../shared/env.ts";
 import { distDir } from "../shared/paths.ts";
 import { TAG_DEFAULTS } from "../styles/defaults.ts";
+import { hash } from "../styles/hash.ts";
 import { flowStrip } from "./flow.ts";
 import { jobsScan } from "./jobs-scan.ts";
 import { jobsTransform } from "./jobs.ts";
@@ -98,9 +100,46 @@ function mail(options: FlypathOptions): Plugin {
     load(id) {
       if (id !== MAIL_ID) return;
       const configModule = path.join(distDir, "mail", "config.js");
+      const url = appUrl() ?? options.url;
+      const declared = {
+        ...(url === undefined ? {} : { baseUrl: url }),
+        ...options.mail,
+      };
       return [
         `import { configureMail } from ${JSON.stringify(configModule)};`,
-        `configureMail(${JSON.stringify(options.mail ?? {})});`,
+        `configureMail(${JSON.stringify(declared)});`,
+        "",
+      ].join("\n");
+    },
+  };
+}
+
+const BUILD = "virtual:flypath/build";
+const BUILD_ID = `\0${BUILD}`;
+
+export function currentBuildId(): string {
+  const held = buildId();
+  if (held !== undefined) return held;
+  const id = `${Date.now().toString(36)}-${hash(
+    `${String(Date.now())}:${String(process.pid)}:${String(Math.random())}`,
+  ).slice(0, 6)}`;
+  setBuildId(id);
+  return id;
+}
+
+function buildInfo(options: FlypathOptions): Plugin {
+  return {
+    name: "flypath:build-info",
+    resolveId(source) {
+      if (source === BUILD) return BUILD_ID;
+      return undefined;
+    },
+    load(id) {
+      if (id !== BUILD_ID) return;
+      const url = appUrl() ?? options.url ?? "";
+      return [
+        `export const buildId = ${JSON.stringify(currentBuildId())};`,
+        `export const appUrl = ${JSON.stringify(url)};`,
         "",
       ].join("\n");
     },
@@ -179,6 +218,7 @@ export function plugins(
   return [
     database(options),
     mail(options),
+    buildInfo(options),
     serverOnlyDependencies(),
     nativeStub(),
     clientReferences(),

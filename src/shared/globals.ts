@@ -31,12 +31,7 @@ type FlypathState = {
 
 declare global {
   /** State injected from outside JS into the runtime. */
-  var __FLYPATH__:
-    | (NativeConfig & {
-        native?: NativeRegistry;
-        chunks?: Record<string, number>;
-      })
-    | undefined;
+  var __FLYPATH__: (NativeConfig & { native?: NativeRegistry }) | undefined;
 
   /** Node global state. */
   var __FLYPATH_STATE__: Partial<FlypathState> | undefined;

@@ -3,6 +3,10 @@ export type NativeConfig = {
   serverUrl: string;
   dev: boolean;
   manifestHash: string;
+  baseId: string;
+  build: string;
+  chunks: Record<string, number>;
+  seeded: Record<string, number>;
 };
 
 export function nativeConfig(): NativeConfig {
