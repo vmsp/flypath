@@ -45,7 +45,7 @@ a path that was not listed. The unit was the page, the constraint was
 "there is no request object here", and it was enforced by not passing
 one.
 
-**Next.js, app router (13–15).** Static became the *default* and you
+**Next.js, app router (13–15).** Static became the _default_ and you
 fell out of it by touching a dynamic API: `cookies()`, `headers()`,
 `searchParams`, an uncached `fetch`. At build time those threw a
 `DynamicServerError` that the framework caught to mark the route
@@ -78,7 +78,7 @@ that starts at the root and follows `<a href>` to discover pages,
 `entries()` to enumerate params. The constraints are stated bluntly:
 no `url.searchParams`, no form actions, no per-visitor data, and an
 error when two routes want to write the same file. Its `handle` hook
-*does* run during prerendering, against a synthetic request — which is
+_does_ run during prerendering, against a synthetic request — which is
 where its "you cannot read cookies here" errors come from.
 
 **Waku.** `getConfig()` per route returning `{ render: "static" }`, on
@@ -171,7 +171,7 @@ belonged anyway.
 The premise in the request was that a server component which reads the
 database cannot be prerendered. It can, and it is most of the point:
 reading content at build time is what a prerendered docs page, blog
-post or catalogue page *is*. React Router runs loaders at build time,
+post or catalogue page _is_. React Router runs loaders at build time,
 SvelteKit runs `load`, Next 16 caches `db.query` under `use cache`.
 
 What actually breaks is not the database, it is the request. A
@@ -195,8 +195,8 @@ a footgun with no legitimate use — and **side effects** generally:
 Rejected, and worth being explicit about. A route restricted to client
 components prerenders to an empty shell plus a hydration bundle: the
 HTML would contain no content, which is the one thing prerendering is
-for. The correct restriction is not *where* a component runs but *what
-it reads*. A server component that reads the filesystem, the database,
+for. The correct restriction is not _where_ a component runs but _what
+it reads_. A server component that reads the filesystem, the database,
 or nothing at all is exactly what should be prerendered; a client
 component that reads `query()` is not made safe by being a client
 component (see below — it is the one hole this plan leaves open).
@@ -208,7 +208,7 @@ does not remove the route from the server, and the server can still
 render it for an iOS request like any other. That is worth keeping:
 prerendering stays an optimisation, never a change in what exists.
 
-What is real is that the *page* is usually web-shaped — a landing page
+What is real is that the _page_ is usually web-shaped — a landing page
 at `/` while the app should open on the feed. So the addition is not a
 platform filter but a launch route: `routes({ launch: "/feed" }, …)`,
 defaulting to `"/"`, carried in the manifest, read by
@@ -292,26 +292,26 @@ which it has to do anyway.
 
 ### What a prerendered render may not do
 
-| Called during a prerender | What happens |
-| --- | --- |
-| `cookies()`, `cookies.set/clear` | throws |
-| `headers()`, `headers.set/delete` | throws |
-| `query()`, `query.all()` | throws |
-| `navigate()`, `navigate("not-found")` | throws |
-| `sendMail()` | throws |
-| `jobs()`, `cron()` | throws |
-| `db().into(…).insert/update/delete` | throws |
-| `db()` reads | allowed — frozen at build time |
-| `params()` | allowed, always `{}` (the pattern has none) |
-| `platform()`, `isNative()`, `isIos()` | allowed, `"web"` at build time |
-| `isPrefetch()` | allowed, always `false` |
-| `context()` | allowed; only ever sees its fallback |
-| `context.set()` | already throws outside middleware |
-| a `"use server"` action, from the page | allowed; it runs at request time |
+| Called during a prerender              | What happens                                |
+| -------------------------------------- | ------------------------------------------- |
+| `cookies()`, `cookies.set/clear`       | throws                                      |
+| `headers()`, `headers.set/delete`      | throws                                      |
+| `query()`, `query.all()`               | throws                                      |
+| `navigate()`, `navigate("not-found")`  | throws                                      |
+| `sendMail()`                           | throws                                      |
+| `jobs()`, `cron()`                     | throws                                      |
+| `db().into(…).insert/update/delete`    | throws                                      |
+| `db()` reads                           | allowed — frozen at build time              |
+| `params()`                             | allowed, always `{}` (the pattern has none) |
+| `platform()`, `isNative()`, `isIos()`  | allowed, `"web"` at build time              |
+| `isPrefetch()`                         | allowed, always `false`                     |
+| `context()`                            | allowed; only ever sees its fallback        |
+| `context.set()`                        | already throws outside middleware           |
+| a `"use server"` action, from the page | allowed; it runs at request time            |
 
 The last row is the deployment caveat worth stating in one line: a form
 on a prerendered page still POSTs to the server, so a page with actions
-is prerenderable but not *serverless*.
+is prerenderable but not _serverless_.
 
 Prerenderability is a property of the whole rendered tree, not of the
 leaf: every `layout()` above the route and every `branches()` chrome
@@ -353,7 +353,7 @@ New `shared/flight.ts`:
 
 ```ts
 export const FLIGHT_SUFFIX = ".flight";
-export function flightPath(pathname: string): string;   // "/" -> "/index.flight"
+export function flightPath(pathname: string): string; // "/" -> "/index.flight"
 export function documentPath(pathname: string): string; // inverse
 export function isFlightPath(pathname: string): boolean;
 ```
@@ -398,7 +398,9 @@ Per path it makes two requests through the real handler:
 
 ```ts
 const document = await handler(new Request(`http://prerender.invalid${path}`));
-const flight = await handler(new Request(`http://prerender.invalid${flightPath(path)}`));
+const flight = await handler(
+  new Request(`http://prerender.invalid${flightPath(path)}`),
+);
 ```
 
 Two renders rather than one, because the document response inlines its

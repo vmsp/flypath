@@ -14,6 +14,12 @@ export type EmailStyle = {
 
 const DEV = process.env.NODE_ENV !== "production";
 
+/**
+ * Styles reset for emails.
+ *
+ * Constrained version of the web one, found in {@link ./defaults.ts}. They must
+ * be kept in sync.
+ */
 export const EMAIL_RESET: string = [
   "* { box-sizing: border-box; margin: 0; min-height: 0; min-width: 0; }",
   "html { font-family: system-ui, sans-serif; }",
