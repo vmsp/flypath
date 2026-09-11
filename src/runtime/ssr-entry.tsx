@@ -12,6 +12,7 @@ import type { RscPayload } from "./payload.ts";
 
 export type SsrOptions = {
   formState?: unknown;
+  signal?: AbortSignal;
 };
 
 export async function handleSsr(
@@ -29,6 +30,7 @@ export async function handleSsr(
   const html = await renderToReadableStream(<SsrRoot />, {
     bootstrapModules: [getClientEntryUrl()],
     formState: options.formState,
+    signal: options.signal,
   } as never);
 
   return html.pipeThrough(injectRSCPayload(forInline));

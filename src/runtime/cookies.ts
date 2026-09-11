@@ -1,5 +1,10 @@
 import type { RequestInfo } from "./platform.ts";
-import { forbidPrerender, getRequest, VISITOR } from "./platform.ts";
+import {
+  forbidPrerender,
+  forbidRender,
+  getRequest,
+  VISITOR,
+} from "./platform.ts";
 
 export type SameSite = "lax" | "none" | "strict";
 
@@ -94,6 +99,7 @@ function nameOf(line: string): string {
 }
 
 function write(name: string, line: string): void {
+  forbidRender("A cookie was written");
   const { outgoing } = request();
   const kept = outgoing
     .getSetCookie()

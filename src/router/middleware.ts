@@ -18,6 +18,10 @@ export function runMiddleware(
 
     let pending: Promise<Response> | undefined;
 
+    const discard = (): void => {
+      void pending?.then((response) => response.body?.cancel()).catch(() => {});
+    };
+
     const next: Next = () => {
       if (pending) {
         throw new Error(
@@ -36,12 +40,16 @@ export function runMiddleware(
     try {
       returned = await middleware(next);
     } catch (error) {
+      discard();
       const signal = navigationSignal(error);
       if (!signal) throw error;
       return answer(signal);
     }
 
-    if (returned instanceof Response) return returned;
+    if (returned instanceof Response) {
+      discard();
+      return returned;
+    }
     return pending ?? step(index + 1);
   };
 

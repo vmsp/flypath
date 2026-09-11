@@ -10,6 +10,7 @@
         "src/runtime/{server,ssr,web,native}-entry.tsx",
         "src/components/native/*.{ts,tsx}",
         "test/**/*.test-d.ts",
+        "test/router/fixtures/streaming.tsx",
         "test/mail/jsx/*.ts"
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.ts"],

@@ -1,15 +1,11 @@
-import { navigate, params } from "flypath";
-
 import BackLink from "./back-link.tsx";
 import LikeButton from "./like-button.tsx";
 import PostParams from "./post-params.tsx";
-import { getPost } from "./posts.ts";
+import { currentPost } from "./posts.ts";
 import { colors } from "./vars.css.ts";
 
-export default async function PostPage() {
-  const id = Number(params("id"));
-  const post = await getPost(id);
-  if (!post) navigate("not-found");
+export default function PostPage() {
+  const post = currentPost();
 
   return (
     <>

@@ -8,7 +8,7 @@ import {
   stack,
 } from "flypath/router";
 
-import { auth, request } from "./middleware.ts";
+import { auth, post, request } from "./middleware.ts";
 
 const config = routes([
   layout(
@@ -29,7 +29,10 @@ const config = routes([
                 revalidate: "blocking",
               }),
             ]),
-            route("p/:id", () => import("./post.tsx"), { safeArea: ["top"] }),
+            route("p/:id", () => import("./post.tsx"), {
+              middleware: [post],
+              safeArea: ["top"],
+            }),
           ],
         ),
         route("login", () => import("./login.tsx"), { safeArea: ["top"] }),

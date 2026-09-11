@@ -1,10 +1,14 @@
-import { forbidPrerender, getRequest } from "../runtime/platform.ts";
+import {
+  forbidPrerender,
+  forbidRender,
+  getRequest,
+} from "../runtime/platform.ts";
 import { buildHref, isExternal } from "./href.ts";
 import { makeNavigate } from "./navigate.ts";
 import { NavigationError } from "./navigation.ts";
 import type { Mode, Navigate } from "./types.ts";
 
-function phase(): "render" | "action" {
+function phase(): "middleware" | "render" | "action" {
   return getRequest()?.phase ?? "render";
 }
 
@@ -16,6 +20,7 @@ const NOWHERE =
 export const navigate: Navigate = makeNavigate(
   (to, params, mode, permanent): void => {
     forbidPrerender("navigate() was called", NOWHERE);
+    forbidRender("navigate() was called");
 
     if (to === "not-found") {
       throw new NavigationError({ kind: "not-found" });

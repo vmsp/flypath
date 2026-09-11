@@ -13,11 +13,10 @@ export type Context<T> = {
 
 export type ContextStore = {
   readonly values: Map<unknown, unknown>;
-  open: boolean;
 };
 
 export function createContextStore(): ContextStore {
-  return { values: new Map<unknown, unknown>(), open: true };
+  return { values: new Map<unknown, unknown>() };
 }
 
 function store(): ContextStore {
@@ -53,7 +52,7 @@ export function context<T>(...fallback: readonly T[]): Context<T> {
   return Object.assign(read, {
     set: (value: T): void => {
       const current = store();
-      if (!current.open) {
+      if (getRequest()?.phase !== "middleware") {
         throw new Error(
           "context.set() ran outside a middleware; a value set " +
             "while rendering would reach some siblings and not others, so " +

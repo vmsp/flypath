@@ -1,4 +1,4 @@
-import { db } from "flypath";
+import { context, db } from "flypath";
 import { count } from "flypath/sql";
 
 export type Post = {
@@ -7,6 +7,8 @@ export type Post = {
   body: string;
   likes: number | null;
 };
+
+export const currentPost = context<Post>();
 
 const likeCounts = () =>
   db()

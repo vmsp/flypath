@@ -1,6 +1,7 @@
 import type { Middleware } from "flypath";
-import { headers, isPrefetch, navigate } from "flypath";
+import { headers, isPrefetch, navigate, params } from "flypath";
 
+import { currentPost, getPost } from "./posts.ts";
 import { requestId, session, userFromSession, visitor } from "./session.ts";
 
 let served = 0;
@@ -23,4 +24,10 @@ export const auth: Middleware = async () => {
   const user = await userFromSession();
   if (!user) return navigate("/login");
   session.set(user);
+};
+
+export const post: Middleware = async () => {
+  const value = await getPost(Number(params("id")));
+  if (!value) return navigate("not-found");
+  currentPost.set(value);
 };

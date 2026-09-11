@@ -8,7 +8,7 @@ const DEV = process.env.NODE_ENV !== "production";
 
 export type RequestInfo = RouteInfo & {
   platform: Platform;
-  phase: "render" | "action";
+  phase: "middleware" | "render" | "action";
   headers: Headers;
   outgoing: Headers;
   prefetch: boolean;
@@ -129,6 +129,14 @@ export function forbidPrerender(call: string, why: string): void {
   throw new Error(`${call} while prerendering ${request.pathname}; ${why}`);
 }
 
+export function forbidRender(call: string): void {
+  if (getRequest()?.phase !== "render") return;
+  throw new Error(
+    `${call} during a server render; the response is streaming, so ` +
+      "navigation, status and response headers must be decided in middleware or a server action",
+  );
+}
+
 export const headers: HeaderAccess = Object.assign(
   (): Headers => {
     forbidPrerender("headers() was read", VISITOR);
@@ -137,6 +145,7 @@ export const headers: HeaderAccess = Object.assign(
   {
     set: (name: string, value: string): void => {
       forbidPrerender("headers.set() was called", VISITOR);
+      forbidRender("headers.set() was called");
       reserved(name);
       required("headers.set() writes a header on the response").outgoing.set(
         name,
@@ -145,6 +154,7 @@ export const headers: HeaderAccess = Object.assign(
     },
     delete: (name: string): void => {
       forbidPrerender("headers.delete() was called", VISITOR);
+      forbidRender("headers.delete() was called");
       reserved(name);
       required(
         "headers.delete() writes a header on the response",

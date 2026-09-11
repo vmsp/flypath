@@ -11,7 +11,6 @@ import { buildId } from "virtual:flypath/build";
 import { tree } from "virtual:flypath/routes";
 
 import { createContextStore } from "../router/context.ts";
-import type { FlatRoute } from "../router/flatten.ts";
 import { hasChrome } from "../router/flatten.ts";
 import { declaredContainer, ROOT_CONTAINER } from "../router/manifest.ts";
 import { runMiddleware } from "../router/middleware.ts";
@@ -58,7 +57,6 @@ import {
   resolveTree,
   withSafeArea,
 } from "./router-server.tsx";
-import { collect, replay } from "./stream.ts";
 
 import "virtual:flypath/database";
 import "virtual:flypath/jobs";
@@ -186,23 +184,15 @@ async function runAction(
   }
 }
 
-type Rendered = {
-  bytes: Uint8Array;
-  signal: NavigationSignal | undefined;
-};
-
-async function toFlight(
+function toFlight(
   payload: RscPayload,
   temporaryReferences: unknown,
-): Promise<Rendered> {
-  let signal: NavigationSignal | undefined;
-  const stream = renderToReadableStream<RscPayload>(payload, {
+  signal: AbortSignal,
+): ReadableStream<Uint8Array> {
+  return renderToReadableStream<RscPayload>(payload, {
     temporaryReferences,
-    onError: (error: unknown) => {
-      signal ??= navigationSignal(error);
-    },
+    signal,
   } as never);
-  return { bytes: await collect(stream), signal };
 }
 
 function navigateResponse(
@@ -372,7 +362,7 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
     const info: RequestInfo = {
       ...base,
       platform,
-      phase: "render",
+      phase: "middleware",
       headers: new Headers(incoming),
       outgoing,
       prefetch,
@@ -402,31 +392,41 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
         return Object.keys(out).length === 0 ? undefined : out;
       };
 
-      const compose = async (rendering: ScreenRender): Promise<Rendered> => {
+      const compose = async (
+        rendering: ScreenRender,
+      ): Promise<ReadableStream<Uint8Array>> => {
         const content =
           platform === "web"
             ? withSafeArea(rendering.route, rendering.node)
             : rendering.node;
         const around = await fragments(rendering);
-        return runWithRequest({ ...info, ...rendering.info }, () =>
-          toFlight(
-            {
-              root:
-                platform === "web" && screen === null
-                  ? documentShell(content)
-                  : content,
-              ...(around === undefined ? {} : { fragments: around }),
-              returnValue: action.returnValue,
-              formState: action.formState,
-            },
-            temporaryReferences,
-          ),
+        return runWithRequest(
+          {
+            ...info,
+            ...rendering.info,
+            phase: "render",
+            context: { values: new Map(info.context.values) },
+          },
+          () =>
+            toFlight(
+              {
+                root:
+                  platform === "web" && screen === null
+                    ? documentShell(content)
+                    : content,
+                ...(around === undefined ? {} : { fragments: around }),
+                returnValue: action.returnValue,
+                formState: action.formState,
+              },
+              temporaryReferences,
+              request.signal,
+            ),
         );
       };
 
       const finish = async (
         match: ScreenRender,
-        rendered: Rendered,
+        rendered: ReadableStream<Uint8Array>,
         status: number,
       ): Promise<Response> => {
         const headers: Record<string, string> = {
@@ -439,7 +439,7 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
         };
 
         if (wantsFlight) {
-          return new Response(replay(rendered.bytes), {
+          return new Response(rendered, {
             status,
             headers: { ...headers, "content-type": FLIGHT_CONTENT_TYPE },
           });
@@ -450,8 +450,9 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
         >("ssr", "index");
 
         return new Response(
-          await ssr.handleSsr(replay(rendered.bytes), {
+          await ssr.handleSsr(rendered, {
             formState: action.formState,
+            signal: request.signal,
           }),
           {
             status,
@@ -460,11 +461,9 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
         );
       };
 
-      const missing = async (
-        current: FlatRoute | undefined,
-      ): Promise<Response> => {
+      const missing = async (): Promise<Response> => {
         const fallback = resolved.fallback;
-        if (!fallback || fallback === current) return plainNotFound();
+        if (!fallback) return plainNotFound();
 
         const match = await renderMatch(
           resolved,
@@ -473,7 +472,6 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
           container,
         );
         const rendered = await compose(match);
-        if (rendered.signal?.kind === "not-found") return plainNotFound();
         return finish(match, rendered, 404);
       };
 
@@ -484,7 +482,7 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
       };
 
       const answer = async (value: NavigationSignal): Promise<Response> =>
-        value.kind === "not-found" ? missing(undefined) : redirect(value);
+        value.kind === "not-found" ? missing() : redirect(value);
 
       const render = async (): Promise<Response> => {
         if (runsAction && request.method === "POST") {
@@ -495,11 +493,12 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
         }
 
         if (fragment !== null) {
-          const rendering = await toFlight(
+          const rendering = toFlight(
             { root: await renderFragment(resolved, fragment, base) },
             temporaryReferences,
+            request.signal,
           );
-          return new Response(replay(rendering.bytes), {
+          return new Response(rendering, {
             headers: { "content-type": FLIGHT_CONTENT_TYPE },
           });
         }
@@ -521,53 +520,43 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
         }
 
         if (invalidation === "none" && wantsFlight) {
-          const rendering = await toFlight(
+          const rendering = toFlight(
             {
               root: null,
               returnValue: action.returnValue,
               formState: action.formState,
             },
             temporaryReferences,
+            request.signal,
           );
-          return new Response(replay(rendering.bytes), {
+          return new Response(rendering, {
             headers: { "content-type": FLIGHT_CONTENT_TYPE },
           });
         }
 
-        const match = matched
-          ? await renderMatch(resolved, matched.route, base, container)
-          : undefined;
-        const rendered = match ? await compose(match) : undefined;
-        const rendering = rendered?.signal;
-
-        if (rendering && rendering.kind !== "not-found") {
-          return redirect(rendering);
-        }
-
-        if (
-          !match ||
-          !rendered ||
-          rendering?.kind === "not-found" ||
-          action.signal?.kind === "not-found"
-        ) {
-          return missing(match?.route);
-        }
-
-        return finish(match, rendered, 200);
+        if (!matched || action.signal?.kind === "not-found") return missing();
+        const match = await renderMatch(
+          resolved,
+          matched.route,
+          base,
+          container,
+        );
+        return finish(match, await compose(match), 200);
       };
 
       const chain = (matched?.route ?? resolved.fallback)?.middleware ?? [];
 
       const response = await runMiddleware(
         chain,
-        async () => {
-          info.context.open = false;
-          try {
-            return await render();
-          } finally {
-            info.context.open = true;
-          }
-        },
+        () =>
+          runWithRequest(
+            {
+              ...info,
+              phase: "render",
+              context: { values: new Map(info.context.values) },
+            },
+            render,
+          ),
         answer,
       );
 
