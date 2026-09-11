@@ -49,7 +49,7 @@ const IMPORTS_CSS = /import\s*\{[^}]*\bcss\b[^}]*\}\s*from\s*["']flypath["']/;
 export function styles(distDir: string): Plugin[] {
   const registryPath = path.join(distDir, "styles", "registry.js");
   const modules = new Map<string, Compiled>();
-  const atomic = new Map<string, string>();
+  const atomic = new Map<string, Map<string, AtomicRule[]>>();
 
   let root = process.cwd();
   let server: ViteDevServer | undefined;
@@ -106,8 +106,14 @@ export function styles(distDir: string): Plugin[] {
       const compiled = modules.get(file);
       if (compiled && compiled.css !== "") parts.push(compiled.css);
     }
-    for (const className of [...atomic.keys()].toSorted()) {
-      parts.push(atomic.get(className) as string);
+    const rules = new Map<string, string>();
+    for (const variants of atomic.values()) {
+      for (const entries of variants.values()) {
+        for (const rule of entries) rules.set(rule.className, rule.css);
+      }
+    }
+    for (const className of [...rules.keys()].toSorted()) {
+      parts.push(rules.get(className) as string);
     }
     return `${parts.join("\n\n")}\n`;
   };
@@ -136,14 +142,27 @@ export function styles(distDir: string): Plugin[] {
     });
   };
 
-  const addRules = (rules: AtomicRule[]): void => {
-    let changed = false;
-    for (const rule of rules) {
-      if (atomic.get(rule.className) === rule.css) continue;
-      atomic.set(rule.className, rule.css);
-      changed = true;
+  const replaceRules = (
+    file: string,
+    variant: string,
+    rules: AtomicRule[],
+  ): void => {
+    let variants = atomic.get(file);
+    const previous = variants?.get(variant) ?? [];
+    if (
+      previous.length === rules.length &&
+      previous.every((rule, at) => rule.css === rules[at]?.css)
+    ) {
+      return;
     }
-    if (changed) invalidate();
+    if (!variants) {
+      variants = new Map();
+      atomic.set(file, variants);
+    }
+    if (rules.length === 0) variants.delete(variant);
+    else variants.set(variant, rules);
+    if (variants.size === 0) atomic.delete(file);
+    invalidate();
   };
 
   return [
@@ -161,6 +180,7 @@ export function styles(distDir: string): Plugin[] {
       },
       watchChange(id, change) {
         const file = clean(id);
+        if (atomic.delete(file)) invalidate();
         if (!file.endsWith(".css.ts")) return;
         const previous = modules.get(file);
         modules.delete(file);
@@ -229,7 +249,7 @@ export function styles(distDir: string): Plugin[] {
 
         ensureScan();
         const extraction = extractStyles(file, code, resolverFor(file));
-        addRules(extraction.rules);
+        replaceRules(file, `${this.environment.name}:${id}`, extraction.rules);
         return extraction.code;
       },
     },
