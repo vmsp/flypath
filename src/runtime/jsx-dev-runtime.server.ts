@@ -1,76 +1,15 @@
-import type { ReactElement } from "react";
 import { Fragment, jsxDEV as reactJsxDEV } from "react/jsx-dev-runtime";
 
-import { isEmail } from "../mail/context.ts";
-import {
-  assertNoClientReference,
-  createEmailIntrinsic,
-} from "./element-email.ts";
-import { createNativeIntrinsic } from "./element-native.ts";
-import type { JsxFn } from "./element.ts";
-import { createIntrinsic } from "./element.ts";
-import { isNative } from "./platform.ts";
+import { serverIntrinsic } from "./element-server.ts";
+import type { JsxDevFn } from "./jsx-factory.ts";
+import { createJsxDevRuntime } from "./jsx-factory.ts";
 
 export { Fragment };
 
-type JsxDevFn = (
-  type: unknown,
-  props: unknown,
-  key?: unknown,
-  isStatic?: boolean,
-  source?: unknown,
-  self?: unknown,
-) => ReactElement;
-
-const jsxDevFn = reactJsxDEV as never as JsxDevFn;
-
-export function jsxDEV(
-  type: unknown,
-  props: unknown,
-  key?: unknown,
-  isStatic?: boolean,
-  source?: unknown,
-  self?: unknown,
-): ReactElement {
-  if (typeof type !== "string") {
-    if (isEmail()) assertNoClientReference(type);
-    return jsxDevFn(type, props, key, isStatic, source, self);
-  }
-  const create: JsxFn = (nextType, nextProps, nextKey) =>
-    jsxDevFn(nextType, nextProps, nextKey, isStatic, source, self);
-  const single: JsxFn = (nextType, nextProps, nextKey) =>
-    jsxDevFn(nextType, nextProps, nextKey, false, source, self);
-  const many: JsxFn = (nextType, nextProps, nextKey) =>
-    jsxDevFn(nextType, nextProps, nextKey, true, source, self);
-
-  if (isEmail()) {
-    return createEmailIntrinsic(
-      create,
-      single,
-      many,
-      Fragment,
-      type,
-      props as Record<string, unknown>,
-      key,
-    );
-  }
-  if (isNative()) {
-    return createNativeIntrinsic(
-      create,
-      type,
-      props as Record<string, unknown>,
-      key,
-    );
-  }
-  return createIntrinsic(
-    create,
-    single,
-    many,
-    Fragment,
-    type,
-    props as Record<string, unknown>,
-    key,
-  );
-}
+export const jsxDEV: JsxDevFn = createJsxDevRuntime(
+  reactJsxDEV as unknown as JsxDevFn,
+  Fragment,
+  serverIntrinsic,
+);
 
 export type { JSX } from "./jsx.ts";

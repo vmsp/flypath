@@ -27,6 +27,9 @@ function nativeProps(
 
 export function createNativeIntrinsic(
   create: JsxFn,
+  _jsx: JsxFn,
+  _jsxs: JsxFn,
+  _fragment: unknown,
   type: string,
   props: Record<string, unknown>,
   key?: unknown,

@@ -49,7 +49,7 @@ export function SafeAreaView(props: SafeAreaViewProps): ReactElement {
   const edges = edgeList(props.edges);
 
   if (isNative()) {
-    return createNativeIntrinsic(jsxFn, "div", {
+    return createNativeIntrinsic(jsxFn, jsxFn, jsxsFn, Fragment, "div", {
       style: props.style,
       $safeArea: edges,
       children: props.children,

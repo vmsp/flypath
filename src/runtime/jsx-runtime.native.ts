@@ -1,4 +1,3 @@
-import type { ReactElement } from "react";
 import {
   Fragment,
   jsx as reactJsx,
@@ -7,38 +6,18 @@ import {
 
 import { createNativeIntrinsic } from "./element-native.ts";
 import type { JsxFn } from "./element.ts";
+import { createJsxRuntime } from "./jsx-factory.ts";
 
 export { Fragment };
 
-const jsxFn = reactJsx as never as JsxFn;
-const jsxsFn = reactJsxs as never as JsxFn;
+const runtime = createJsxRuntime(
+  reactJsx as unknown as JsxFn,
+  reactJsxs as unknown as JsxFn,
+  Fragment,
+  (type) => (typeof type === "string" ? createNativeIntrinsic : undefined),
+);
 
-export function jsx(
-  type: unknown,
-  props: unknown,
-  key?: unknown,
-): ReactElement {
-  if (typeof type !== "string") return jsxFn(type, props, key);
-  return createNativeIntrinsic(
-    jsxFn,
-    type,
-    props as Record<string, unknown>,
-    key,
-  );
-}
-
-export function jsxs(
-  type: unknown,
-  props: unknown,
-  key?: unknown,
-): ReactElement {
-  if (typeof type !== "string") return jsxsFn(type, props, key);
-  return createNativeIntrinsic(
-    jsxsFn,
-    type,
-    props as Record<string, unknown>,
-    key,
-  );
-}
+export const jsx: JsxFn = runtime.jsx;
+export const jsxs: JsxFn = runtime.jsxs;
 
 export type { JSX } from "./jsx.ts";
