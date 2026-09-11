@@ -86,6 +86,13 @@ export function reporter(
   stream: Stream = process.stderr,
 ): (event: Event) => void {
   return (event) => {
+    if (
+      event.kind === "request" &&
+      event.path.split("?", 1)[0] ===
+        "/.well-known/appspecific/com.chrome.devtools.json"
+    ) {
+      return;
+    }
     if (event.kind === "error") {
       printError(event.error);
       return;

@@ -4,6 +4,7 @@ import path from "node:path";
 import react from "@vitejs/plugin-react";
 import rsc from "@vitejs/plugin-rsc";
 import type { Plugin, PluginOption } from "vite";
+import devtoolsJson from "vite-plugin-devtools-json";
 
 import type { FlypathOptions } from "../native/config.ts";
 import { appUrl, buildId, setBuildId } from "../shared/env.ts";
@@ -305,6 +306,10 @@ export function plugins(
   const entry = (name: string) => path.join(distDir, "runtime", name);
 
   return [
+    {
+      ...devtoolsJson(),
+      apply: (_config, env) => env.command === "serve" && !env.isPreview,
+    },
     progress(),
     terminal(),
     database(options),
