@@ -57,12 +57,19 @@ export type Found = {
   file: string;
   relative: string;
   stats: fs.Stats;
+  root: string;
 };
 
-function statFile(file: string): fs.Stats | undefined {
+async function statFile(
+  file: string,
+  root: string,
+): Promise<fs.Stats | undefined> {
   try {
-    const stats = fs.statSync(file);
-    return stats.isFile() ? stats : undefined;
+    const [stats, real] = await Promise.all([
+      fs.promises.stat(file),
+      fs.promises.realpath(file),
+    ]);
+    return stats.isFile() && inside(root, real) ? stats : undefined;
   } catch {
     return undefined;
   }
@@ -73,22 +80,10 @@ function inside(dir: string, file: string): boolean {
   return !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
-const roots = new Map<string, string>();
-
-function realRoot(dir: string): string {
-  const held = roots.get(dir);
-  if (held !== undefined) return held;
-  let real = dir;
-  try {
-    real = fs.realpathSync(dir);
-  } catch {
-    real = dir;
-  }
-  roots.set(dir, real);
-  return real;
-}
-
-export function resolveFile(dir: string, pathname: string): Found | undefined {
+export async function resolveFile(
+  dir: string,
+  pathname: string,
+): Promise<Found | undefined> {
   let decoded: string;
   try {
     decoded = decodeURIComponent(pathname);
@@ -100,24 +95,25 @@ export function resolveFile(dir: string, pathname: string): Found | undefined {
   const target = path.resolve(dir, `.${path.posix.normalize(decoded)}`);
   if (!inside(dir, target)) return undefined;
 
+  let root: string;
+  try {
+    root = await fs.promises.realpath(dir);
+  } catch {
+    return undefined;
+  }
+
   const candidates = decoded.endsWith("/")
     ? [path.join(target, "index.html")]
     : [target, path.join(target, "index.html")];
 
   for (const candidate of candidates) {
-    const stats = statFile(candidate);
+    const stats = await statFile(candidate, root);
     if (!stats) continue;
-    let real: string;
-    try {
-      real = fs.realpathSync(candidate);
-    } catch {
-      continue;
-    }
-    if (!inside(dir, real) && !inside(realRoot(dir), real)) continue;
     return {
       file: candidate,
       relative: path.relative(dir, candidate),
       stats,
+      root,
     };
   }
 
@@ -145,19 +141,19 @@ function accepts(header: string | null): Set<string> {
   return out;
 }
 
-function encoded(
+async function encoded(
   found: Found,
   header: string | null,
-): {
+): Promise<{
   file: string;
   stats: fs.Stats;
   encoding: string | undefined;
-} {
+}> {
   const wanted = accepts(header);
   for (const { suffix, token } of ENCODINGS) {
     if (!wanted.has(token)) continue;
     const sidecar = found.file + suffix;
-    const stats = statFile(sidecar);
+    const stats = await statFile(sidecar, found.root);
     if (!stats) continue;
     return { file: sidecar, stats, encoding: token };
   }
@@ -219,10 +215,10 @@ export type StaticOptions = {
   compress: boolean;
 };
 
-export function serveStatic(
+export async function serveStatic(
   request: Request,
   options: StaticOptions,
-): Response | undefined {
+): Promise<Response | undefined> {
   const method = request.method;
   if (method !== "GET" && method !== "HEAD") return undefined;
   for (const [key] of request.headers) {
@@ -230,11 +226,11 @@ export function serveStatic(
   }
 
   const url = new URL(request.url);
-  const found = resolveFile(options.dir, url.pathname);
+  const found = await resolveFile(options.dir, url.pathname);
   if (!found) return undefined;
 
   const chosen = options.compress
-    ? encoded(found, request.headers.get("accept-encoding"))
+    ? await encoded(found, request.headers.get("accept-encoding"))
     : { file: found.file, stats: found.stats, encoding: undefined };
 
   const tag = etagOf(chosen.stats);

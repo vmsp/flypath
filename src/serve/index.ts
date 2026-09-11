@@ -267,7 +267,7 @@ function application(options: {
 
     if (serve.static) {
       const native = nativeTarget(url.pathname) !== undefined;
-      const file = serveStatic(
+      const file = await serveStatic(
         native ? withoutFlypathHeaders(request) : request,
         serve.static,
       );
