@@ -38,7 +38,7 @@ export function isConditionMap(
 function length(raw: string): number {
   const value = raw.trim();
   const match = /^(-?[\d.]+)(px|rem|em)?$/.exec(value);
-  if (!match) throw new Error(`flypath: unsupported media length "${raw}"`);
+  if (!match) throw new Error(`Unsupported media length "${raw}"`);
   const number = Number(match[1]);
   return match[2] === "rem" || match[2] === "em" ? number * 16 : number;
 }
@@ -53,14 +53,14 @@ export function parseCondition(key: string): Predicate {
     return { focus: true };
   }
   if (!isMedia(key)) {
-    throw new Error(`flypath: unsupported style condition "${key}"`);
+    throw new Error(`Unsupported style condition "${key}"`);
   }
 
   const predicate: Predicate = {};
   for (const part of key.slice("@media ".length).split(" and ")) {
     const match = FEATURE.exec(part.trim());
     if (!match) {
-      throw new Error(`flypath: unsupported media query "${key}"`);
+      throw new Error(`Unsupported media query "${key}"`);
     }
     const value = (match[2] ?? "").trim();
     switch (match[1]) {
@@ -78,13 +78,13 @@ export function parseCondition(key: string): Predicate {
         break;
       case "prefers-color-scheme":
         if (value !== "dark" && value !== "light") {
-          throw new Error(`flypath: unsupported media query "${key}"`);
+          throw new Error(`Unsupported media query "${key}"`);
         }
         predicate.scheme = value;
         break;
       default:
         if (value !== "reduce" && value !== "no-preference") {
-          throw new Error(`flypath: unsupported media query "${key}"`);
+          throw new Error(`Unsupported media query "${key}"`);
         }
         predicate.motion = value;
     }
@@ -99,7 +99,7 @@ export function validateConditionMap(
   for (const key of Object.keys(map)) {
     if (!isCondition(key)) {
       throw new Error(
-        `flypath: unsupported condition "${key}" on property "${property}"`,
+        `Unsupported condition "${key}" on property "${property}"`,
       );
     }
     if (key !== "default") parseCondition(key);

@@ -101,7 +101,7 @@ function reference(parsed: Parsed, callee: Node): Reference {
       const name = exportedAs(parsed.module, local);
       if (name === undefined) {
         throw new JobError(
-          `flypath: "${local}" is not a job: a job must be a top-level export ` +
+          `"${local}" is not a job: a job must be a top-level export ` +
             "of a module, imported or exported where it is enqueued",
           start,
         );
@@ -109,10 +109,7 @@ function reference(parsed: Parsed, callee: Node): Reference {
       return { source: null, name };
     }
     if (imported.kind === "NamespaceObject") {
-      throw new JobError(
-        `flypath: "${local}" is a module namespace, not a job`,
-        start,
-      );
+      throw new JobError(`"${local}" is a module namespace, not a job`, start);
     }
     return {
       source: imported.source,
@@ -123,7 +120,7 @@ function reference(parsed: Parsed, callee: Node): Reference {
   if (node["type"] === "MemberExpression" && node["computed"] !== true) {
     const property = node["property"] as Node;
     if (property["type"] !== "Identifier") {
-      throw new JobError("flypath: a job must be a named export", start);
+      throw new JobError("A job must be a named export", start);
     }
     const name = String(property["name"]);
     const object = unwrap(node["object"] as Node);
@@ -134,7 +131,7 @@ function reference(parsed: Parsed, callee: Node): Reference {
         return { source: imported.source, name };
       }
       throw new JobError(
-        `flypath: "${String(object["name"])}.${name}" is not a job: only a ` +
+        `"${String(object["name"])}.${name}" is not a job: only a ` +
           "namespace import or a dynamic import can hold one",
         start,
       );
@@ -147,7 +144,7 @@ function reference(parsed: Parsed, callee: Node): Reference {
   }
 
   throw new JobError(
-    "flypath: a job must be an identifier bound to an import or a top-level " +
+    "A job must be an identifier bound to an import or a top-level " +
       "export, or a member of a namespace or dynamic import",
     start,
   );
@@ -222,34 +219,30 @@ export async function discover(
       if (target.source !== null) {
         const resolved = await context.resolve(target.source, file);
         if (!resolved) {
-          throw new Error(
-            `flypath: cannot resolve "${target.source}" from ${file}`,
-          );
+          throw new Error(`Cannot resolve "${target.source}" from ${file}`);
         }
         resolvedFile = resolved.id.split("?")[0] as string;
       }
 
       if (resolvedFile.includes("node_modules")) {
         throw new Error(
-          `flypath: ${target.name} comes from node_modules; a job must be a ` +
+          `${target.name} comes from node_modules; a job must be a ` +
             `module in the project (${file})`,
         );
       }
 
       const targetParsed = targetOf(resolvedFile);
       if (!targetParsed) {
-        throw new Error(`flypath: cannot read the job module ${resolvedFile}`);
+        throw new Error(`Cannot read the job module ${resolvedFile}`);
       }
       if (directive(targetParsed) === "use server") {
         throw new Error(
-          `flypath: ${resolvedFile} is a "use server" module; its exports are ` +
+          `${resolvedFile} is a "use server" module; its exports are ` +
             "public endpoints and cannot be jobs",
         );
       }
       if (!exportNames(targetParsed.module).has(target.name)) {
-        throw new Error(
-          `flypath: ${resolvedFile} does not export ${target.name}`,
-        );
+        throw new Error(`${resolvedFile} does not export ${target.name}`);
       }
 
       watched.add(resolvedFile);

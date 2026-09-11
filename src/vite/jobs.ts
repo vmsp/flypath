@@ -162,7 +162,7 @@ function rejectNested(argument: Node): void {
   });
   if (!offender) return;
   throw new JobError(
-    "flypath: an enqueued call may not take another call as an argument; " +
+    "An enqueued call may not take another call as an argument; " +
       "compute it before the arrow and pass the value",
     startOf(offender),
   );
@@ -179,7 +179,7 @@ export function analyze(thunk: Node): Analysis {
 
   if (thunk["type"] !== "ArrowFunctionExpression") {
     throw new JobError(
-      "flypath: a job must be enqueued as an arrow literal whose body is one " +
+      "A job must be enqueued as an arrow literal whose body is one " +
         "call, or as a bare function reference",
       startOf(thunk),
     );
@@ -188,7 +188,7 @@ export function analyze(thunk: Node): Analysis {
   const body = thunk["body"] as Node;
   if (body["type"] === "BlockStatement") {
     throw new JobError(
-      "flypath: an enqueued arrow must have an expression body that is " +
+      "An enqueued arrow must have an expression body that is " +
         "exactly one call",
       startOf(body),
     );
@@ -200,7 +200,7 @@ export function analyze(thunk: Node): Analysis {
   }
   if (call["type"] !== "CallExpression") {
     throw new JobError(
-      "flypath: an enqueued arrow's body must be exactly one call",
+      "An enqueued arrow's body must be exactly one call",
       startOf(call),
     );
   }

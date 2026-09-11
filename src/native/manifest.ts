@@ -147,7 +147,7 @@ function readType(
 ): NativeType {
   if (!node) {
     throw new ManifestError(
-      `flypath: ${where} needs an explicit type annotation`,
+      `${where} needs an explicit type annotation`,
       file,
       node,
     );
@@ -177,7 +177,7 @@ function readType(
       );
       if (rest.length === members.length || rest.length !== 1) {
         throw new ManifestError(
-          `flypath: ${where} uses a union type that is not "T | undefined" — ` +
+          `${where} uses a union type that is not "T | undefined" — ` +
             "declare a named type alias for literal unions",
           file,
           node,
@@ -203,14 +203,14 @@ function readType(
       if (names.structs.has(name)) return { kind: "struct", name };
       if (names.enums.has(name)) return { kind: "enum", name };
       throw new ManifestError(
-        `flypath: ${where} uses "${name}", which is outside the "use native" type lattice`,
+        `${where} uses "${name}", which is outside the "use native" type lattice`,
         file,
         node,
       );
     }
     default:
       throw new ManifestError(
-        `flypath: ${where} uses a type that is outside the "use native" type lattice`,
+        `${where} uses a type that is outside the "use native" type lattice`,
         file,
         node,
       );
@@ -247,7 +247,7 @@ function readParams(
   return params.map((param): NativeParam => {
     if (param["type"] !== "Identifier") {
       throw new ManifestError(
-        `flypath: ${where} may only take plain named parameters`,
+        `${where} may only take plain named parameters`,
         file,
         param,
       );
@@ -278,7 +278,7 @@ function readMembers(
   return members.map((member): NativeParam => {
     if (member["type"] !== "TSPropertySignature") {
       throw new ManifestError(
-        `flypath: ${where} may only contain plain properties`,
+        `${where} may only contain plain properties`,
         file,
         member,
       );
@@ -287,7 +287,7 @@ function readMembers(
     const name = String(key["name"] ?? key["value"] ?? "");
     if (name === "children") {
       throw new ManifestError(
-        `flypath: "children" is not supported on a native component yet (${where})`,
+        `"children" is not supported on a native component yet (${where})`,
         file,
         member,
       );
@@ -320,7 +320,7 @@ function readComponentMembers(
   for (const member of members) {
     if (member["type"] !== "TSPropertySignature") {
       throw new ManifestError(
-        `flypath: ${where} may only contain plain properties`,
+        `${where} may only contain plain properties`,
         file,
         member,
       );
@@ -329,7 +329,7 @@ function readComponentMembers(
     const name = String(key["name"] ?? key["value"] ?? "");
     if (name === "children") {
       throw new ManifestError(
-        `flypath: "children" is not supported on a native component yet (${where})`,
+        `"children" is not supported on a native component yet (${where})`,
         file,
         member,
       );
@@ -342,7 +342,7 @@ function readComponentMembers(
       ] as Node | undefined;
       if (result?.["type"] !== "TSVoidKeyword") {
         throw new ManifestError(
-          `flypath: ${where} event "${name}" must return void`,
+          `${where} event "${name}" must return void`,
           file,
           member,
         );
@@ -392,7 +392,7 @@ function literalUnion(node: Node | undefined): string[] | undefined {
 
 function unsupportedStatement(file: string, statement: Node): never {
   throw new ManifestError(
-    'flypath: a "use native" module may only contain "import type", ' +
+    'A "use native" module may only contain "import type", ' +
       '"export declare" and type declarations',
     file,
     statement,
@@ -429,7 +429,7 @@ function parseModule(
   const { program, errors } = parseSync(file, code);
   if (errors.length > 0) {
     throw new ManifestError(
-      `flypath: ${errors[0]?.message ?? "parse error"}`,
+      `${errors[0]?.message ?? "parse error"}`,
       file,
       undefined,
     );
@@ -470,7 +470,7 @@ function parseModule(
     if (type === "ImportDeclaration") {
       if (statement["importKind"] !== "type") {
         throw new ManifestError(
-          'flypath: a "use native" module may only use "import type"',
+          'A "use native" module may only use "import type"',
           file,
           statement,
         );
@@ -518,7 +518,7 @@ function parseModule(
         continue;
       }
       throw new ManifestError(
-        `flypath: type "${name}" must be an object type or a union of string literals`,
+        `Type "${name}" must be an object type or a union of string literals`,
         file,
         declaration,
       );
@@ -527,7 +527,7 @@ function parseModule(
     if (kind === "TSDeclareFunction") {
       if (statement["type"] !== "ExportNamedDeclaration") {
         throw new ManifestError(
-          'flypath: every declaration in a "use native" module must be exported',
+          'Every declaration in a "use native" module must be exported',
           file,
           statement,
         );
@@ -556,7 +556,7 @@ function parseModule(
     if (kind === "VariableDeclaration") {
       if (statement["type"] !== "ExportNamedDeclaration") {
         throw new ManifestError(
-          'flypath: every declaration in a "use native" module must be exported',
+          'Every declaration in a "use native" module must be exported',
           file,
           statement,
         );
@@ -572,7 +572,7 @@ function parseModule(
           )
         ) {
           throw new ManifestError(
-            `flypath: "${name}" must be declared as NativeComponent<Props>`,
+            `"${name}" must be declared as NativeComponent<Props>`,
             file,
             declarator,
           );
@@ -606,7 +606,7 @@ function parseModule(
       const members = propsByName.get(name);
       if (!members) {
         throw new ManifestError(
-          `flypath: <${entry.name}> props type "${name}" must be an interface declared in this module`,
+          `<${entry.name}> props type "${name}" must be an interface declared in this module`,
           file,
           node,
         );
@@ -615,7 +615,7 @@ function parseModule(
       continue;
     }
     throw new ManifestError(
-      `flypath: <${entry.name}> needs an object props type`,
+      `<${entry.name}> needs an object props type`,
       file,
       node,
     );
@@ -714,7 +714,7 @@ function assertNoCaptures(
     const value = String(child["name"]);
     if (locals.has(value) || !bindings.has(value)) return;
     throw new ManifestError(
-      `flypath: inline "use native" function ${name}() captures "${value}" — ` +
+      `Inline "use native" function ${name}() captures "${value}" — ` +
         "nothing can cross into Swift or Kotlin",
       file,
       child,
@@ -746,7 +746,7 @@ function parseInlineModule(
 
   if (!USE_CLIENT.test(code)) {
     throw new ManifestError(
-      'flypath: an inline "use native" function may only live in a "use client" module',
+      'An inline "use native" function may only live in a "use client" module',
       file,
       candidates[0],
     );
@@ -840,7 +840,7 @@ function checkWebParity(module: NativeModuleEntry): void {
   const missing = exportNames(module).filter((name) => !actual.has(name));
   if (missing.length === 0) return;
   throw new ManifestError(
-    `flypath: ${posix(path.basename(module.web))} does not export ${missing.join(
+    `${posix(path.basename(module.web))} does not export ${missing.join(
       ", ",
     )} — a web implementation must match ${module.source}`,
     module.web,
@@ -884,7 +884,7 @@ export function buildManifest(root: string): NativeManifest {
       const existing = owners.get(name);
       if (existing) {
         throw new ManifestError(
-          `flypath: "${name}" is exported by both ${existing} and ${module.source} — ` +
+          `"${name}" is exported by both ${existing} and ${module.source} — ` +
             '"use native" exports bind by symbol name and must be unique',
           module.file,
           undefined,

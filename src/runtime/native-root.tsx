@@ -125,7 +125,7 @@ async function fetchFragment(
   const response = await flight(url, { [FRAGMENT_HEADER]: container });
   if (response.status === 204) {
     throw new Error(
-      `flypath: the chrome of container "${container}" redirected while ` +
+      `The chrome of container "${container}" redirected while ` +
         "rendering; a fragment renders around a URL whose guards have " +
         "already passed, so following it would let the chrome navigate the app",
     );
@@ -134,7 +134,7 @@ async function fetchFragment(
 }
 
 const NO_HISTORY =
-  'flypath: navigate("back") ran while rendering a screen; there is no ' +
+  'navigate("back") ran while rendering a screen; there is no ' +
   "history to pop until the screen exists";
 
 class RootBoundary extends Component<
@@ -188,6 +188,7 @@ export default function Root(): ReactNode {
       screen: fetchScreen,
       fragment: fetchFragment,
       dev: nativeConfig().dev,
+      debug: nativeConfig().debug,
       router: () => state.current,
       settle: (key, result) => {
         const command = result.command;

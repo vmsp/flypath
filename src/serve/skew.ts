@@ -66,7 +66,7 @@ export function skewResponse(
     ageOf(binary) < ageOf(minimum)
   ) {
     return new Response(
-      `flypath: this server requires a build of the app from ${minimum} or later`,
+      `This server requires a build of the app from ${minimum} or later`,
       {
         status: 426,
         headers: {
@@ -89,7 +89,7 @@ export function skewResponse(
   if (!manifest || manifest.baseId === declared) return undefined;
 
   return new Response(
-    `flypath: this app was built against base bundle ${declared}, and the ` +
+    `This app was built against base bundle ${declared}, and the ` +
       `server is serving ${manifest.baseId}; chunks built for one base cannot ` +
       "be evaluated against the other",
     {

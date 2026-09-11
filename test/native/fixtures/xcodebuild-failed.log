@@ -1,0 +1,53 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination id=CAD4C5EE-F046-426F-857D-CCBAD62A73C5 -derivedDataPath derived build
+
+Resolve Package Graph
+
+Resolved source packages:
+  FlypathCore: ${ROOT}/node_modules/.flypath/ios/FlypathCore
+  ExampleNative: ${ROOT}/apple
+
+Sync SPM Autolinking
+    cd ${ROOT}/node_modules/.flypath/ios
+    export ACTION\=build
+    export AD_HOC_CODE_SIGNING_ALLOWED\=YES
+    export ALWAYS_SEARCH_USER_PATHS\=NO
+    export ARCHS\=arm64
+
+CompileC ${ROOT}/node_modules/.flypath/ios/derived/Build/Intermediates.noindex/FlypathCore.build/Debug-iphonesimulator/FlypathCore.build/Objects-normal/arm64/FlypathRuntime.o ${FLYPATH}/cpp/FlypathRuntime.cpp normal arm64 c++ com.apple.compilers.llvm.clang.1_0.compiler (in target 'FlypathCore' from project 'FlypathCore')
+    cd ${ROOT}/node_modules/.flypath/ios/FlypathCore
+In file included from ${FLYPATH}/cpp/FlypathRuntime.cpp:1:
+${ROOT}/node_modules/react-native/React/Base/RCTBridgeModule.h:162:1: warning: pointer is missing a nullability type specifier (_Nonnull, _Nullable, or _Null_unspecified) [-Wnullability-completeness]
+  162 | typedef void (^RCTResponseSenderBlock)(NSArray *response);
+      | ^
+${ROOT}/node_modules/react-native/React/Base/RCTBridgeModule.h:162:1: note: insert '_Nullable' if the pointer may be null
+
+SwiftCompile normal arm64 Compiling\ Camera.swift ${ROOT}/apple/Sources/Camera.swift (in target 'ExampleNative' from project 'ExampleNative')
+
+SwiftCompile normal arm64 ${ROOT}/apple/Sources/Camera.swift (in target 'ExampleNative' from project 'ExampleNative')
+    cd ${ROOT}/node_modules/.flypath/ios/App.xcodeproj
+
+${ROOT}/apple/Sources/Camera.swift:56:15: warning: 'devices()' was deprecated in iOS 10.0: Use AVCaptureDeviceDiscoverySession instead.
+      let _ = AVCaptureDevice.devices()
+              `- warning: 'devices()' was deprecated in iOS 10.0: Use AVCaptureDeviceDiscoverySession instead.
+${ROOT}/apple/Sources/Camera.swift:56:15: warning: 'devices()' was deprecated in iOS 10.0: Use AVCaptureDeviceDiscoverySession instead.
+${ROOT}/apple/Sources/Camera.swift:57:14: error: cannot find type 'AVCaptureSesion' in scope
+      let _: AVCaptureSesion? = nil
+             ^~~~~~~~~~~~~~~
+
+Failed frontend command:
+/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c ${ROOT}/apple/Sources/Battery.swift -primary-file ${ROOT}/apple/Sources/Camera.swift
+
+Ld ${ROOT}/node_modules/.flypath/ios/derived/Build/Products/Debug-iphonesimulator/Flypath.o normal (in target 'Flypath' from project 'FlypathCore')
+
+CodeSign ${ROOT}/node_modules/.flypath/ios/derived/Build/Products/Debug-iphonesimulator/App.app (in target 'App' from project 'App')
+
+warning: Run script build phase 'Sync SPM Autolinking' will be run during every build because it does not specify any outputs. To address this issue, either add output dependencies to the script phase, or configure it to run in every build by unchecking "Based on dependency analysis" in the script phase. (in target 'App' from project 'App')
+** BUILD FAILED **
+
+
+The following build commands failed:
+	SwiftCompile normal arm64 ${ROOT}/apple/Sources/Camera.swift (in target 'ExampleNative' from project 'ExampleNative')
+	SwiftCompile normal arm64 Compiling\ Camera.swift ${ROOT}/apple/Sources/Camera.swift (in target 'ExampleNative' from project 'ExampleNative')
+	Building project App with scheme App and configuration Debug
+(3 failures)

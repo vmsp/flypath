@@ -1,9 +1,11 @@
 import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 
-import type { Logger } from "vite";
 import type { WebSocket } from "ws";
 import { WebSocketServer } from "ws";
+
+import type { DeviceEvent } from "../shared/events.ts";
+import { report } from "../shared/events.ts";
 
 export type Upgrade = (
   request: IncomingMessage,
@@ -18,15 +20,15 @@ class SocketEndpoint {
 
   constructor() {
     this.wss = new WebSocketServer({ noServer: true });
-    this.wss.on("connection", (socket) => {
+    this.wss.on("connection", (socket, request: IncomingMessage) => {
       this.clients.add(socket);
       socket.on("close", () => this.clients.delete(socket));
       socket.on("error", () => this.clients.delete(socket));
-      this.onConnection(socket);
+      this.onConnection(socket, request);
     });
   }
 
-  protected onConnection(_socket: WebSocket): void {}
+  protected onConnection(_socket: WebSocket, _request: IncomingMessage): void {}
 
   handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer): void {
     this.wss.handleUpgrade(request, socket, head, (client) => {
@@ -74,14 +76,47 @@ export type HotUpdate = {
   deleted: number[];
 };
 
-export class HotSocket extends SocketEndpoint {
-  constructor(private readonly logger: Logger) {
-    super();
+function platformIn(url: string | undefined): string | undefined {
+  if (url === undefined) return undefined;
+  try {
+    return (
+      new URL(url, "http://localhost").searchParams.get("platform") ?? undefined
+    );
+  } catch {
+    return undefined;
   }
+}
 
-  protected override onConnection(socket: WebSocket): void {
+function level(value: string | undefined): DeviceEvent["level"] | undefined {
+  switch (value) {
+    case "warn":
+      return "warn";
+    case "error":
+      return "error";
+    case "debug":
+    case "trace":
+      return "debug";
+    case "groupEnd":
+      return undefined;
+    default:
+      return "log";
+  }
+}
+
+export class HotSocket extends SocketEndpoint {
+  protected override onConnection(
+    socket: WebSocket,
+    request: IncomingMessage,
+  ): void {
+    let platform = platformIn(request.url);
+
     socket.on("message", (raw) => {
-      let data: { type?: string; level?: string; data?: unknown[] };
+      let data: {
+        type?: string;
+        level?: string;
+        data?: unknown[];
+        entryPoints?: unknown[];
+      };
       try {
         data = JSON.parse(String(raw)) as typeof data;
       } catch {
@@ -89,14 +124,26 @@ export class HotSocket extends SocketEndpoint {
       }
 
       if (data.type === "register-entrypoints") {
+        platform ??= (data.entryPoints ?? [])
+          .map((entry) => platformIn(String(entry)))
+          .find((entry) => entry !== undefined);
         socket.send(JSON.stringify({ type: "bundle-registered" }));
         return;
       }
 
       if (data.type === "log" && Array.isArray(data.data)) {
-        this.logger.info(
-          `[native:${data.level ?? "log"}] ${data.data.join(" ")}`,
-        );
+        const kind = level(data.level);
+        if (kind === undefined) return;
+        report({
+          kind: "device",
+          platform: platform ?? "native",
+          level: kind,
+          text: data.data
+            .map((entry) =>
+              typeof entry === "string" ? entry : JSON.stringify(entry),
+            )
+            .join(" "),
+        });
       }
     });
   }

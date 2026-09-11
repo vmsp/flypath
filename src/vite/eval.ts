@@ -43,10 +43,7 @@ export function evaluate(input: Node, scope: Map<string, unknown>): unknown {
     case "Identifier": {
       const name = String(node["name"]);
       if (!scope.has(name)) {
-        throw new StaticError(
-          `flypath: "${name}" is not statically known here`,
-          node,
-        );
+        throw new StaticError(`"${name}" is not statically known here`, node);
       }
       return scope.get(name);
     }
@@ -54,7 +51,7 @@ export function evaluate(input: Node, scope: Map<string, unknown>): unknown {
       const value = evaluate(node["argument"] as Node, scope);
       if (node["operator"] === "-") return -Number(value);
       if (node["operator"] === "+") return Number(value);
-      throw new StaticError("flypath: unsupported operator", node);
+      throw new StaticError("Unsupported operator", node);
     }
     case "BinaryExpression": {
       const left = evaluate(node["left"] as Node, scope);
@@ -71,7 +68,7 @@ export function evaluate(input: Node, scope: Map<string, unknown>): unknown {
         case "/":
           return Number(left) / Number(right);
         default:
-          throw new StaticError("flypath: unsupported operator", node);
+          throw new StaticError("Unsupported operator", node);
       }
     }
     case "TemplateLiteral": {
@@ -114,16 +111,13 @@ export function evaluate(input: Node, scope: Map<string, unknown>): unknown {
           ? String(evaluate(property, scope))
           : String(property["name"]);
       if (object === null || typeof object !== "object" || !(key in object)) {
-        throw new StaticError(
-          `flypath: "${key}" is not statically known here`,
-          node,
-        );
+        throw new StaticError(`"${key}" is not statically known here`, node);
       }
       return object[key];
     }
     default:
       throw new StaticError(
-        `flypath: ${String(node["type"])} cannot be evaluated at build time`,
+        `${String(node["type"])} cannot be evaluated at build time`,
         node,
       );
   }

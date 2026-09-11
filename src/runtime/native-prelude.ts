@@ -6,6 +6,7 @@ export type PreludeOptions = {
   root: string;
   platform: string;
   dev: boolean;
+  debug?: boolean;
   serverUrl: string;
   manifestHash: string;
   baseId?: string;
@@ -35,6 +36,7 @@ __GLOBAL__.__FLYPATH__ = {
   platform: ${JSON.stringify(options.platform)},
   serverUrl: ${JSON.stringify(options.serverUrl)},
   dev: ${dev},
+  debug: ${options.dev && options.debug === true ? "true" : "false"},
   manifestHash: ${JSON.stringify(options.manifestHash)},
   baseId: ${JSON.stringify(options.baseId ?? "")},
   build: ${JSON.stringify(options.build ?? "")},

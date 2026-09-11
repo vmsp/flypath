@@ -151,7 +151,7 @@ class Level {
     }
 
     throw new Error(
-      `flypath: "${name}" is not a column of this query; the columns in ` +
+      `"${name}" is not a column of this query; the columns in ` +
         `scope are ${this.names().join(", ") || "(none)"}`,
     );
   }
@@ -575,7 +575,7 @@ class Compiler {
   private expand(level: Level): void {
     if (level.entries.every((entry) => entry.kind === "item")) return;
     throw new Error(
-      "flypath: drop() and rename() need the table's columns, so the table " +
+      "drop() and rename() need the table's columns, so the table " +
         "has to be declared in db/schema.ts",
     );
   }

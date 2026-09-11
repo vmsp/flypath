@@ -37,7 +37,7 @@ function request(): RequestInfo {
   const value = getRequest();
   if (!value) {
     throw new Error(
-      "flypath: cookies() is only available while the flypath router is " +
+      "cookies() is only available while the flypath router is " +
         "handling a request, so it reads in a middleware, a server " +
         "component or a server action",
     );

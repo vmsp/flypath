@@ -21,7 +21,7 @@ export function runMiddleware(
     const next: Next = () => {
       if (pending) {
         throw new Error(
-          "flypath: a middleware called next() twice; a request has one " +
+          "A middleware called next() twice; a request has one " +
             "downstream, so it may be called at most once",
         );
       }

@@ -77,7 +77,7 @@ export function nativeComponent(
     if (host) return host;
     if (!nativeRegistry().components.includes(config.name)) {
       throw new Error(
-        `flypath: <${config.label}> is not in this build of the app — ` +
+        `<${config.label}> is not in this build of the app — ` +
           'run "pnpm ios" or "pnpm android"',
       );
     }
@@ -92,9 +92,7 @@ export function nativeComponent(
   function Native(props: NativeComponentProps): ReactNode {
     const { style, children, ...rest } = props;
     if (children !== undefined && DEV) {
-      throw new Error(
-        `flypath: <${config.label}> does not accept children yet`,
-      );
+      throw new Error(`<${config.label}> does not accept children yet`);
     }
 
     const Host = resolveHost();

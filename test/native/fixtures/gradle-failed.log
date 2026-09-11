@@ -1,0 +1,29 @@
+> Task :gradle-plugin:shared:compileKotlin UP-TO-DATE
+> Task :flypath:compileDebugKotlin UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :native:compileDebugLibraryResources UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:configureCMakeDebug[arm64-v8a]
+
+> Task :native:compileDebugKotlin FAILED
+w: file://${ROOT}/android/src/main/kotlin/Camera.kt:25:32 'fun getColor(p0: Int): Int' is deprecated. Deprecated in Java.
+w: file://${ROOT}/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/ReactActivity.kt:40:5 'onBackPressed' overrides deprecated member.
+e: file://${ROOT}/android/src/main/kotlin/Camera.kt:26:15 Unresolved reference 'PreviewVeiw'.
+
+> Task :app:buildCMakeDebug[arm64-v8a]
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':native:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 13s
+68 actionable tasks: 3 executed, 65 up-to-date

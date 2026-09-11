@@ -22,7 +22,7 @@ export function assertNoClientReference(type: unknown): void {
   if ((type as { $$typeof?: unknown })["$$typeof"] !== CLIENT_REFERENCE) return;
   const name = (type as { name?: unknown })["name"];
   throw new Error(
-    `flypath: the "use client" component ${
+    `The "use client" component ${
       typeof name === "string" && name !== "" ? `<${name}> ` : ""
     }cannot be rendered into an email. A client component is rendered by the ` +
       "browser environment, whose styles resolve against a stylesheet no " +
@@ -40,7 +40,7 @@ function absolute(
   if (isExternal(value)) return value;
   if (baseUrl === undefined) {
     throw new Error(
-      `flypath: <${tag} ${attribute}="${value}"> is relative, and an inbox ` +
+      `<${tag} ${attribute}="${value}"> is relative, and an inbox ` +
         "has no page for it to be relative to. Declare mail.baseUrl in " +
         `vite.config.ts, set ${ENV.url} in .env, or pass baseUrl to sendMail()`,
     );
@@ -83,7 +83,7 @@ function mirrorAttributes(
   }
   if (DEV && props["alt"] === undefined) {
     console.warn(
-      `flypath: <img src="${String(
+      `<img src="${String(
         props["src"] ?? "",
       )}"> in an email has no alt text. Many inboxes block images by ` +
         "default, and the alt text is all the reader sees until they load them",
@@ -102,7 +102,7 @@ export function createEmailIntrinsic(
 ): ReactElement {
   if (DOCUMENT.has(type)) {
     throw new Error(
-      `flypath: <${type}> cannot be written inside an email; the renderer ` +
+      `<${type}> cannot be written inside an email; the renderer ` +
         "owns the document, exactly as it does for a page. Everything that " +
         "belongs in <head> — a <title>, a <meta>, a <style> — is hoisted " +
         "there from anywhere in the tree. To own the whole document, send a " +

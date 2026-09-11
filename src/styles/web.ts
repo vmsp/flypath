@@ -31,7 +31,7 @@ function track(rules: AtomicRule[]): void {
   if (warned || minted.size <= DYNAMIC_LIMIT) return;
   warned = true;
   console.warn(
-    `flypath: ${minted.size} atomic classes have been generated at runtime. ` +
+    `${minted.size} atomic classes have been generated at runtime. ` +
       "Conditional style values that change every render mint a new class each " +
       "time and their rules are never removed. Hoist the condition map or move " +
       "the changing part to a plain (unconditional) style value.",

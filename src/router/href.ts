@@ -19,7 +19,7 @@ export function buildHref(
       const name = part.slice(1);
       const value = params?.[name];
       if (value === undefined || value === null) {
-        throw new Error(`flypath: href("${pattern}") is missing "${name}"`);
+        throw new Error(`href("${pattern}") is missing "${name}"`);
       }
       used.add(name);
       parts.push(encodeURIComponent(String(value)));

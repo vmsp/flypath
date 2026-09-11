@@ -310,7 +310,7 @@ export async function sendResponse(
       res.on("error", reject);
       res.on("close", () => {
         if (res.writableEnded) resolve();
-        else reject(new Error("flypath: the connection closed mid-response"));
+        else reject(new Error("The connection closed mid-response"));
       });
       source.pipe(res);
       res.on("finish", resolve);

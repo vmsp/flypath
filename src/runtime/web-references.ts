@@ -24,7 +24,7 @@ setRequireModule({
       return __vite_rsc_raw_import__(base() + stableUrl(id).slice(1));
     }
     const load = references[id];
-    if (!load) throw new Error(`flypath: client reference not found "${id}"`);
+    if (!load) throw new Error(`Client reference not found "${id}"`);
     return load();
   },
 });

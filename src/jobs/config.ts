@@ -66,7 +66,7 @@ export function queue(name: string): Queue {
   const declared = globals().jobsConfig?.queues?.[name];
   if (declared === undefined && name !== "default") {
     throw new Error(
-      `flypath: there is no "${name}" queue; declare it in vite.config.ts ` +
+      `There is no "${name}" queue; declare it in vite.config.ts ` +
         `under jobs.queues`,
     );
   }

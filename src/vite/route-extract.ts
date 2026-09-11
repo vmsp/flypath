@@ -25,7 +25,7 @@ const BUILDERS = new Set([
 ]);
 
 const NOOP: Loader = () =>
-  Promise.reject(new Error("flypath: route loaders are server-only"));
+  Promise.reject(new Error("Route loaders are server-only"));
 
 function scopeOf(body: Node[]): Map<string, unknown> {
   const scope = new Map<string, unknown>();
@@ -128,7 +128,7 @@ function options(node: Node | undefined, context: Context): RouteOptions {
   if (value["type"] !== "ObjectExpression") {
     const evaluated = evaluate(value, context.scope);
     if (evaluated === null || typeof evaluated !== "object") {
-      throw new StaticError("flypath: route options must be an object", value);
+      throw new StaticError("Route options must be an object", value);
     }
     return omitted(evaluated);
   }
@@ -147,7 +147,7 @@ function options(node: Node | undefined, context: Context): RouteOptions {
     } catch (error) {
       if (!(error instanceof StaticError)) throw error;
       throw new StaticError(
-        `flypath: route option "${key}" is read at build time and shipped to ` +
+        `Route option "${key}" is read at build time and shipped to ` +
           'the client, so it must be a literal; only "middleware" may hold ' +
           "functions and other runtime values",
         property,
@@ -202,7 +202,7 @@ function launchOption(
     const launch = evaluate(property["value"] as Node, context.scope);
     if (typeof launch !== "string") {
       throw new StaticError(
-        "flypath: routes() launch is read at build time and shipped to the " +
+        "routes() launch is read at build time and shipped to the " +
           "client, so it must be a string literal",
         property,
       );
@@ -217,7 +217,7 @@ function children(node: Node | undefined, context: Context): AnyNode[] {
   const value = unwrap(node);
   if (value["type"] !== "ArrayExpression") {
     throw new StaticError(
-      "flypath: route children must be an inline array literal",
+      "Route children must be an inline array literal",
       value,
     );
   }
@@ -286,7 +286,7 @@ function interpret(input: Node, context: Context): AnyNode {
     case "route": {
       const pattern = evaluate(args[0] as Node, context.scope);
       if (typeof pattern !== "string") {
-        throw new StaticError("flypath: route patterns must be strings", node);
+        throw new StaticError("Route patterns must be strings", node);
       }
       return {
         kind: "route",
@@ -299,7 +299,7 @@ function interpret(input: Node, context: Context): AnyNode {
     }
     default:
       throw new StaticError(
-        'flypath: routes may only be built with the "flypath/router" builders',
+        'Routes may only be built with the "flypath/router" builders',
         node,
       );
   }
@@ -308,7 +308,7 @@ function interpret(input: Node, context: Context): AnyNode {
 export function parseRouteTree(id: string, code: string): RouteTree {
   const { program, errors } = parseSync(id, code);
   if (errors.length > 0) {
-    throw new Error(`flypath: could not parse ${id}\n${errors[0]?.message}`);
+    throw new Error(`Could not parse ${id}\n${errors[0]?.message}`);
   }
 
   const body = (program as unknown as Node)["body"] as Node[];
@@ -320,12 +320,12 @@ export function parseRouteTree(id: string, code: string): RouteTree {
 
   const exported = defaultExport(body);
   if (!exported) {
-    throw new Error(`flypath: ${id} must export the route tree as default`);
+    throw new Error(`${id} must export the route tree as default`);
   }
 
   const node = resolveExpression(exported, context);
   if (builderOf(node, context) !== "routes") {
-    throw new Error(`flypath: ${id} must default-export routes([...])`);
+    throw new Error(`${id} must default-export routes([...])`);
   }
 
   const args = node["arguments"] as Node[];
@@ -355,7 +355,7 @@ function checkRoute(route: FlatRoute): void {
 
   if (at.split("/").some((part) => part.startsWith(":"))) {
     throw new Error(
-      `flypath: ${at} has prerender: true but its pattern takes a param; a ` +
+      `${at} has prerender: true but its pattern takes a param; a ` +
         "prerendered route is rendered once at build time and there is " +
         "nowhere yet to declare the values to render it for — drop prerender",
     );
@@ -364,7 +364,7 @@ function checkRoute(route: FlatRoute): void {
   const guard = route.middleware[0];
   if (guard) {
     throw new Error(
-      `flypath: ${at} has prerender: true but the middleware ${guard.name}() ` +
+      `${at} has prerender: true but the middleware ${guard.name}() ` +
         `runs over it (declared on ${origins.get(guard) ?? "an ancestor"}); a ` +
         "middleware exists to make a response depend on the request, and a " +
         "prerendered response is a file — move the route out from under it, " +
@@ -374,7 +374,7 @@ function checkRoute(route: FlatRoute): void {
 
   if (route.options.presentation === "modal") {
     throw new Error(
-      `flypath: ${at} has prerender: true and presentation: "modal"; a modal ` +
+      `${at} has prerender: true and presentation: "modal"; a modal ` +
         "is fetched as a container-scoped payload and a prerendered route is " +
         "one file, so it cannot be both — drop one of the two",
     );
@@ -383,14 +383,14 @@ function checkRoute(route: FlatRoute): void {
   for (const part of at.split("/")) {
     if (part === "index") {
       throw new Error(
-        `flypath: ${at} has prerender: true but a path segment is "index"; ` +
+        `${at} has prerender: true but a path segment is "index"; ` +
           "the page is written to <path>/index.html, so the segment would " +
           "collide with the file — rename it",
       );
     }
     if (part.endsWith(FLIGHT_SUFFIX)) {
       throw new Error(
-        `flypath: ${at} has prerender: true but a path segment ends in ` +
+        `${at} has prerender: true but a path segment ends in ` +
           `"${FLIGHT_SUFFIX}"; that is the URL a route's payload is fetched ` +
           "from, so the segment would collide with it — rename it",
       );
@@ -408,7 +408,7 @@ function checkLaunch(tree: RouteTree, routes: readonly FlatRoute[]): void {
   if (launch === undefined) {
     if (matchRoutes(routes, "/")?.route.options.prerender !== true) return;
     throw new Error(
-      "flypath: / is prerendered but routes() declares no launch, so the app " +
+      "/ is prerendered but routes() declares no launch, so the app " +
         `would open on it; ${BUILT_FOR_THE_BROWSER} — set launch to the ` +
         "route the app opens on",
     );
@@ -416,7 +416,7 @@ function checkLaunch(tree: RouteTree, routes: readonly FlatRoute[]): void {
 
   if (launch.split("/").some((part) => part.startsWith(":"))) {
     throw new Error(
-      `flypath: routes({ launch: "${launch}" }) takes a param; the app opens ` +
+      `routes({ launch: "${launch}" }) takes a param; the app opens ` +
         "on it with no request to fill one from, so it must be a complete " +
         "path — write the value into it",
     );
@@ -425,7 +425,7 @@ function checkLaunch(tree: RouteTree, routes: readonly FlatRoute[]): void {
   const matched = matchRoutes(routes, launch);
   if (!matched) {
     throw new Error(
-      `flypath: routes({ launch: "${launch}" }) matches no route; launch is ` +
+      `routes({ launch: "${launch}" }) matches no route; launch is ` +
         "the path the native app opens on, so it must be one this tree " +
         "declares",
     );
@@ -433,7 +433,7 @@ function checkLaunch(tree: RouteTree, routes: readonly FlatRoute[]): void {
 
   if (matched.route.options.prerender === true) {
     throw new Error(
-      `flypath: routes({ launch: "${launch}" }) names a prerendered route; ` +
+      `routes({ launch: "${launch}" }) names a prerendered route; ` +
         `${BUILT_FOR_THE_BROWSER} — point launch at a route the app renders ` +
         "on demand, or drop prerender from it",
     );
@@ -445,7 +445,7 @@ function check(tree: RouteTree, flat: Flattened): void {
 
   if (flat.fallback?.options.prerender === true) {
     throw new Error(
-      "flypath: notFound() has prerender: true; the fallback has no path of " +
+      "notFound() has prerender: true; the fallback has no path of " +
         "its own, so there is no file to write it to and no URL for the " +
         "client to ask for — drop prerender",
     );

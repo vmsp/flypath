@@ -26,7 +26,7 @@ export function finishEmail(html: string): string {
 
   if (DEV && out.length > CLIP) {
     console.warn(
-      `flypath: this email is ${String(
+      `This email is ${String(
         Math.round(out.length / 1024),
       )} KB. Gmail clips a message past about 102 KB and hides the rest ` +
         'behind a "[Message clipped]" link, so trim the markup or move ' +

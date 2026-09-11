@@ -1,10 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { FlypathError } from "../shared/errors.ts";
 import { packageRoot } from "../shared/paths.ts";
+import type { Progress } from "../terminal/output.ts";
+import { note, print, step, warn } from "../terminal/output.ts";
 import { generateCorePackage } from "./apple.ts";
 import { loadOptions } from "./config.ts";
-import { run } from "./exec.ts";
+import { devServerRunning, firstLaunch } from "./dev-server.ts";
+import type { Collector } from "./diagnostics.ts";
+import { collector, showWarnings } from "./diagnostics.ts";
+import { run, startLog } from "./exec.ts";
 import {
   generateAppleComponents,
   generateAppleRegistry,
@@ -36,7 +42,7 @@ export type IosOptions = {
   archiveOnly?: boolean;
   upload?: boolean;
   xcode?: boolean;
-  apk?: boolean;
+  console?: boolean;
 };
 
 function applyOverlay(context: ProjectContext, target: string): void {
@@ -167,9 +173,9 @@ export async function prepareIos(
     "setup-apple-spm.js",
   );
   if (!fs.existsSync(spmScript)) {
-    throw new Error(
-      "flypath: react-native 0.87 is required for the SPM-only iOS setup",
-    );
+    throw new FlypathError("The iOS project needs react-native 0.87", {
+      hint: "Add react-native@0.87 to this project's dependencies",
+    });
   }
 
   const configCommand = JSON.stringify([
@@ -207,10 +213,43 @@ export async function prepareIos(
   };
 }
 
+export async function xcodebuild(
+  root: string,
+  cwd: string,
+  args: string[],
+  progress: Progress,
+): Promise<Collector> {
+  const build = collector(root, "xcode");
+  await run("xcodebuild", args, {
+    cwd,
+    env: { NSUnbufferedIO: "YES" },
+    onLine: (line) => {
+      const label = build.feed(line);
+      if (label !== undefined) progress.status(label);
+    },
+    failure: (output) => build.failure(output),
+  });
+  return build;
+}
+
+export function generating(): { active: string; done: string } {
+  return {
+    active: "Generating the Xcode project",
+    done: "Generated the Xcode project",
+  };
+}
+
+async function attach(args: string[]): Promise<void> {
+  print("");
+  note("Attached to the app's console. Ctrl-C to stop");
+  await run("xcrun", args, { attach: true });
+}
+
 export async function runIos(options: IosOptions = {}): Promise<void> {
   const root = options.root ?? process.cwd();
   const configured = await loadOptions(root);
   const port = options.port ?? configured.port;
+  startLog(root, "ios");
 
   if (options.release === true) {
     const { releaseIos } = await import("./release-ios.ts");
@@ -219,53 +258,55 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
   }
 
   const { iosTargets, pick, resolveHost } = await import("./device.ts");
-  const wanted = options.device;
-  const targets = await iosTargets(true);
-  const chosen = pick(targets, wanted, undefined);
+  const chosen = pick(await iosTargets(true), options.device, undefined);
   const onDevice = chosen.kind === "device";
-
   const host = onDevice ? resolveHost(options.host) : "localhost";
-  if (onDevice) {
-    console.log(
-      `flypath: ${chosen.name} will reach the dev server at http://${host}:${String(port)}`,
-    );
-  }
-
   const context = projectContext(root, port, configured, host);
-  const prepared = await prepareIos(root, context);
 
-  await run(
-    "xcodebuild",
-    [
-      "-project",
-      path.join(prepared.target, "App.xcodeproj"),
-      "-scheme",
-      "App",
-      "-configuration",
-      "Debug",
-      "-sdk",
-      onDevice ? "iphoneos" : "iphonesimulator",
-      "-destination",
-      `id=${chosen.id}`,
-      "-derivedDataPath",
-      prepared.derived,
-      ...(prepared.xcconfig === undefined
-        ? []
-        : ["-xcconfig", prepared.xcconfig]),
-      ...(onDevice
-        ? [
-            "-allowProvisioningUpdates",
-            "FLYPATH_CODE_SIGNING_ALLOWED=YES",
-            "FLYPATH_CODE_SIGNING_REQUIRED=YES",
-            ...(configured.ios?.teamId === undefined
-              ? []
-              : [`DEVELOPMENT_TEAM=${configured.ios.teamId}`]),
-          ]
-        : []),
-      "build",
-    ],
-    { cwd: prepared.target },
+  const prepared = await step(generating(), () => prepareIos(root, context));
+
+  const build = await step(
+    {
+      active: `Building for ${chosen.name}`,
+      done: `Built for ${chosen.name}`,
+      failed: `Build failed for ${chosen.name}`,
+    },
+    (progress) =>
+      xcodebuild(
+        root,
+        prepared.target,
+        [
+          "-project",
+          path.join(prepared.target, "App.xcodeproj"),
+          "-scheme",
+          "App",
+          "-configuration",
+          "Debug",
+          "-sdk",
+          onDevice ? "iphoneos" : "iphonesimulator",
+          "-destination",
+          `id=${chosen.id}`,
+          "-derivedDataPath",
+          prepared.derived,
+          ...(prepared.xcconfig === undefined
+            ? []
+            : ["-xcconfig", prepared.xcconfig]),
+          ...(onDevice
+            ? [
+                "-allowProvisioningUpdates",
+                "FLYPATH_CODE_SIGNING_ALLOWED=YES",
+                "FLYPATH_CODE_SIGNING_REQUIRED=YES",
+                ...(configured.ios?.teamId === undefined
+                  ? []
+                  : [`DEVELOPMENT_TEAM=${configured.ios.teamId}`]),
+              ]
+            : []),
+          "build",
+        ],
+        progress,
+      ),
   );
+  showWarnings(root, build);
 
   const app = path.join(
     prepared.derived,
@@ -275,43 +316,99 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
     "App.app",
   );
 
-  if (onDevice) {
-    await run("xcrun", [
-      "devicectl",
-      "device",
-      "install",
-      "app",
-      "--device",
-      chosen.id,
-      app,
-    ]);
-    console.log(
-      "flypath: iOS asks for local-network permission the first time the app " +
-        "talks to a LAN address; allow it, or the bundle fetch just times out",
+  if (!(await devServerRunning(port))) {
+    warn(
+      `Nothing is listening on http://localhost:${String(port)}`,
+      "The app shows a red screen until flypath dev is running",
     );
-    await run("xcrun", [
-      "devicectl",
-      "device",
-      "process",
-      "launch",
-      "--console",
-      "--device",
-      chosen.id,
-      context.bundleId,
-    ]);
+  }
+
+  const attached = options.console === true;
+  const settled = attached
+    ? `Installed on ${chosen.name}`
+    : `Launched on ${chosen.name}`;
+
+  if (onDevice) {
+    await step(
+      { active: `Installing on ${chosen.name}`, done: settled },
+      async (progress) => {
+        progress.summary(`reaching http://${host}:${String(port)}`);
+        await run("xcrun", [
+          "devicectl",
+          "device",
+          "install",
+          "app",
+          "--device",
+          chosen.id,
+          app,
+        ]);
+        if (attached) return;
+        progress.status("Launching");
+        await run("xcrun", [
+          "devicectl",
+          "device",
+          "process",
+          "launch",
+          "--terminate-existing",
+          "--device",
+          chosen.id,
+          context.bundleId,
+        ]);
+      },
+      { time: false },
+    );
+    if (firstLaunch(root, chosen.id)) {
+      note(
+        "iOS asks for local-network permission the first time the app talks " +
+          "to a LAN address.\nAllow it, or the bundle fetch times out",
+      );
+    }
+    if (attached) {
+      await attach([
+        "devicectl",
+        "device",
+        "process",
+        "launch",
+        "--console",
+        "--terminate-existing",
+        "--device",
+        chosen.id,
+        context.bundleId,
+      ]);
+    }
     return;
   }
 
-  if (chosen.state !== "Booted") {
-    await run("xcrun", ["simctl", "boot", chosen.id]);
+  await step(
+    { active: `Launching on ${chosen.name}`, done: settled },
+    async (progress) => {
+      if (chosen.state !== "Booted") {
+        progress.status("Booting");
+        await run("xcrun", ["simctl", "boot", chosen.id]);
+      }
+      await run("open", ["-a", "Simulator"]);
+      progress.status("Installing");
+      await run("xcrun", ["simctl", "install", chosen.id, app]);
+      if (attached) return;
+      progress.status("Launching");
+      await run("xcrun", [
+        "simctl",
+        "launch",
+        "--terminate-running-process",
+        chosen.id,
+        context.bundleId,
+      ]);
+    },
+    { time: false },
+  );
+  if (attached) {
+    await attach([
+      "simctl",
+      "launch",
+      "--console-pty",
+      "--terminate-running-process",
+      chosen.id,
+      context.bundleId,
+    ]);
   }
-  await run("open", ["-a", "Simulator"]);
-  await run("xcrun", ["simctl", "install", chosen.id, app]);
-  await run("xcrun", [
-    "simctl",
-    "launch",
-    "--console-pty",
-    chosen.id,
-    context.bundleId,
-  ]);
 }

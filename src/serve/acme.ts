@@ -175,7 +175,7 @@ class AcmeClient {
     const response = await this.#fetch(this.#directoryUrl);
     if (!response.ok) {
       throw new Error(
-        `flypath: the ACME directory at ${this.#directoryUrl} answered ` +
+        `The ACME directory at ${this.#directoryUrl} answered ` +
           String(response.status),
       );
     }
@@ -193,7 +193,7 @@ class AcmeClient {
     const response = await this.#fetch(newNonce, { method: "HEAD" });
     const nonce = response.headers.get("replay-nonce");
     if (nonce === null) {
-      throw new Error("flypath: the ACME directory returned no Replay-Nonce");
+      throw new Error("The ACME directory returned no Replay-Nonce");
     }
     return nonce;
   }
@@ -248,12 +248,12 @@ class AcmeClient {
       }
 
       throw new Error(
-        `flypath: ACME ${url} failed with ${String(response.status)} ` +
+        `ACME ${url} failed with ${String(response.status)} ` +
           `${problem.type ?? "unknown"}${problem.detail ? ` — ${problem.detail}` : ""}`,
       );
     }
 
-    throw new Error(`flypath: ACME ${url} kept rejecting the nonce`);
+    throw new Error(`ACME ${url} kept rejecting the nonce`);
   }
 
   async account(email: string): Promise<string> {
@@ -264,7 +264,7 @@ class AcmeClient {
     });
     const kid = response.headers.get("location");
     if (kid === null) {
-      throw new Error("flypath: newAccount returned no account URL");
+      throw new Error("newAccount returned no account URL");
     }
     this.#kid = kid;
     return kid;
@@ -280,7 +280,7 @@ class AcmeClient {
     });
     const url = response.headers.get("location");
     if (url === null) {
-      throw new Error("flypath: newOrder returned no order URL");
+      throw new Error("newOrder returned no order URL");
     }
     return { url, body: (await response.json()) as OrderBody };
   }
@@ -343,7 +343,7 @@ export async function createCsr(
     x509 = await import("@peculiar/x509");
   } catch (error) {
     throw new Error(
-      "flypath: serve.tls.acme needs @peculiar/x509 to build the certificate " +
+      "serve.tls.acme needs @peculiar/x509 to build the certificate " +
         "request — install it with `pnpm add @peculiar/x509 reflect-metadata`",
       { cause: error },
     );
@@ -380,7 +380,7 @@ export async function createCsr(
 function notAfterOf(chain: string): string {
   const match =
     /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/.exec(chain);
-  if (!match) throw new Error("flypath: the ACME response held no certificate");
+  if (!match) throw new Error("The ACME response held no certificate");
   return new crypto.X509Certificate(match[0]).validTo;
 }
 
@@ -411,10 +411,10 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
 
-  log(`flypath: ACME — registering the account with ${options.directory}`);
+  log(`ACME — registering the account with ${options.directory}`);
   await client.account(options.email);
 
-  log(`flypath: ACME — ordering ${options.domains.join(", ")}`);
+  log(`ACME — ordering ${options.domains.join(", ")}`);
   const { url, body } = await client.order(options.domains);
 
   const published: string[] = [];
@@ -428,7 +428,7 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
       );
       if (!challenge) {
         throw new Error(
-          `flypath: ${authorization.identifier.value} offers no http-01 ` +
+          `${authorization.identifier.value} offers no http-01 ` +
             "challenge; only http-01 is supported",
         );
       }
@@ -436,9 +436,7 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
       publish(challenge.token, keyAuthorization(challenge.token, client.jwk));
       published.push(challenge.token);
 
-      log(
-        `flypath: ACME — answering http-01 for ${authorization.identifier.value}`,
-      );
+      log(`ACME — answering http-01 for ${authorization.identifier.value}`);
       await client.post(challenge.url, {});
 
       let state = await client.read<Authorization>(at);
@@ -446,7 +444,7 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
         if (state.status === "valid") break;
         if (state.status === "invalid") {
           throw new Error(
-            `flypath: ACME could not validate ${state.identifier.value}; the ` +
+            `ACME could not validate ${state.identifier.value}; the ` +
               "domain must resolve to this host and port 80 must reach it",
           );
         }
@@ -455,12 +453,12 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
       }
       if (state.status !== "valid") {
         throw new Error(
-          `flypath: ACME validation for ${state.identifier.value} timed out`,
+          `ACME validation for ${state.identifier.value} timed out`,
         );
       }
     }
 
-    log("flypath: ACME — finalizing the order");
+    log("ACME — finalizing the order");
     const { der, pem } = await createCsr(options.domains);
     await client.post(body.finalize, {
       csr: Buffer.from(der).toString("base64url"),
@@ -474,22 +472,22 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
     ) {
       if (order.status === "invalid") {
         throw new Error(
-          `flypath: the ACME order failed — ${order.error?.detail ?? "no detail"}`,
+          `The ACME order failed — ${order.error?.detail ?? "no detail"}`,
         );
       }
       await wait(POLL_INTERVAL);
       order = await client.read<OrderBody>(url);
     }
     if (order.certificate === undefined) {
-      throw new Error("flypath: the ACME order never produced a certificate");
+      throw new Error("The ACME order never produced a certificate");
     }
 
-    log("flypath: ACME — downloading the chain");
+    log("ACME — downloading the chain");
     const chain = await client.text(order.certificate);
     const notAfter = notAfterOf(chain);
 
     const primary = options.domains[0];
-    if (primary === undefined) throw new Error("flypath: no domain to store");
+    if (primary === undefined) throw new Error("No domain to store");
     const dir = path.join(options.storage, primary);
     await fsp.mkdir(dir, { recursive: true, mode: 0o700 });
     await fsp.writeFile(path.join(dir, "privkey.pem"), pem, { mode: 0o600 });
@@ -509,9 +507,7 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
       )}\n`,
     );
 
-    log(
-      `flypath: ACME — certificate stored in ${dir}, valid until ${notAfter}`,
-    );
+    log(`ACME — certificate stored in ${dir}, valid until ${notAfter}`);
     return {
       key: pem,
       cert: chain,
@@ -551,7 +547,7 @@ export function acquire(storage: string): Lock | undefined {
       try {
         fs.unlinkSync(file);
       } catch {
-        console.warn(`flypath: could not release the ACME lock at ${file}`);
+        console.warn(`Could not release the ACME lock at ${file}`);
       }
     },
   };

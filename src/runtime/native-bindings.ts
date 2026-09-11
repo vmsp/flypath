@@ -10,7 +10,7 @@ export type NativeRegistry = {
 };
 
 const SKEW =
-  'flypath: this build of the app was made from a different set of "use native" ' +
+  'This build of the app was made from a different set of "use native" ' +
   'declarations than the running server — run "pnpm ios" or "pnpm android"';
 
 function skewed(): boolean {
@@ -45,7 +45,7 @@ export function installNativeBindings(): void {
   >("Flypath");
   if (!module) {
     throw new Error(
-      "flypath: this build of the app does not provide native bindings — " +
+      "This build of the app does not provide native bindings — " +
         'run "pnpm ios" or "pnpm android"',
     );
   }
@@ -56,7 +56,7 @@ export function nativeRegistry(): NativeRegistry {
   installNativeBindings();
   const registry = globalThis.__FLYPATH__?.native;
   if (!registry) {
-    throw new Error("flypath: native bindings failed to install");
+    throw new Error("Native bindings failed to install");
   }
   return registry;
 }
@@ -72,7 +72,7 @@ export function nativeModule(
     if (binding) return binding;
     return () => {
       throw new Error(
-        `flypath: ${name}() is not in this build of the app (${source}) — ` +
+        `${name}() is not in this build of the app (${source}) — ` +
           'run "pnpm ios" or "pnpm android"',
       );
     };

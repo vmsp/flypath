@@ -3,6 +3,8 @@ import readline from "node:readline/promises";
 
 import type { SchemaState } from "../schema/types.ts";
 import { emptyState } from "../schema/types.ts";
+import { FlypathError } from "../shared/errors.ts";
+import { paint } from "../terminal/style.ts";
 import type { Prompt } from "./diff.ts";
 import { conservative, diff } from "./diff.ts";
 import {
@@ -25,7 +27,9 @@ export function terminalPrompt(): Prompt {
       output: process.stdout,
     });
     try {
-      return await rl.question(`${question} `);
+      return await rl.question(
+        `  ${paint(process.stdout).accent("?")} ${question} `,
+      );
     } finally {
       rl.close();
     }
@@ -50,7 +54,7 @@ async function historyState(root: string): Promise<SchemaState> {
 async function targetState(root: string): Promise<SchemaState> {
   const file = schemaFile(root);
   if (!fs.existsSync(file)) {
-    throw new Error(`flypath: no schema found — create ${file}`);
+    throw new FlypathError("No schema found", { hint: `Create ${file}` });
   }
   return schemaState(await importModule(file));
 }

@@ -114,7 +114,7 @@ export function extractStyles(
       }
       if (!isConditionMap(value)) continue;
       if (!isSupported(key)) {
-        throw new Error(`flypath: unsupported style property "${key}"`);
+        throw new Error(`Unsupported style property "${key}"`);
       }
       validateConditionMap(key, value);
 

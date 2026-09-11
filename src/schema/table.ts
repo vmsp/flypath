@@ -65,9 +65,7 @@ function memberOf(input: Member): IndexMember {
 
 function nameOf(target: Target): string {
   if (isColumn(target)) return target.name;
-  throw new Error(
-    "flypath: this constraint needs plain columns, not expressions",
-  );
+  throw new Error("This constraint needs plain columns, not expressions");
 }
 
 class IndexBuilder {
@@ -186,7 +184,7 @@ class ConstraintBuilder {
       return constraint;
     }
     if (!this.target) {
-      throw new Error("flypath: foreignKey() needs a references() target");
+      throw new Error("foreignKey() needs a references() target");
     }
     return {
       kind: "foreignKey",

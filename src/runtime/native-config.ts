@@ -2,6 +2,7 @@ export type NativeConfig = {
   platform: string;
   serverUrl: string;
   dev: boolean;
+  debug: boolean;
   manifestHash: string;
   baseId: string;
   build: string;
@@ -13,7 +14,7 @@ export function nativeConfig(): NativeConfig {
   const config = globalThis.__FLYPATH__;
   if (!config) {
     throw new Error(
-      "flypath: the native prelude did not run, so there is no server to " +
+      "The native prelude did not run, so there is no server to " +
         'talk to — run "pnpm ios" or "pnpm android"',
     );
   }

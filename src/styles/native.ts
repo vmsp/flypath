@@ -201,7 +201,7 @@ function buildAnimation(props: Map<string, Scalar>): Animation | undefined {
   if (name === undefined) return undefined;
   const frames = lookupKeyframes(String(name));
   if (!frames) {
-    throw new Error(`flypath: unknown animation name "${String(name)}"`);
+    throw new Error(`Unknown animation name "${String(name)}"`);
   }
   return {
     frames: parseFrames(frames),
@@ -227,7 +227,7 @@ function normalizeNativeStyle(
     const value = props.get(key);
     if (typeof value === "object") {
       throw new TypeError(
-        `flypath: <${tag}> animation properties do not support conditions`,
+        `<${tag}> animation properties do not support conditions`,
       );
     }
     animationProps.set(key, value as Scalar);
@@ -251,7 +251,7 @@ function normalizeNativeStyle(
     if (!isNativeProperty(property)) {
       if (dev) {
         throw new Error(
-          `flypath: <${tag}> style property "${property}" has no native equivalent`,
+          `<${tag}> style property "${property}" has no native equivalent`,
         );
       }
       continue;

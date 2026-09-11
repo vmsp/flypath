@@ -13,7 +13,7 @@ function tableOf(state: SchemaState, name: string): TableDef {
   const table = state.tables[name];
   if (!table) {
     throw new Error(
-      `flypath: migration touches "${name}", which no earlier migration creates`,
+      `Migration touches "${name}", which no earlier migration creates`,
     );
   }
   return table;
@@ -187,7 +187,7 @@ export function invert(operation: Operation, before: SchemaState): Operation[] {
       const column = table.columns[operation.name];
       if (!column) {
         throw new IrreversibleError(
-          `flypath: ${operation.table}.${operation.name} is not in the ` +
+          `${operation.table}.${operation.name} is not in the ` +
             "replayed history, so dropping it cannot be reversed",
         );
       }
@@ -211,7 +211,7 @@ export function invert(operation: Operation, before: SchemaState): Operation[] {
       ];
     case "alterColumn": {
       const column = tableOf(before, operation.table).columns[operation.name];
-      if (!column) throw new IrreversibleError("flypath: unknown column");
+      if (!column) throw new IrreversibleError("Unknown column");
       const change: Operation = {
         kind: "alterColumn",
         table: operation.table,
@@ -240,7 +240,7 @@ export function invert(operation: Operation, before: SchemaState): Operation[] {
       const index = tableOf(before, operation.table).indexes.find(
         (entry) => entry.name === operation.name,
       );
-      if (!index) throw new IrreversibleError("flypath: unknown index");
+      if (!index) throw new IrreversibleError("Unknown index");
       return [
         { kind: "createIndex", table: operation.table, index: clone(index) },
       ];
@@ -257,8 +257,7 @@ export function invert(operation: Operation, before: SchemaState): Operation[] {
       const constraint = tableOf(before, operation.table).constraints.find(
         (entry) => entry.name === operation.name,
       );
-      if (!constraint)
-        throw new IrreversibleError("flypath: unknown constraint");
+      if (!constraint) throw new IrreversibleError("Unknown constraint");
       return [
         {
           kind: "addConstraint",
@@ -271,7 +270,7 @@ export function invert(operation: Operation, before: SchemaState): Operation[] {
       return [{ kind: "dropEnum", name: operation.name }];
     case "dropEnum": {
       const enumeration = before.enums[operation.name];
-      if (!enumeration) throw new IrreversibleError("flypath: unknown enum");
+      if (!enumeration) throw new IrreversibleError("Unknown enum");
       return [
         {
           kind: "createEnum",
@@ -282,7 +281,7 @@ export function invert(operation: Operation, before: SchemaState): Operation[] {
     }
     case "addEnumValue":
       throw new IrreversibleError(
-        `flypath: Postgres cannot remove the enum value "${operation.value}", ` +
+        `Postgres cannot remove the enum value "${operation.value}", ` +
           `so adding it to "${operation.name}" is irreversible`,
       );
     case "renameEnumValue":
@@ -306,7 +305,7 @@ export function invert(operation: Operation, before: SchemaState): Operation[] {
       return [{ kind: "dropSequence", name: operation.sequence.name }];
     case "dropSequence": {
       const sequence = before.sequences[operation.name];
-      if (!sequence) throw new IrreversibleError("flypath: unknown sequence");
+      if (!sequence) throw new IrreversibleError("Unknown sequence");
       return [{ kind: "createSequence", sequence: clone(sequence) }];
     }
     case "createView":
@@ -319,20 +318,20 @@ export function invert(operation: Operation, before: SchemaState): Operation[] {
       ];
     case "dropView": {
       const definition = before.views[operation.name];
-      if (!definition) throw new IrreversibleError("flypath: unknown view");
+      if (!definition) throw new IrreversibleError("Unknown view");
       return [{ kind: "createView", view: clone(definition) }];
     }
     case "sql":
       if (operation.down === undefined) {
         throw new IrreversibleError(
-          "flypath: this sql() operation has no down, so it cannot be reversed",
+          "This sql() operation has no down, so it cannot be reversed",
         );
       }
       return [{ kind: "sql", up: operation.down }];
     case "run":
       if (operation.down === undefined) {
         throw new IrreversibleError(
-          "flypath: this run() operation has no down, so it cannot be reversed",
+          "This run() operation has no down, so it cannot be reversed",
         );
       }
       return [{ kind: "run", up: operation.down }];

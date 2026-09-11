@@ -24,6 +24,8 @@ import {
 import { hrefOf, normalizePath, searchOf } from "../router/path.ts";
 import { parseRevalidate } from "../router/revalidate.ts";
 import type { RouteInfo } from "../router/types.ts";
+import { verbose } from "../shared/env.ts";
+import { report, reporting } from "../shared/events.ts";
 import { documentPath, isFlightPath } from "../shared/flight.ts";
 import {
   ACTION_HEADER,
@@ -40,7 +42,7 @@ import {
 import { mergeCookies } from "./cookies.ts";
 import type { RscPayload } from "./payload.ts";
 import { runWithRequest } from "./platform-store.ts";
-import type { RequestInfo } from "./platform.ts";
+import type { Platform, RequestInfo } from "./platform.ts";
 import { parsePlatform } from "./platform.ts";
 import type { Prerendered } from "./prerender.ts";
 import { prerenderPages } from "./prerender.ts";
@@ -104,6 +106,31 @@ type Dispatched = {
   signal: Redirect | undefined;
 };
 
+type Meta = {
+  method: string;
+  path: string;
+  platform: Platform;
+  prefetch: boolean;
+  prerendered: boolean;
+  action?: string;
+  location?: string;
+};
+
+const ACTION_FIELD = "$ACTION_ID_";
+
+function actionName(id: string): string {
+  return id.slice(id.lastIndexOf("#") + 1);
+}
+
+function formAction(formData: FormData): string | undefined {
+  for (const key of formData.keys()) {
+    if (key.startsWith(ACTION_FIELD)) {
+      return actionName(key.slice(ACTION_FIELD.length));
+    }
+  }
+  return undefined;
+}
+
 function deferred(error: unknown): Promise<never> {
   const rejected = Promise.reject(error);
   rejected.catch(() => {});
@@ -113,10 +140,12 @@ function deferred(error: unknown): Promise<never> {
 async function runAction(
   request: Request,
   temporaryReferences: unknown,
+  meta: Meta,
 ): Promise<ActionResult> {
   const id = request.headers.get(ACTION_HEADER);
 
   if (id !== null) {
+    meta.action = actionName(id);
     const contentType = request.headers.get("content-type") ?? "";
     const body: unknown = contentType.startsWith("multipart/form-data")
       ? await request.formData()
@@ -140,6 +169,8 @@ async function runAction(
   }
 
   const formData = (await request.formData()) as unknown as FormData;
+  const named = formAction(formData);
+  if (named !== undefined) meta.action = named;
   const action = await decodeAction(formData);
   try {
     const result = await (action as () => Promise<unknown>)();
@@ -225,12 +256,73 @@ function withOutgoing(response: Response, outgoing: Headers): Response {
   });
 }
 
+function announce(meta: Meta, status: number, started: number): void {
+  if (meta.prefetch && !verbose()) return;
+  report({
+    kind: "request",
+    method: meta.method,
+    path: meta.path,
+    status,
+    platform: meta.platform,
+    ms: performance.now() - started,
+    ...(meta.action === undefined ? {} : { action: meta.action }),
+    ...(meta.location === undefined ? {} : { location: meta.location }),
+    ...(meta.prerendered ? { prerendered: true } : {}),
+  });
+}
+
+function observed(response: Response, meta: Meta, started: number): Response {
+  if (!response.body) {
+    announce(meta, response.status, started);
+    return response;
+  }
+  let announced = false;
+  const finish = (): void => {
+    if (announced) return;
+    announced = true;
+    announce(meta, response.status, started);
+  };
+  return new Response(
+    response.body.pipeThrough(
+      new TransformStream<Uint8Array, Uint8Array>({ flush: finish }),
+    ),
+    {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    },
+  );
+}
+
 export default async function handler(request: Request): Promise<Response> {
+  const meta: Meta = {
+    method: request.method,
+    path: new URL(request.url).pathname,
+    platform: "web",
+    prefetch: false,
+    prerendered: false,
+  };
+  if (!reporting()) return respond(request, meta);
+
+  const started = performance.now();
+  let response: Response;
+  try {
+    response = await respond(request, meta);
+  } catch (error) {
+    announce(meta, 500, started);
+    throw error;
+  }
+  return observed(response, meta, started);
+}
+
+async function respond(request: Request, meta: Meta): Promise<Response> {
   const url = new URL(request.url);
   const flight = isFlightPath(url.pathname);
   if (flight) url.pathname = documentPath(url.pathname);
 
   const platform = parsePlatform(request.headers.get(PLATFORM_HEADER)) ?? "web";
+  meta.platform = platform;
+  meta.path = `${url.pathname}${url.search}`;
 
   const resolved = resolveTree(tree);
 
@@ -251,6 +343,7 @@ export default async function handler(request: Request): Promise<Response> {
   const outgoing = new Headers();
   const incoming = new Headers(request.headers);
   const prefetch = request.headers.has(PREFETCH_HEADER);
+  meta.prefetch = prefetch;
 
   let action: ActionResult = {};
 
@@ -262,6 +355,9 @@ export default async function handler(request: Request): Promise<Response> {
     const at = new URL(href, url.origin);
     const pathname = normalizePath(at.pathname);
     const matched = matchRoutes(resolved.routes, pathname);
+    if (runsAction) {
+      meta.prerendered = matched?.route.options.prerender === true;
+    }
 
     const base: RouteInfo = {
       pathname,
@@ -379,6 +475,7 @@ export default async function handler(request: Request): Promise<Response> {
 
       const redirect = (value: Redirect): Response => {
         signal = value;
+        meta.location ??= "to" in value ? value.to : "back";
         return navigateResponse(value, document, request);
       };
 
@@ -389,7 +486,7 @@ export default async function handler(request: Request): Promise<Response> {
         if (runsAction && request.method === "POST") {
           action = await runWithRequest(
             { ...info, phase: "action", prerender: false },
-            () => runAction(request, temporaryReferences),
+            () => runAction(request, temporaryReferences, meta),
           );
         }
 
@@ -410,7 +507,7 @@ export default async function handler(request: Request): Promise<Response> {
             outgoing.delete(REVALIDATE_HEADER);
             if (import.meta.env.DEV) {
               console.warn(
-                "flypath: revalidate.none() ran in an action that also " +
+                "revalidate.none() ran in an action that also " +
                   "navigated; the destination is rendered fresh either way, " +
                   "so the opt-out is ignored",
               );
@@ -501,7 +598,7 @@ export default async function handler(request: Request): Promise<Response> {
     if (fragment !== null) {
       if (import.meta.env.DEV) {
         throw new Error(
-          `flypath: the chrome of container "${fragment}" redirected while ` +
+          `The chrome of container "${fragment}" redirected while ` +
             "rendering; a fragment renders around a URL whose guards have " +
             "already passed, so following it would let the chrome navigate " +
             "the app",
@@ -524,7 +621,7 @@ export default async function handler(request: Request): Promise<Response> {
     if (trail.length > REDIRECT_BUDGET) {
       if (import.meta.env.DEV) {
         throw new Error(
-          `flypath: redirect budget exhausted after ${String(
+          `Redirect budget exhausted after ${String(
             REDIRECT_BUDGET,
           )} hops: ${trail.join(" → ")}`,
         );

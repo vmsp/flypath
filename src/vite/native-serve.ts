@@ -62,7 +62,7 @@ export class NativeServer {
     const name = nativeEnvironmentName(platform);
     const environment = this.server.environments[name];
     if (!environment) {
-      throw new Error(`flypath: missing "${name}" environment`);
+      throw new Error(`Missing "${name}" environment`);
     }
     return environment as DevEnvironment;
   }

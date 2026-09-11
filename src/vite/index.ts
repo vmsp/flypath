@@ -4,6 +4,7 @@ import type { ConfigEnv, Plugin, PluginOption, UserConfig } from "vite";
 
 import type { FlypathOptions } from "../native/config.ts";
 import { CONFIG_PLUGIN, DEFAULT_PORT } from "../native/config.ts";
+import { FlypathError } from "../shared/errors.ts";
 import { distDir } from "../shared/paths.ts";
 import {
   NATIVE_PLATFORMS,
@@ -125,10 +126,13 @@ function withFlypath(config: FlypathConfig): UserConfig {
     Object.hasOwn(vite.server ?? {}, key),
   );
   if (stray.length > 0) {
-    throw new Error(
-      `flypath: ${stray.join(", ")} ${stray.length === 1 ? "is a flypath option" : "are flypath options"} ` +
-        "and must sit beside server, not inside it — Vite owns server, and " +
-        "flypath's production server is configured under serve",
+    throw new FlypathError(
+      `${stray.join(", ")} ${stray.length === 1 ? "is a flypath option" : "are flypath options"}, not a Vite server option`,
+      {
+        hint:
+          "Move it beside server, not inside it. Vite owns server; " +
+          "flypath's production server is configured under serve",
+      },
     );
   }
 

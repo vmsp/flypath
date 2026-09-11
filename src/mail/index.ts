@@ -29,7 +29,7 @@ export async function sendMail(message: MailMessage): Promise<MailResult> {
 
   if ((message.content === undefined) === (message.html === undefined)) {
     throw new Error(
-      "flypath: sendMail() takes either content, a react element rendered " +
+      "sendMail() takes either content, a react element rendered " +
         "with the components the app already has, or html, a string you " +
         "built yourself — exactly one of them",
     );
@@ -55,7 +55,7 @@ export async function sendMail(message: MailMessage): Promise<MailResult> {
 
   if (subject === undefined) {
     throw new Error(
-      "flypath: this email has no subject; render <Subject>…</Subject> " +
+      "This email has no subject; render <Subject>…</Subject> " +
         "anywhere in the message, or pass subject to sendMail()",
     );
   }

@@ -6,7 +6,7 @@ function info(): RouteInfo {
   const value = getRequest();
   if (!value) {
     throw new Error(
-      "flypath: params() and query() are only available while the flypath " +
+      "params() and query() are only available while the flypath " +
         "router is handling a request",
     );
   }

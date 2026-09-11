@@ -111,7 +111,7 @@ describe("enqueue", () => {
   test("refuses an undeclared queue before touching the database", async () => {
     await expect(
       jobs({ queue: "nope" }).enqueue(() => [resize, [1]]),
-    ).rejects.toThrow(/there is no "nope" queue/);
+    ).rejects.toThrow(/There is no "nope" queue/);
     expect(await rows(name)).toEqual([]);
   });
 

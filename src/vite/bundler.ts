@@ -8,6 +8,7 @@ import { parseSync } from "oxc-parser";
 import type { DevEnvironment } from "vite";
 
 import { nativePrelude } from "../runtime/native-prelude.ts";
+import { verbose } from "../shared/env.ts";
 import { hash } from "../styles/hash.ts";
 
 export type NativeModule = {
@@ -94,7 +95,7 @@ function assertServerProxy(id: string, code: string): void {
   }
   if (!USE_SERVER.test(source)) return;
   throw new Error(
-    `flypath: "use server" module reached the native bundle un-proxied — ` +
+    `"use server" module reached the native bundle un-proxied — ` +
       `its body would ship to the device: ${id}`,
   );
 }
@@ -240,9 +241,7 @@ export class NativeBundler {
     const value = numericId(this.moduleKey(id));
     const clash = this.idToModule.get(value);
     if (clash !== undefined && clash !== id) {
-      throw new Error(
-        `flypath: native module id collision between ${clash} and ${id}`,
-      );
+      throw new Error(`Native module id collision between ${clash} and ${id}`);
     }
     this.ids.set(id, value);
     this.idToModule.set(value, id);
@@ -344,14 +343,14 @@ export class NativeBundler {
   async transformOne(id: string): Promise<NativeModule> {
     await this.transform(id);
     const mod = this.modules.get(id);
-    if (!mod) throw new Error(`flypath: failed to build ${id}`);
+    if (!mod) throw new Error(`Failed to build ${id}`);
     return mod;
   }
 
   private async transform(id: string): Promise<void> {
     const url = this.urlFor(id);
     const result = await this.environment.transformRequest(url);
-    if (!result) throw new Error(`flypath: failed to transform ${id}`);
+    if (!result) throw new Error(`Failed to transform ${id}`);
 
     const deps = new Set<string>();
     let code = lazyHoistedRequires(
@@ -424,7 +423,7 @@ export class NativeBundler {
     const id = path.isAbsolute(entry)
       ? entry
       : await this.resolve(entry, path.join(this.root, "index.js"));
-    if (!id) throw new Error(`flypath: cannot resolve native entry ${entry}`);
+    if (!id) throw new Error(`Cannot resolve native entry ${entry}`);
     return id;
   }
 
@@ -472,6 +471,7 @@ export class NativeBundler {
       root: this.root,
       platform: options.platform,
       dev: options.dev,
+      debug: options.dev && verbose(),
       serverUrl: options.serverUrl,
       manifestHash: options.manifestHash,
       baseId,
@@ -534,7 +534,7 @@ export class NativeBundler {
     for (const mod of modules) {
       if (!this.base.has(mod.id)) continue;
       throw new Error(
-        `flypath: the chunk for ${this.relative(id)} would ship ` +
+        `The chunk for ${this.relative(id)} would ship ` +
           `${this.relative(mod.id)}, which the base bundle already provides — ` +
           "the two copies would be different modules at runtime",
       );

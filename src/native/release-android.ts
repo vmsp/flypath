@@ -2,10 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { androidSigning, ENV } from "../shared/env.ts";
+import { FlypathError } from "../shared/errors.ts";
+import { note, step, success } from "../terminal/output.ts";
+import { size } from "../terminal/style.ts";
 import type { AndroidOptions } from "./android.ts";
-import { gradle, prepareAndroid } from "./android.ts";
+import { generating, gradle, prepareAndroid } from "./android.ts";
 import { BUNDLE_NAMES } from "./bundle.ts";
 import { loadOptions } from "./config.ts";
+import { showWarnings } from "./diagnostics.ts";
 import { nativeDir } from "./scaffold.ts";
 import { projectContext } from "./template.ts";
 
@@ -14,15 +18,14 @@ const KEYS = ["storeFile", "storePassword", "keyAlias", "keyPassword"];
 export function keystoreMissing(root: string): string {
   const file = path.join(nativeDir(root, "android"), "keystore.properties");
   return [
-    `flypath: a release build has to be signed, and ${path.relative(root, file)}`,
-    "is missing. Write it with these four keys:",
+    `Write ${path.relative(root, file)} with these four keys:`,
     ...KEYS.map((key) => `  ${key}=…`),
     "",
-    "  create a store with:",
-    "    keytool -genkeypair -v -keystore release.keystore -alias release \\",
-    "      -keyalg RSA -keysize 2048 -validity 10000",
+    "Create a store with:",
+    "  keytool -genkeypair -v -keystore release.keystore -alias release \\",
+    "    -keyalg RSA -keysize 2048 -validity 10000",
     "",
-    "  or pass them in the environment as " +
+    "Or pass them in the environment as " +
       KEYS.map((key) => `${ENV.androidSigning}${key.toUpperCase()}`).join(", "),
   ].join("\n");
 }
@@ -44,11 +47,11 @@ function requireBundle(root: string): string {
     BUNDLE_NAMES.android,
   );
   if (!fs.existsSync(bundle)) {
-    throw new Error(
-      `flypath: ${path.relative(root, bundle)} does not exist — run ` +
-        "`flypath build --platform android` first, so the app ships the same " +
+    throw new FlypathError(`${path.relative(root, bundle)} does not exist`, {
+      hint:
+        "Run flypath build --platform android first, so the app ships the " +
         "JavaScript the server was built with",
-    );
+    });
   }
   return bundle;
 }
@@ -60,17 +63,40 @@ export async function releaseAndroid(
   const configured = await loadOptions(root);
   const bundle = requireBundle(root);
 
-  if (!hasSigning(root)) throw new Error(keystoreMissing(root));
+  if (!hasSigning(root)) {
+    throw new FlypathError("A release build has to be signed", {
+      details: keystoreMissing(root).split("\n"),
+    });
+  }
 
   const context = projectContext(root, configured.port, configured);
-  const prepared = await prepareAndroid(root, context);
+  const prepared = await step(generating(), () =>
+    prepareAndroid(root, context),
+  );
 
   const assets = path.join(prepared.target, "app", "src", "main", "assets");
   fs.mkdirSync(assets, { recursive: true });
   fs.copyFileSync(bundle, path.join(assets, BUNDLE_NAMES.android));
 
-  const task = options.apk === true ? "assembleRelease" : "bundleRelease";
-  await gradle(prepared.target, [task]);
+  const apk = options.apk === true;
+  const kind = apk ? "APK" : "bundle";
+  const build = await step(
+    {
+      active: `Building the release ${kind}`,
+      done: `Built the release ${kind}`,
+      failed: "Release build failed",
+    },
+    (progress) =>
+      gradle(
+        root,
+        prepared.target,
+        [apk ? "assembleRelease" : "bundleRelease"],
+        {
+          progress,
+        },
+      ),
+  );
+  showWarnings(root, build);
 
   const dist = path.join(root, "dist");
   fs.mkdirSync(dist, { recursive: true });
@@ -80,31 +106,25 @@ export async function releaseAndroid(
     "app",
     "build",
     "outputs",
-    options.apk === true ? "apk" : "bundle",
+    apk ? "apk" : "bundle",
     "release",
   );
 
   const produced = fs
     .readdirSync(outputs)
-    .filter((entry) => entry.endsWith(options.apk === true ? ".apk" : ".aab"));
+    .filter((entry) => entry.endsWith(apk ? ".apk" : ".aab"));
 
   for (const entry of produced) {
-    fs.copyFileSync(path.join(outputs, entry), path.join(dist, entry));
-    console.log(`flypath: wrote dist/${entry}`);
+    const target = path.join(dist, entry);
+    fs.copyFileSync(path.join(outputs, entry), target);
+    success(`Wrote dist/${entry}`, size(fs.statSync(target).size));
   }
 
-  if (options.apk === true) {
-    console.log(
-      "flypath: install it with `adb install -r dist/app-release.apk`",
-    );
-    return;
-  }
-
-  console.log(
-    [
-      "flypath: upload the .aab to Play Console, or automate it with the Play",
-      "  Developer API — `fastlane supply` and `bundletool` are the usual",
-      "  routes; flypath does not upload for you",
-    ].join("\n"),
+  const first = produced[0];
+  if (first === undefined) return;
+  note(
+    apk
+      ? `Install it with adb install -r dist/${first}`
+      : "Upload it in Play Console, or automate that with fastlane supply",
   );
 }

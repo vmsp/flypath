@@ -24,7 +24,7 @@ export const navigate: Navigate = makeNavigate(
     if (to === "back") {
       if (phase() !== "action") {
         throw new Error(
-          'flypath: navigate("back") ran during a server render; there is no ' +
+          'navigate("back") ran during a server render; there is no ' +
             "history to pop until the page exists, so it works in a server " +
             "action or a client event handler",
         );

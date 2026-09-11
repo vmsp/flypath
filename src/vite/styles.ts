@@ -219,7 +219,7 @@ export function styles(distDir: string): Plugin[] {
 
         if (IMPORTS_CSS.test(code)) {
           throw new Error(
-            `flypath: "css" may only be imported by *.css.ts modules (${relative(
+            `"css" may only be imported by *.css.ts modules (${relative(
               file,
             )})`,
           );

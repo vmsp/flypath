@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { FlypathError } from "../shared/errors.ts";
 import type { Migration } from "./operations.ts";
 
 export type MigrationFile = {
@@ -41,9 +42,9 @@ export function discover(root: string): MigrationFile[] {
   for (const file of files) {
     const previous = seen.get(file.timestamp);
     if (previous !== undefined) {
-      throw new Error(
-        `flypath: two migrations share the timestamp ${file.timestamp} — ` +
-          `${previous} and ${file.id}; rename one of them`,
+      throw new FlypathError(
+        `Two migrations share the timestamp ${file.timestamp}`,
+        { hint: "Rename one of them", details: [previous, file.id] },
       );
     }
     seen.set(file.timestamp, file.id);
@@ -63,10 +64,9 @@ async function loadMigration(file: string): Promise<Migration> {
   const module = await importModule(file);
   const value = module["default"];
   if (typeof value !== "object" || value === null || !("operations" in value)) {
-    throw new Error(
-      `flypath: ${path.basename(file)} has no default export; a migration ` +
-        "file ends with export default migration([…])",
-    );
+    throw new FlypathError(`${path.basename(file)} has no default export`, {
+      hint: "A migration file ends with export default migration([…])",
+    });
   }
   return value as Migration;
 }

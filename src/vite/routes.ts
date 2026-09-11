@@ -22,10 +22,7 @@ function findRoutesFile(root: string): string {
     if (fs.existsSync(file)) return file;
   }
   throw new Error(
-    `flypath: no route configuration found — create ${path.join(
-      root,
-      "app/routes.ts",
-    )}`,
+    `No route configuration found — create ${path.join(root, "app/routes.ts")}`,
   );
 }
 
@@ -50,7 +47,7 @@ export function routes(): Plugin {
       if (!(error instanceof StaticError)) throw error;
       throw new Error(
         `${error.message} (${path.relative(root, target)})\n` +
-          "flypath: route options must be statically analyzable",
+          "Route options must be statically analyzable",
         { cause: error },
       );
     }
@@ -93,7 +90,7 @@ export function routes(): Plugin {
       if (id === ROUTES_ID) {
         if (this.environment.name !== "rsc") {
           throw new Error(
-            `flypath: "${ROUTES}" is only available in the server environment`,
+            `"${ROUTES}" is only available in the server environment`,
           );
         }
         return `export { default as tree } from ${JSON.stringify(routesFile())};\n`;

@@ -79,7 +79,7 @@ export function metroEndpoints(distDir: string): Plugin {
     name: "flypath:metro-endpoints",
     configureServer(server: ViteDevServer) {
       const native = new NativeServer(server, distDir);
-      const hot = new HotSocket(server.config.logger);
+      const hot = new HotSocket();
       const message = new MessageSocket();
       const flypath = new FlypathSocket();
       const baseUrl = native.serverUrl();
@@ -163,7 +163,7 @@ export function metroEndpoints(distDir: string): Plugin {
               // keep the default label
             }
             server.config.logger.warn(
-              `flypath: ${platform} was built from stale "use native" declarations — ` +
+              `${platform} was built from stale "use native" declarations — ` +
                 `run "pnpm ${platform}" to rebuild the app`,
             );
             send(response, 200, "text/plain", "OK");
@@ -205,7 +205,7 @@ export function metroEndpoints(distDir: string): Plugin {
               );
             } catch (error) {
               server.config.logger.error(
-                `flypath: chunk build failed for ${reference}\n${
+                `Chunk build failed for ${reference}\n${
                   error instanceof Error
                     ? (error.stack ?? error.message)
                     : error
@@ -219,7 +219,7 @@ export function metroEndpoints(distDir: string): Plugin {
           if (url.pathname.endsWith(".bundle")) {
             const platform = platformOf(url);
             if (!platform) {
-              send(response, 400, "text/plain", "flypath: unknown platform");
+              send(response, 400, "text/plain", "Unknown platform");
               return;
             }
             const dev = url.searchParams.get(DEV_PARAM) !== "false";
@@ -241,7 +241,7 @@ export function metroEndpoints(distDir: string): Plugin {
               );
             } catch (error) {
               server.config.logger.error(
-                `flypath: native bundle failed\n${
+                `Native bundle failed\n${
                   error instanceof Error
                     ? (error.stack ?? error.message)
                     : error

@@ -3,6 +3,7 @@ import os from "node:os";
 import { Cron } from "croner";
 
 import { pool } from "../db/client.ts";
+import { report as reportEvent } from "../shared/events.ts";
 import type { Queue } from "./config.ts";
 import {
   jobsDatabase,
@@ -63,9 +64,7 @@ function identity(): string {
 }
 
 function report(error: unknown): void {
-  console.error(
-    `flypath: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
-  );
+  if (!reportEvent({ kind: "error", error })) console.error(error);
 }
 
 export type Scheduled = { key: string; cron: Cron; row: NewJob };
@@ -82,9 +81,7 @@ export async function schedule(
       timezone === undefined ? {} : { timezone },
     );
     if (!cron.nextRun()) {
-      throw new Error(
-        `flypath: the cron expression "${entry.expression}" never runs`,
-      );
+      throw new Error(`The cron expression "${entry.expression}" never runs`);
     }
     const key =
       entry.options.name ??

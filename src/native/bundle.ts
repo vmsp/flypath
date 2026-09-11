@@ -3,7 +3,12 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 
+import { FlypathError } from "../shared/errors.ts";
 import { distDir } from "../shared/paths.ts";
+import { terminalLogger } from "../terminal/logger.ts";
+import type { Progress } from "../terminal/output.ts";
+import { step, warn } from "../terminal/output.ts";
+import { plural, size } from "../terminal/style.ts";
 import type { NativeBundle } from "../vite/bundler.ts";
 import { NativeBundler } from "../vite/bundler.ts";
 import type { NativePlatform } from "../vite/native-env.ts";
@@ -14,6 +19,11 @@ import { run } from "./exec.ts";
 export const BUNDLE_NAMES: Record<NativePlatform, string> = {
   ios: "main.jsbundle",
   android: "index.android.bundle",
+};
+
+const PLATFORM_NAMES: Record<NativePlatform, string> = {
+  ios: "iOS",
+  android: "Android",
 };
 
 const POLYFILLS = [
@@ -100,6 +110,8 @@ async function createNativeServer(root: string): Promise<ViteServer> {
     mode: "production",
     configFile: undefined,
     logLevel: "warn",
+    customLogger: terminalLogger(),
+    clearScreen: false,
     server: { middlewareMode: true, hmr: false, watch: null },
   })) as unknown as ViteServer;
 }
@@ -111,10 +123,9 @@ function nativeBundler(
   const name = nativeEnvironmentName(platform);
   const environment = server.environments[name];
   if (!environment) {
-    throw new Error(
-      `flypath: the "${name}" environment is missing; flypath's vite plugin ` +
-        "must be in vite.config.ts",
-    );
+    throw new FlypathError(`The "${name}" environment is missing`, {
+      hint: "flypath's Vite plugin has to be in vite.config.ts",
+    });
   }
   return new NativeBundler(environment as never, server.config.root);
 }
@@ -127,7 +138,7 @@ type ReleaseBundleOptions = {
   build: string;
   seed?: { entries: string[]; seeded: Record<string, number> };
   hermes?: boolean;
-  log?: (message: string) => void;
+  progress?: Progress;
 };
 
 export type ReleaseBundle = {
@@ -143,8 +154,6 @@ async function buildReleaseBundle(
   bundler: NativeBundler,
   options: ReleaseBundleOptions,
 ): Promise<ReleaseBundle> {
-  const log = options.log ?? ((message: string) => console.log(message));
-
   const bundle = await bundler.build({
     entries: nativeEntries(),
     platform: options.platform,
@@ -172,10 +181,6 @@ async function buildReleaseBundle(
     fs.copyFileSync(source, output);
     fs.copyFileSync(packagerMap, composed);
     fs.rmSync(packagerMap, { force: true });
-    log(
-      `flypath: ${options.platform} — hermesc was not found; shipping the ` +
-        "source bundle instead of bytecode",
-    );
     return {
       platform: options.platform,
       bundle,
@@ -186,6 +191,7 @@ async function buildReleaseBundle(
     };
   }
 
+  options.progress?.status("Compiling Hermes bytecode");
   const compilerMap = `${output}.hbc.map`;
   await run(compiler, [
     "-emit-binary",
@@ -198,6 +204,7 @@ async function buildReleaseBundle(
 
   const script = composeScript(options.root);
   if (script && fs.existsSync(compilerMap)) {
+    options.progress?.status("Composing source maps");
     await run(process.execPath, [
       script,
       packagerMap,
@@ -210,13 +217,6 @@ async function buildReleaseBundle(
     fs.copyFileSync(packagerMap, composed);
   }
   fs.rmSync(packagerMap, { force: true });
-
-  const size = fs.statSync(output).size;
-  log(
-    `flypath: ${options.platform} — ${name} is ${String(
-      Math.round(size / 1024),
-    )} kB of Hermes bytecode (baseId ${bundle.baseId})`,
-  );
 
   return {
     platform: options.platform,
@@ -237,13 +237,11 @@ export type NativeReleaseOptions = {
   clientDir: string;
   rscDir: string;
   hermes?: boolean;
-  log?: (message: string) => void;
 };
 
 export async function buildNativeRelease(
   options: NativeReleaseOptions,
 ): Promise<ReleaseBundle[]> {
-  const log = options.log ?? ((message: string) => console.log(message));
   const {
     buildChunks,
     chunkManifest,
@@ -258,50 +256,75 @@ export async function buildNativeRelease(
 
   try {
     for (const platform of options.platforms) {
-      const bundler = nativeBundler(server, platform);
+      const label = PLATFORM_NAMES[platform];
+      const release = await step(
+        {
+          active: `Bundling ${label}`,
+          done: `Bundled ${label}`,
+          failed: `Bundling failed for ${label}`,
+        },
+        async (progress) => {
+          const bundler = nativeBundler(server, platform);
 
-      const base = await bundler.build({
-        entries: nativeEntries(),
-        platform,
-        dev: false,
-        serverUrl: options.url,
-        manifestHash: currentManifest()?.hash ?? "",
-        build: options.build,
-        runtimeVersions: runtimeVersions(options.root),
-      });
+          progress.status("Base bundle");
+          const base = await bundler.build({
+            entries: nativeEntries(),
+            platform,
+            dev: false,
+            serverUrl: options.url,
+            manifestHash: currentManifest()?.hash ?? "",
+            build: options.build,
+            runtimeVersions: runtimeVersions(options.root),
+          });
 
-      const set = await buildChunks(bundler, references);
-      writeChunks(options.clientDir, platform, set.chunks);
-      log(
-        `flypath: ${platform} — ${String(set.chunks.length)} client chunks ` +
-          `(${String(set.chunks.filter((chunk) => chunk.empty).length)} already in the base)`,
+          progress.status("Client chunks");
+          const set = await buildChunks(bundler, references);
+          writeChunks(options.clientDir, platform, set.chunks);
+
+          progress.status("Seeded bundle");
+          const built = await buildReleaseBundle(bundler, {
+            root: options.root,
+            platform,
+            serverUrl: options.url,
+            outDir: path.join(options.outDir, platform),
+            build: options.build,
+            seed: { entries: set.entries, seeded: set.seeded },
+            ...(options.hermes === undefined ? {} : { hermes: options.hermes }),
+            progress,
+          });
+
+          if (built.bundle.baseId !== base.baseId) {
+            throw new FlypathError(
+              "The base bundle changed between the chunk pass and the seeded pass",
+              {
+                hint: "Its baseId is not reproducible, so chunks would not match it",
+              },
+            );
+          }
+
+          writeChunkManifest(
+            options.clientDir,
+            platform,
+            chunkManifest(base.baseId, options.build, set.chunks),
+          );
+
+          progress.summary(
+            [
+              built.bytecode ? "Hermes" : "source",
+              size(fs.statSync(built.output).size),
+              plural(set.chunks.length, "chunk"),
+            ].join(" · "),
+          );
+          return built;
+        },
       );
 
-      const release = await buildReleaseBundle(bundler, {
-        root: options.root,
-        platform,
-        serverUrl: options.url,
-        outDir: path.join(options.outDir, platform),
-        build: options.build,
-        seed: { entries: set.entries, seeded: set.seeded },
-        ...(options.hermes === undefined ? {} : { hermes: options.hermes }),
-        log,
-      });
-
-      if (release.bundle.baseId !== base.baseId) {
-        throw new Error(
-          "flypath: the base bundle's module set changed between the chunk " +
-            "pass and the seeded pass, so baseId is not reproducible",
+      if (!release.bytecode) {
+        warn(
+          `${label} ships its source bundle, not Hermes bytecode`,
+          "hermesc was not found next to react-native",
         );
       }
-
-      const file = writeChunkManifest(
-        options.clientDir,
-        platform,
-        chunkManifest(base.baseId, options.build, set.chunks),
-      );
-      log(`flypath: ${platform} — wrote ${path.relative(options.root, file)}`);
-
       out.push(release);
     }
   } finally {

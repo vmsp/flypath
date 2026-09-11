@@ -4,7 +4,7 @@ import { Expr, toNode as sharedNode } from "./expression.ts";
 import type { Compiled, Node } from "./ir.ts";
 
 export class NotFoundError extends Error {
-  constructor(message = "flypath: the query returned no rows") {
+  constructor(message = "The query returned no rows") {
     super(message);
     this.name = "NotFoundError";
   }

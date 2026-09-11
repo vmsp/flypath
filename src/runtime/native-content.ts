@@ -42,6 +42,7 @@ export type Bridge = {
   router: () => Router;
   settle: (key: string, result: Fetched) => void;
   dev: boolean;
+  debug: boolean;
 };
 
 export type Applied = {
@@ -110,8 +111,8 @@ function isChrome(key: string): boolean {
 }
 
 function log(message: string): void {
-  if (!bridge?.dev) return;
-  console.log(`flypath: ${message}`);
+  if (!bridge?.debug) return;
+  console.log(`${message}`);
 }
 
 /** Read the cached content for a key, if any. */

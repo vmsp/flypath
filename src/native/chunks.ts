@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
+import { FlypathError } from "../shared/errors.ts";
 import { distDir, EXTENSIONS, sources } from "../shared/paths.ts";
 import { hash } from "../styles/hash.ts";
 import type { NativeBundler, NativeSourceMap } from "../vite/bundler.ts";
@@ -68,10 +69,9 @@ export function manifestKeys(rscDir: string): string[] {
   try {
     code = fs.readFileSync(file, "utf8");
   } catch {
-    throw new Error(
-      `flypath: ${file} is missing; the server build has to run before the ` +
-        "native chunks",
-    );
+    throw new FlypathError(`${file} is missing`, {
+      hint: "The server build has to run before the native chunks",
+    });
   }
   const start = code.indexOf('"clientReferenceDeps"');
   if (start === -1) return [];
@@ -99,11 +99,14 @@ export function resolveReferences(
   }
 
   if (missing.length > 0) {
-    throw new Error(
-      `flypath: the server build references client modules the native build ` +
-        `cannot find (${missing.join(", ")}). Their reference keys are a ` +
-        "hash of the path relative to the project root, so this means the " +
-        "two builds disagree about where a module lives — rebuild both",
+    throw new FlypathError(
+      "The server build references client modules the native build cannot find",
+      {
+        hint:
+          "Reference keys hash the path relative to the project root, so " +
+          "the two builds disagree about where a module lives. Rebuild both",
+        details: missing,
+      },
     );
   }
 

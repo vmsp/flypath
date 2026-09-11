@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import type { JobsOptions } from "../jobs/config.ts";
 import type { MailOptions } from "../mail/config.ts";
 import type { ServeOptions } from "../serve/config.ts";
+import { FlypathError } from "../shared/errors.ts";
 
 export const CONFIG_PLUGIN = "flypath:config";
 
@@ -137,13 +138,13 @@ async function importConfig(root: string): Promise<Configish | undefined> {
     };
     exported = await module.default;
   } catch (error) {
-    throw new Error(
-      `flypath: could not load ${file}. Flypath runs it with Node, so it ` +
-        "cannot use __dirname, require(), or TypeScript that emits code " +
-        "(enum, namespace, parameter properties); use import.meta.dirname " +
-        "and plain type syntax instead",
-      { cause: error },
-    );
+    throw new FlypathError(`Could not load ${path.relative(root, file)}`, {
+      hint:
+        "flypath runs it with Node, so it cannot use __dirname, require(), " +
+        "or TypeScript that emits code (enum, namespace, parameter " +
+        "properties).\nUse import.meta.dirname and plain type syntax instead",
+      cause: error,
+    });
   }
 
   const config: unknown =

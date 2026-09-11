@@ -7,6 +7,8 @@ import type { Plugin } from "vite";
 import type { RouteManifest } from "../router/manifest.ts";
 import type { Prerendered } from "../runtime/prerender.ts";
 import { flightPath } from "../shared/flight.ts";
+import { step } from "../terminal/output.ts";
+import { plural } from "../terminal/style.ts";
 import { ROUTES_PLUGIN } from "./routes.ts";
 
 type RoutesApi = { manifest: () => RouteManifest };
@@ -33,7 +35,7 @@ export function prerenderFiles(paths: readonly string[]): OutputFiles[] {
       const owner = claimed.get(file);
       if (owner !== undefined) {
         throw new Error(
-          `flypath: ${at} and ${owner} are both prerendered to ${file}; two ` +
+          `${at} and ${owner} are both prerendered to ${file}; two ` +
             "routes cannot share one file — rename one of the patterns",
         );
       }
@@ -50,7 +52,7 @@ function write(dir: string, file: string, body: string | Uint8Array): void {
   const target = path.join(dir, file);
   if (fs.existsSync(target)) {
     throw new Error(
-      `flypath: prerendering would overwrite ${file}, which the client ` +
+      `Prerendering would overwrite ${file}, which the client ` +
         "build already wrote; a prerendered route may not take the name of " +
         "an asset — rename the route",
     );
@@ -94,24 +96,31 @@ export function prerender(): Plugin {
         };
         if (!module.prerender) {
           throw new Error(
-            `flypath: ${entry} does not export prerender(); the server build ` +
+            `${entry} does not export prerender(); the server build ` +
               "is stale — build it again",
           );
         }
 
+        const render = module.prerender;
         const { closePools } = await import("../db/client.ts");
         try {
-          const pages = await module.prerender(paths);
-          for (const [at, page] of pages.entries()) {
-            const target = files[at];
-            if (!target) continue;
-            write(client, target.document, page.document);
-            write(client, target.flight, page.flight);
-            builder.config.logger.info(
-              `flypath: prerendered ${page.path} → ${target.document}, ` +
-                target.flight,
-            );
-          }
+          await step(
+            {
+              active: "Prerendering",
+              done: `Prerendered ${plural(files.length, "page")}`,
+            },
+            async (progress) => {
+              for (const [at, target] of files.entries()) {
+                progress.status(
+                  `${String(at + 1)}/${String(files.length)} ${target.path}`,
+                );
+                const [page] = await render([target.path]);
+                if (!page) continue;
+                write(client, target.document, page.document);
+                write(client, target.flight, page.flight);
+              }
+            },
+          );
         } finally {
           await closePools();
         }

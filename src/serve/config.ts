@@ -2,6 +2,7 @@ import os from "node:os";
 import path from "node:path";
 
 import * as env from "../shared/env.ts";
+import { FlypathError } from "../shared/errors.ts";
 
 type AcmeOptions = {
   email: string;
@@ -103,9 +104,9 @@ function integer(value: string | undefined, key: string): number | undefined {
   if (value === undefined || value.trim() === "") return undefined;
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
-    throw new Error(
-      `flypath: ${key} must be a non-negative number, got ${value}`,
-    );
+    throw new FlypathError(`${key} must be a non-negative number`, {
+      hint: `It is ${value}`,
+    });
   }
   return Math.floor(parsed);
 }
@@ -138,16 +139,15 @@ function acme(
 ): ResolvedAcme | undefined {
   if (!options) return undefined;
   if (options.agree !== true) {
-    throw new Error(
-      "flypath: serve.tls.acme needs agree: true — obtaining a certificate " +
-        "accepts the CA's terms of service on your behalf",
-    );
+    throw new FlypathError("serve.tls.acme needs agree: true", {
+      hint: "Obtaining a certificate accepts the CA's terms of service on your behalf",
+    });
   }
   if (!options.email) {
-    throw new Error("flypath: serve.tls.acme.email is required");
+    throw new FlypathError("serve.tls.acme.email is required");
   }
   if (!options.domains || options.domains.length === 0) {
-    throw new Error("flypath: serve.tls.acme.domains must name a domain");
+    throw new FlypathError("serve.tls.acme.domains must name a domain");
   }
 
   const directory = options.directory ?? "production";
@@ -167,8 +167,8 @@ function tls(
   if (!options) return undefined;
   const resolved = acme(root, options.acme);
   if (!resolved && !(options.key && options.cert)) {
-    throw new Error(
-      "flypath: serve.tls needs either key and cert, or an acme block",
+    throw new FlypathError(
+      "serve.tls needs either key and cert, or an acme block",
     );
   }
   return {

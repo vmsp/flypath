@@ -1,3 +1,5 @@
+import { FlypathError } from "./errors.ts";
+
 /**
  * Every environment variable flypath reads on a consumer's behalf, and the only
  * place that names one. Values are read at call time, because `.env` is loaded
@@ -43,6 +45,8 @@ export const ENV = {
 
   /** Prefix for the release keystore, so CI need not write a file. */
   androidSigning: "FLYPATH_ANDROID_",
+
+  verbose: "FLYPATH_VERBOSE",
 } as const;
 
 function read(name: string): string | undefined {
@@ -57,9 +61,9 @@ function number(name: string): number | undefined {
   if (value === undefined) return undefined;
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
-    throw new Error(
-      `flypath: ${name} must be a non-negative number, got ${value}`,
-    );
+    throw new FlypathError(`${name} must be a non-negative number`, {
+      hint: `It is ${value}`,
+    });
   }
   return Math.floor(parsed);
 }
@@ -124,6 +128,15 @@ export function androidHome(): string | undefined {
 /** JDK location for the Gradle build. */
 export function javaHome(): string | undefined {
   return read(ENV.javaHome);
+}
+
+export function verbose(): boolean {
+  const value = read(ENV.verbose);
+  return value !== undefined && value !== "0" && value !== "false";
+}
+
+export function setVerbose(): void {
+  process.env[ENV.verbose] = "1";
 }
 
 /** One release-keystore field, e.g. `storeFile` reads `FLYPATH_ANDROID_STOREFILE`. */

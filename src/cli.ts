@@ -7,11 +7,43 @@ import { cac } from "cac";
 
 import type { Worker, WorkOptions } from "./jobs/worker.ts";
 import type { FlypathOptions } from "./native/config.ts";
+import { setVerbose } from "./shared/env.ts";
+import { FlypathError } from "./shared/errors.ts";
+import type { Row } from "./terminal/output.ts";
+import {
+  blank,
+  fail,
+  flypathVersion,
+  header,
+  intro,
+  print,
+  success,
+  warn,
+} from "./terminal/output.ts";
+import { duration, mark, paint, plural, relative } from "./terminal/style.ts";
+
+if (process.argv.includes("--verbose")) setVerbose();
 
 const cli = cac("flypath");
 
 const port = (value: string | undefined): number | undefined =>
   value === undefined ? undefined : Number(value);
+
+function message(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function guard<A extends unknown[]>(
+  run: (...args: A) => Promise<void>,
+): (...args: A) => Promise<void> {
+  return async (...args) => {
+    try {
+      await run(...args);
+    } catch (error) {
+      fail(error);
+    }
+  };
+}
 
 async function environment(): Promise<string> {
   const root = process.cwd();
@@ -34,7 +66,7 @@ async function declareDatabases(root: string): Promise<void> {
   try {
     await declareOptions(await loadOptions(root));
   } catch (error) {
-    console.warn(error instanceof Error ? error.message : String(error));
+    warn("Could not read vite.config.ts", message(error));
   }
 }
 
@@ -86,11 +118,7 @@ async function startDevWorker(
       await close();
     };
   } catch (error) {
-    console.warn(
-      `flypath: could not start the job worker — ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
+    warn("Could not start the job worker", message(error));
   }
 }
 
@@ -105,9 +133,9 @@ function parsePlatforms(value: string | undefined): ("ios" | "android")[] {
     if (entry === "ios" || entry === "android") out.push(entry);
     else if (entry === "all" || entry === "native") out.push("ios", "android");
     else {
-      throw new Error(
-        `flypath: unknown platform "${entry}"; use ios, android, or all`,
-      );
+      throw new FlypathError(`Unknown platform "${entry}"`, {
+        hint: "Use ios, android, or all",
+      });
     }
   }
   return [...new Set(out)];
@@ -145,10 +173,13 @@ async function publicOrigin(
   const { appUrl, ENV } = await import("./shared/env.ts");
   const url = appUrl() ?? options.url ?? readBuildInfo(root)?.url;
   if (url === undefined || url === null || url.trim() === "") {
-    throw new Error(
-      "flypath: a release build needs the application's public origin — set " +
-        'url in vite.config.ts (url: "https://example.com"), or pass ' +
-        `${ENV.url} in the environment`,
+    throw new FlypathError(
+      "A release build needs the application's public origin",
+      {
+        hint:
+          'Set url in vite.config.ts (url: "https://example.com"), or ' +
+          `${ENV.url} in the environment`,
+      },
     );
   }
   return url.trim().replace(/\/+$/, "");
@@ -172,47 +203,65 @@ async function buildNative(
   });
 }
 
-function fail(error: unknown): never {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-}
+cli.option("--verbose", "Show everything the tools print");
 
 cli
-  .command("dev", "Start the dev server (web, flight payloads, native bundles)")
+  .command("dev", "Start the dev server for web and native")
   .option("--port <port>", "Port to listen on")
   .option("--host [host]", "Expose the server on the network")
-  .action(async (options: { port?: string; host?: boolean | string }) => {
-    const root = await environment();
-    const { createServer } = await import("vite");
-    const server = await createServer({
-      server: { port: port(options.port), host: options.host },
-    });
-    await declareFromServer(server);
-    await server.listen();
-    server.printUrls();
+  .action(
+    guard(async (options: { port?: string; host?: boolean | string }) => {
+      const started = performance.now();
+      const root = await environment();
+      const { createServer } = await import("vite");
+      const { terminalLogger } = await import("./terminal/logger.ts");
+      const server = await createServer({
+        customLogger: terminalLogger(),
+        clearScreen: false,
+        server: { port: port(options.port), host: options.host },
+      });
+      await declareFromServer(server);
+      await server.listen();
 
-    const { databaseUrl } = await import("./shared/env.ts");
-    if (databaseUrl("default")) {
-      await startDevWorker(server);
-      const { status } = await import("./migrations/runner.ts");
-      try {
-        const current = await status(root);
-        if (current.pending.length > 0) {
-          console.warn(
-            `flypath: ${String(current.pending.length)} migration(s) pending — ` +
-              `${current.pending.map((entry) => entry.file.id).join(", ")}; ` +
-              "run flypath migrate",
-          );
-        }
-      } catch (error) {
-        console.warn(
-          `flypath: could not check migrations — ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
+      const p = paint(process.stderr);
+      const rows: Row[] = [];
+      const local = server.resolvedUrls?.local[0];
+      const network = server.resolvedUrls?.network[0];
+      if (local !== undefined) {
+        rows.push(["Local", p.accent(local.replace(/\/$/, ""))]);
       }
-    }
-  });
+      if (network !== undefined) {
+        rows.push(["Network", p.accent(network.replace(/\/$/, ""))]);
+      }
+
+      const { databaseUrl } = await import("./shared/env.ts");
+      const database = databaseUrl("default") !== undefined;
+      let unchecked: string | undefined;
+      if (database) {
+        const { status } = await import("./migrations/runner.ts");
+        try {
+          const current = await status(root);
+          if (current.pending.length > 0) {
+            rows.push([
+              "Database",
+              `${plural(current.pending.length, "migration")} pending ${p.dim("— run flypath migrate")}`,
+            ]);
+          }
+        } catch (error) {
+          unchecked = message(error);
+        }
+      }
+
+      header("dev", rows);
+      if (unchecked !== undefined) {
+        warn("Could not check migrations", unchecked);
+      }
+      success(`Ready in ${duration(performance.now() - started)}`);
+      blank();
+
+      if (database) await startDevWorker(server);
+    }),
+  );
 
 cli
   .command("start", "Serve the built application")
@@ -220,137 +269,178 @@ cli
   .option("--host <host>", "Address to bind")
   .option("--cluster <n>", "Worker count; 0 or off for a single process")
   .action(
-    async (options: {
-      port?: string;
-      host?: string;
-      cluster?: string | number;
-    }) => {
-      const { start } = await import("./serve/index.ts");
-      try {
+    guard(
+      async (options: {
+        port?: string;
+        host?: string;
+        cluster?: string | number;
+      }) => {
+        const { start } = await import("./serve/index.ts");
         await start({
           port: port(options.port),
           host: options.host,
           cluster:
             options.cluster === undefined ? undefined : String(options.cluster),
         });
-      } catch (error) {
-        fail(error);
-      }
-    },
+      },
+    ),
   );
 
 cli
   .command("work", "Run background jobs and crons")
   .option("--queues <names>", "Comma separated queues this worker serves")
   .option("--concurrency <n>", "Override every queue's concurrency")
-  .action(async (options: { queues?: string; concurrency?: string }) => {
-    const root = await environment();
-    const entry = path.join(root, "dist", "rsc", "index.js");
-    const { closePools } = await import("./db/client.ts");
-    try {
-      const module = (await import(pathToFileURL(entry).href)) as {
-        work?: (options?: WorkOptions) => Promise<Worker>;
-      };
-      if (!module.work) {
-        throw new Error(
-          `flypath: ${entry} does not export work(); run flypath build`,
-        );
+  .action(
+    guard(async (options: { queues?: string; concurrency?: string }) => {
+      const root = await environment();
+      const entry = path.join(root, "dist", "rsc", "index.js");
+      const { closePools } = await import("./db/client.ts");
+      try {
+        const module = (await import(pathToFileURL(entry).href)) as {
+          work?: (options?: WorkOptions) => Promise<Worker>;
+        };
+        if (!module.work) {
+          throw new FlypathError(`${relative(entry)} does not export work()`, {
+            hint: "Run flypath build",
+          });
+        }
+
+        const { reporter } = await import("./terminal/format.ts");
+        const { globals } = await import("./shared/globals.ts");
+        globals().report = reporter();
+
+        const queues = options.queues?.split(",").map((name) => name.trim());
+        const concurrency =
+          options.concurrency === undefined
+            ? undefined
+            : Number(options.concurrency);
+        const worker = await module.work({
+          ...(queues === undefined ? {} : { queues }),
+          ...(concurrency === undefined ? {} : { concurrency }),
+        });
+
+        const { queue, queueNames } = await import("./jobs/config.ts");
+        const { crons } = await import("./jobs/registry.ts");
+        const scheduled = crons().length;
+        header("work", [
+          [
+            "Queues",
+            (queues ?? queueNames())
+              .map(
+                (name) =>
+                  `${name} ×${String(concurrency ?? queue(name).concurrency)}`,
+              )
+              .join(" · "),
+          ],
+          ...(scheduled === 0 ? [] : [["Crons", String(scheduled)] as const]),
+        ]);
+        success("Ready");
+        blank();
+        await untilSignal(worker);
+      } finally {
+        await closePools();
       }
-      const worker = await module.work({
-        ...(options.queues === undefined
-          ? {}
-          : { queues: options.queues.split(",").map((name) => name.trim()) }),
-        ...(options.concurrency === undefined
-          ? {}
-          : { concurrency: Number(options.concurrency) }),
-      });
-      console.log(`flypath: worker ${worker.id} started`);
-      await untilSignal(worker);
-    } catch (error) {
-      fail(error);
-    } finally {
-      await closePools();
-    }
-  });
+    }),
+  );
 
 cli
   .command("build", "Build for production")
   .option("--platform <names>", "Also build native bundles: ios, android")
-  .action(async (options: { platform?: string }) => {
-    const { loadOptions } = await import("./native/config.ts");
-    const { scaffoldNative } = await import("./native/scaffold.ts");
-    const { projectContext } = await import("./native/template.ts");
-    const root = await environment();
-    let declared: FlypathOptions = {};
-    try {
-      const loaded = await loadOptions(root);
-      declared = loaded;
-      scaffoldNative(projectContext(root, loaded.port, loaded));
-    } catch (error) {
-      if (
-        !(error instanceof Error) ||
-        !error.message.includes("react-native")
-      ) {
-        throw error;
+  .action(
+    guard(async (options: { platform?: string }) => {
+      const started = performance.now();
+      const { loadOptions } = await import("./native/config.ts");
+      const { scaffoldNative } = await import("./native/scaffold.ts");
+      const { projectContext } = await import("./native/template.ts");
+      const root = await environment();
+      let declared: FlypathOptions = {};
+      try {
+        const loaded = await loadOptions(root);
+        declared = loaded;
+        scaffoldNative(projectContext(root, loaded.port, loaded));
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          !error.message.includes("react-native")
+        ) {
+          throw error;
+        }
       }
-    }
 
-    const platforms = parsePlatforms(options.platform);
-    const { currentBuildId } = await import("./vite/plugins.ts");
-    const build = currentBuildId();
+      const platforms = parsePlatforms(options.platform);
+      const { currentBuildId } = await import("./vite/plugins.ts");
+      const build = currentBuildId();
 
-    const { createBuilder } = await import("vite");
-    const { closePools } = await import("./db/client.ts");
-    const builder = await createBuilder();
-    try {
-      await builder.buildApp();
-      writeBuildInfo(root, build, declared.url);
-      if (platforms.length > 0) {
-        await buildNative(root, declared, platforms, build);
+      header("build");
+
+      const { createBuilder } = await import("vite");
+      const { terminalLogger } = await import("./terminal/logger.ts");
+      const { closePools } = await import("./db/client.ts");
+      const logger = terminalLogger({ collect: true });
+      const builder = await createBuilder({
+        customLogger: logger,
+        logLevel: "warn",
+        clearScreen: false,
+      });
+      try {
+        await builder.buildApp();
+        writeBuildInfo(root, build, declared.url);
+        if (platforms.length > 0) {
+          await buildNative(root, declared, platforms, build);
+        }
+      } finally {
+        await closePools();
       }
-    } finally {
-      await closePools();
-    }
-  });
+
+      const warnings = logger.flush();
+      blank();
+      success(
+        `Built in ${duration(performance.now() - started)}`,
+        warnings === 0 ? "dist/" : `dist/ · ${plural(warnings, "warning")}`,
+      );
+    }),
+  );
 
 cli
-  .command("ios", "Build and launch the iOS shell")
+  .command("ios", "Build and launch the iOS app")
   .option("--device <name>", "Simulator or device name, udid, or serial")
   .option("--host <host>", "Address a device should reach the dev server at")
   .option("--port <port>", "Dev server port")
+  .option("--console", "Stay attached to the app's native console")
   .option("--release", "Archive and export a signed build")
   .option("--archive-only", "Stop at the .xcarchive")
   .option("--upload", "Hand the export to App Store Connect")
   .option("--xcode", "Open the project in Xcode as well")
   .action(
-    async (options: {
-      device?: string;
-      host?: string;
-      port?: string;
-      release?: boolean;
-      archiveOnly?: boolean;
-      upload?: boolean;
-      xcode?: boolean;
-    }) => {
-      const { runIos } = await import("./native/ios.ts");
-      try {
+    guard(
+      async (options: {
+        device?: string;
+        host?: string;
+        port?: string;
+        console?: boolean;
+        release?: boolean;
+        archiveOnly?: boolean;
+        upload?: boolean;
+        xcode?: boolean;
+      }) => {
+        header(options.release === true ? "ios --release" : "ios");
+        const { runIos } = await import("./native/ios.ts");
         await runIos({
           device: options.device,
           host: options.host,
           port: port(options.port),
+          console: options.console,
           release: options.release,
           archiveOnly: options.archiveOnly,
           upload: options.upload,
           xcode: options.xcode,
         });
-      } catch (error) {
-        fail(error);
-      }
-    },
+      },
+    ),
   );
 
 cli
-  .command("android", "Build and launch the Android shell")
+  .command("android", "Build and launch the Android app")
   .option("--device <serial>", "Emulator or device serial or model")
   .option("--host <host>", "Address a device should reach the dev server at")
   .option("--port <port>", "Dev server port")
@@ -358,16 +448,17 @@ cli
   .option("--apk", "Build a signed .apk instead of an .aab")
   .option("--studio", "Open the project in Android Studio as well")
   .action(
-    async (options: {
-      device?: string;
-      host?: string;
-      port?: string;
-      release?: boolean;
-      apk?: boolean;
-      studio?: boolean;
-    }) => {
-      const { runAndroid } = await import("./native/android.ts");
-      try {
+    guard(
+      async (options: {
+        device?: string;
+        host?: string;
+        port?: string;
+        release?: boolean;
+        apk?: boolean;
+        studio?: boolean;
+      }) => {
+        header(options.release === true ? "android --release" : "android");
+        const { runAndroid } = await import("./native/android.ts");
         await runAndroid({
           device: options.device,
           host: options.host,
@@ -376,10 +467,8 @@ cli
           apk: options.apk,
           studio: options.studio,
         });
-      } catch (error) {
-        fail(error);
-      }
-    },
+      },
+    ),
   );
 
 cli
@@ -389,49 +478,49 @@ cli
   .option("--empty", "Write a migration with no operations")
   .option("--no-input", "Never prompt; take the conservative answer")
   .action(
-    async (options: {
-      name?: string;
-      check?: boolean;
-      empty?: boolean;
-      input?: boolean;
-    }) => {
-      const root = await environment();
-      await declareDatabases(root);
-      const { makemigration, terminalPrompt } =
-        await import("./migrations/generate.ts");
-      const { conservative } = await import("./migrations/diff.ts");
-      try {
-        const result = await makemigration(root, {
-          ...(options.name === undefined ? {} : { name: options.name }),
-          ...(options.check === undefined ? {} : { check: options.check }),
-          ...(options.empty === undefined ? {} : { empty: options.empty }),
-          prompt: options.input === false ? conservative : terminalPrompt(),
-        });
+    guard(
+      async (options: {
+        name?: string;
+        check?: boolean;
+        empty?: boolean;
+        input?: boolean;
+      }) => {
+        const root = await environment();
+        await declareDatabases(root);
+        const { makemigration, terminalPrompt } =
+          await import("./migrations/generate.ts");
+        const { conservative } = await import("./migrations/diff.ts");
+        const { closePools } = await import("./db/client.ts");
+        intro();
+        try {
+          const result = await makemigration(root, {
+            ...(options.name === undefined ? {} : { name: options.name }),
+            ...(options.check === undefined ? {} : { check: options.check }),
+            ...(options.empty === undefined ? {} : { empty: options.empty }),
+            prompt: options.input === false ? conservative : terminalPrompt(),
+          });
 
-        if (options.check) {
-          if (result.operations.length === 0) {
-            console.log("flypath: db/schema.ts matches the migrations");
+          if (options.check) {
+            if (result.operations.length === 0) {
+              success("db/schema.ts matches the migrations");
+              return;
+            }
+            throw new FlypathError(
+              `db/schema.ts has ${plural(result.operations.length, "change")} with no migration`,
+              { hint: "Run flypath makemigration" },
+            );
+          }
+
+          if (!result.file) {
+            success("No changes to write");
             return;
           }
-          console.error(
-            `flypath: ${String(result.operations.length)} change(s) have no ` +
-              "migration; run flypath makemigration",
-          );
-          process.exit(1);
+          success(`Wrote ${relative(result.file)}`);
+        } finally {
+          await closePools();
         }
-
-        if (!result.file) {
-          console.log("flypath: no changes to write");
-          return;
-        }
-        console.log(`flypath: wrote ${result.file}`);
-      } catch (error) {
-        fail(error);
-      } finally {
-        const { closePools } = await import("./db/client.ts");
-        await closePools();
-      }
-    },
+      },
+    ),
   );
 
 cli
@@ -443,81 +532,102 @@ cli
   .option("--check", "Exit 1 if anything is pending")
   .option("--database <name>", "Named database")
   .action(
-    async (options: {
-      to?: string;
-      plan?: boolean;
-      sql?: boolean;
-      status?: boolean;
-      check?: boolean;
-      database?: string;
-    }) => {
-      const root = await environment();
-      await declareDatabases(root);
-      const database = options.database ?? "default";
-      const { migrate, migratePlan, status } =
-        await import("./migrations/runner.ts");
-      const { closePools } = await import("./db/client.ts");
+    guard(
+      async (options: {
+        to?: string;
+        plan?: boolean;
+        sql?: boolean;
+        status?: boolean;
+        check?: boolean;
+        database?: string;
+      }) => {
+        const root = await environment();
+        await declareDatabases(root);
+        const database = options.database ?? "default";
+        const { migrate, migratePlan, status } =
+          await import("./migrations/runner.ts");
+        const { closePools } = await import("./db/client.ts");
 
-      try {
-        if (options.status) {
-          const current = await status(root, database);
-          for (const entry of current.applied) {
-            console.log(`up      ${entry.name}`);
-          }
-          for (const entry of current.pending) {
-            console.log(`pending ${entry.file.id}`);
-          }
-          for (const name of current.missing) {
-            console.log(`NO FILE ${name}`);
-          }
-          return;
-        }
-
-        if (options.check) {
-          const current = await status(root, database);
-          if (current.pending.length === 0) return;
-          console.error(
-            `flypath: ${String(current.pending.length)} migration(s) pending`,
-          );
-          process.exit(1);
-        }
-
-        if (options.plan || options.sql) {
-          const { statements } = await import("./migrations/ddl.ts");
-          const plans = await migratePlan(root, database, options.to);
-          for (const plan of plans) {
-            console.log(`-- ${plan.file.id}`);
-            if (!options.sql) continue;
-            for (const operation of plan.operations) {
-              for (const text of statements(operation)) {
-                console.log(`${text};`);
+        try {
+          if (options.plan || options.sql) {
+            const { statements } = await import("./migrations/ddl.ts");
+            const plans = await migratePlan(root, database, options.to);
+            for (const plan of plans) {
+              console.log(`-- ${plan.file.id}`);
+              if (!options.sql) continue;
+              for (const operation of plan.operations) {
+                for (const text of statements(operation)) {
+                  console.log(`${text};`);
+                }
               }
             }
+            if (plans.length === 0) console.log("-- nothing pending");
+            return;
           }
-          if (plans.length === 0) console.log("-- nothing pending");
-          return;
+
+          if (options.status) {
+            const current = await status(root, database);
+            const p = paint(process.stderr);
+            intro(`${p.bold("Migrations")}  ${database}`);
+            const names = [
+              ...current.applied.map((entry) => entry.name),
+              ...current.pending.map((entry) => entry.file.id),
+              ...current.missing,
+            ];
+            if (names.length === 0) {
+              print(p.dim("No migrations yet"));
+              return;
+            }
+            const width = Math.max(...names.map((name) => name.length)) + 4;
+            const stream = process.stderr;
+            for (const entry of current.applied) {
+              print(`${mark("done", stream)} ${entry.name}`);
+            }
+            for (const entry of current.pending) {
+              print(
+                `${mark("pending", stream)} ${entry.file.id.padEnd(width)}${p.dim("pending")}`,
+              );
+            }
+            for (const name of current.missing) {
+              print(
+                `${mark("error", stream)} ${name.padEnd(width)}${p.dim("applied, file missing")}`,
+              );
+            }
+            return;
+          }
+
+          if (options.check) {
+            const current = await status(root, database);
+            if (current.pending.length === 0) return;
+            throw new FlypathError(
+              `${plural(current.pending.length, "migration")} pending`,
+              {
+                hint: "Run flypath migrate",
+                details: current.pending.map((entry) => entry.file.id),
+              },
+            );
+          }
+
+          intro();
+          const done = await migrate(root, {
+            database,
+            ...(options.to === undefined ? {} : { to: options.to }),
+          });
+
+          const { jobsDatabase } = await import("./jobs/config.ts");
+          const { install } = await import("./jobs/schema.ts");
+          if (jobsDatabase() === database) await install(database);
+
+          if (done.length === 0) {
+            success("Nothing to migrate");
+            return;
+          }
+          for (const file of done) success(`Applied ${file.id}`);
+        } finally {
+          await closePools();
         }
-
-        const done = await migrate(root, {
-          database,
-          ...(options.to === undefined ? {} : { to: options.to }),
-        });
-
-        const { jobsDatabase } = await import("./jobs/config.ts");
-        const { install } = await import("./jobs/schema.ts");
-        if (jobsDatabase() === database) await install(database);
-
-        if (done.length === 0) {
-          console.log("flypath: nothing to migrate");
-          return;
-        }
-        for (const file of done) console.log(`flypath: applied ${file.id}`);
-      } catch (error) {
-        fail(error);
-      } finally {
-        await closePools();
-      }
-    },
+      },
+    ),
   );
 
 cli
@@ -526,30 +636,104 @@ cli
   .option("--to <timestamp>", "Reverse down to, and excluding, this timestamp")
   .option("--database <name>", "Named database")
   .action(
-    async (options: { step?: string; to?: string; database?: string }) => {
-      const root = await environment();
-      await declareDatabases(root);
-      const { rollback } = await import("./migrations/runner.ts");
-      const { closePools } = await import("./db/client.ts");
-      try {
-        const done = await rollback(root, {
-          database: options.database ?? "default",
-          ...(options.step === undefined ? {} : { step: Number(options.step) }),
-          ...(options.to === undefined ? {} : { to: options.to }),
-        });
-        if (done.length === 0) {
-          console.log("flypath: nothing to roll back");
-          return;
+    guard(
+      async (options: { step?: string; to?: string; database?: string }) => {
+        const root = await environment();
+        await declareDatabases(root);
+        const { rollback } = await import("./migrations/runner.ts");
+        const { closePools } = await import("./db/client.ts");
+        intro();
+        try {
+          const done = await rollback(root, {
+            database: options.database ?? "default",
+            ...(options.step === undefined
+              ? {}
+              : { step: Number(options.step) }),
+            ...(options.to === undefined ? {} : { to: options.to }),
+          });
+          if (done.length === 0) {
+            success("Nothing to roll back");
+            return;
+          }
+          for (const file of done) success(`Reversed ${file.id}`);
+        } finally {
+          await closePools();
         }
-        for (const file of done) console.log(`flypath: reversed ${file.id}`);
-      } catch (error) {
-        fail(error);
-      } finally {
-        await closePools();
-      }
-    },
+      },
+    ),
   );
 
-cli.help();
-cli.version("0.0.0");
-cli.parse();
+const GROUPS: readonly (readonly [string, readonly string[]])[] = [
+  ["Develop", ["dev", "ios", "android"]],
+  ["Ship", ["build", "start", "work"]],
+  ["Database", ["makemigration", "migrate", "rollback"]],
+];
+
+function indent(body: string): string {
+  return body
+    .split("\n")
+    .map((line) => (line === "" ? line : `  ${line}`))
+    .join("\n");
+}
+
+cli.help((sections) => {
+  const p = paint(process.stdout);
+  const title = `\n  ${p.bold(p.accent("flypath"))} ${p.dim(flypathVersion())}`;
+  const titled = (section: { title?: string; body: string }) => ({
+    body:
+      section.title === undefined
+        ? section.body
+        : `  ${p.bold(section.title)}\n${indent(section.body)}`,
+  });
+
+  if (!sections.some((section) => section.title === "Commands")) {
+    return [
+      { body: title },
+      ...sections
+        .slice(1)
+        .filter((section) => !section.title?.startsWith("For more info"))
+        .map(titled),
+      { body: "" },
+    ];
+  }
+
+  const width = Math.max(...cli.commands.map((entry) => entry.name.length)) + 4;
+  const groups = GROUPS.map(([group, names]) =>
+    [
+      `  ${p.bold(group)}`,
+      ...names.flatMap((name) => {
+        const command = cli.commands.find((entry) => entry.name === name);
+        return command === undefined
+          ? []
+          : [`    ${name.padEnd(width)}${p.dim(command.description)}`];
+      }),
+    ].join("\n"),
+  );
+  const options = sections.find((section) => section.title === "Options");
+
+  return [
+    { body: title },
+    { body: `  ${p.bold("Usage")}  flypath <command> [options]` },
+    ...groups.map((body) => ({ body })),
+    ...(options === undefined ? [] : [titled(options)]),
+    { body: `  ${p.dim("Run flypath <command> --help for its options")}\n` },
+  ];
+});
+
+cli.version(flypathVersion());
+
+cli.parse(process.argv, { run: false });
+
+if (cli.matchedCommand) {
+  void cli.runMatchedCommand();
+} else if (cli.options["help"] !== true && cli.options["version"] !== true) {
+  const [unknown] = cli.args;
+  if (unknown === undefined) cli.outputHelp();
+  else {
+    fail(
+      new FlypathError(`Unknown command "${unknown}"`, {
+        hint: "Run flypath --help for the list",
+      }),
+    );
+  }
+}

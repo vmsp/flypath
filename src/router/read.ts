@@ -22,9 +22,7 @@ export function makeParams(read: Read): ParamsReader {
     if (name === undefined) return { ...firstOf(info), ...info.params };
     const value = info.params[name];
     if (value === undefined) {
-      throw new Error(
-        `flypath: params("${name}") is not a param of "${info.pathname}"`,
-      );
+      throw new Error(`params("${name}") is not a param of "${info.pathname}"`);
     }
     return value;
   }) as ParamsReader;

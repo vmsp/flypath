@@ -20,7 +20,7 @@ function normalizeReferenceId(id: string): string {
 function assertLocal(reference: string): void {
   if (/^[a-z][a-z\d+.-]*:/i.test(reference) || reference.startsWith("//")) {
     throw new Error(
-      `flypath: refusing to load client reference "${reference}" — ` +
+      `Refusing to load client reference "${reference}" — ` +
         "chunks may only be fetched from the configured flypath server",
     );
   }
@@ -40,7 +40,7 @@ function installBundleLoader(): void {
     if (!response.ok) {
       const reason = await response.text().catch(() => "");
       throw new Error(
-        `flypath: chunk request failed (${response.status}) for ${url}` +
+        `Chunk request failed (${response.status}) for ${url}` +
           (reason === "" ? "" : `\n${reason}`),
       );
     }
@@ -61,9 +61,7 @@ function download(path: string): Promise<void> {
 
   const load = globalThis.__loadBundleAsync;
   if (!load) {
-    return Promise.reject(
-      new Error("flypath: native chunk loader is not installed"),
-    );
+    return Promise.reject(new Error("Native chunk loader is not installed"));
   }
 
   const task = load(path).catch((error: unknown) => {
@@ -102,7 +100,7 @@ export function updateRequired(): boolean {
 
 function skewMessage(server: string, binary: string): string {
   return (
-    "flypath: this build of the app was made against a different base bundle " +
+    "This build of the app was made against a different base bundle " +
     `than the running server (app ${binary}, server ${server}) — screens it ` +
     "already carries keep working; anything new needs a rebuilt app"
   );
@@ -135,14 +133,14 @@ async function fetchManifest(): Promise<ChunkManifest> {
   if (response.status === 426) {
     stale = true;
     throw new UpdateRequired(
-      "flypath: this server no longer supports this version of the app — " +
+      "This server no longer supports this version of the app — " +
         "install the latest build",
     );
   }
 
   if (!response.ok) {
     throw new Error(
-      `flypath: could not read the chunk manifest for ${platform} ` +
+      `Could not read the chunk manifest for ${platform} ` +
         `(${String(response.status)})`,
     );
   }
@@ -181,7 +179,7 @@ async function loadChunk(reference: string): Promise<unknown> {
   const file = current.chunks[reference];
   if (file === undefined) {
     throw new Error(
-      `flypath: the server has no chunk for client reference "${reference}"` +
+      `The server has no chunk for client reference "${reference}"` +
         (current.baseId === nativeConfig().baseId
           ? ""
           : ` — ${skewMessage(current.baseId, nativeConfig().baseId)}`),
@@ -202,9 +200,7 @@ async function loadChunk(reference: string): Promise<unknown> {
 function requireRegistered(reference: string): unknown {
   const moduleId = globalThis.__FLYPATH__?.chunks?.[reference];
   if (moduleId === undefined) {
-    throw new Error(
-      `flypath: chunk for "${reference}" did not register a module id`,
-    );
+    throw new Error(`Chunk for "${reference}" did not register a module id`);
   }
   return globalThis.__r(moduleId);
 }

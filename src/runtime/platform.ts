@@ -52,7 +52,7 @@ function required(what: string): RequestInfo {
   const request = getRequest();
   if (!request) {
     throw new Error(
-      `flypath: ${what}, so it is only available while the flypath router ` +
+      `${what}, so it is only available while the flypath router ` +
         "is handling a request — in a middleware, a server component or a " +
         "server action",
     );
@@ -82,7 +82,7 @@ function snapshot(incoming: Headers): Headers {
 
 function complain(method: string, name: string): void {
   console.warn(
-    `flypath: headers().${method}(${JSON.stringify(name)}) changes nothing; ` +
+    `headers().${method}(${JSON.stringify(name)}) changes nothing; ` +
       "headers() is a copy of the incoming request headers. Write a header " +
       "on the response with headers.set() or headers.delete(), and a cookie " +
       "with cookies.set().",
@@ -93,20 +93,20 @@ function reserved(name: string): void {
   const key = name.toLowerCase();
   if (key === "set-cookie") {
     throw new Error(
-      'flypath: headers.set("set-cookie") would replace every cookie on ' +
+      'headers.set("set-cookie") would replace every cookie on ' +
         "the response at once; use cookies.set() and cookies.clear(), which " +
         "merge into what the rest of the request already wrote",
     );
   }
   if (key.startsWith("x-flypath-")) {
     throw new Error(
-      `flypath: "${key}" belongs to the flypath wire protocol, which the ` +
+      `"${key}" belongs to the flypath wire protocol, which the ` +
         "client parses; pick a header name of your own",
     );
   }
   if (key === "content-type" || key === "location") {
     throw new Error(
-      `flypath: "${key}" is decided by the response flypath builds — a ` +
+      `"${key}" is decided by the response flypath builds — a ` +
         "flight payload, a document or a redirect — so overwriting it would " +
         "break the client; use navigate() to send the user elsewhere",
     );
@@ -126,9 +126,7 @@ export const EFFECT: string =
 export function forbidPrerender(call: string, why: string): void {
   const request = getRequest();
   if (!request?.prerender) return;
-  throw new Error(
-    `flypath: ${call} while prerendering ${request.pathname}; ${why}`,
-  );
+  throw new Error(`${call} while prerendering ${request.pathname}; ${why}`);
 }
 
 export const headers: HeaderAccess = Object.assign(

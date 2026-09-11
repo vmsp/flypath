@@ -148,9 +148,7 @@ export async function writeSourcekitConfig(root: string): Promise<void> {
   let sdk: string;
   try {
     sdk = (
-      await run("xcrun", ["--sdk", "iphonesimulator", "--show-sdk-path"], {
-        capture: true,
-      })
+      await run("xcrun", ["--sdk", "iphonesimulator", "--show-sdk-path"])
     ).trim();
   } catch {
     return;

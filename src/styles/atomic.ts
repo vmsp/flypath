@@ -47,9 +47,7 @@ export function atomicRule(
     } else if (isMedia(condition)) {
       parts.push(`${condition} { .${className} { ${declaration(value)} } }`);
     } else {
-      throw new Error(
-        `flypath: unsupported condition "${condition}" on "${property}"`,
-      );
+      throw new Error(`Unsupported condition "${condition}" on "${property}"`);
     }
   }
   return { className, css: parts.join("\n") };

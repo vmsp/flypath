@@ -18,10 +18,10 @@ export class NavigationError extends Error {
   constructor(readonly flypathSignal: NavigationSignal) {
     super(
       flypathSignal.kind === "go"
-        ? `flypath: navigate to ${flypathSignal.to}`
+        ? `Navigate to ${flypathSignal.to}`
         : flypathSignal.kind === "back"
-          ? "flypath: navigate back"
-          : "flypath: not found",
+          ? "Navigate back"
+          : "Not found",
     );
     this.name = "NavigationError";
   }

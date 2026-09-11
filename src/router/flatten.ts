@@ -122,7 +122,7 @@ export function flatten(tree: RouteTree): Flattened {
 
       if (node.kind === "not-found") {
         if (fallback) {
-          throw new Error("flypath: only one notFound() route may be declared");
+          throw new Error("Only one notFound() route may be declared");
         }
         fallback = {
           id: "not-found",
@@ -175,7 +175,7 @@ export function flatten(tree: RouteTree): Flattened {
         );
         if (branching && info.branches.length === 0) {
           throw new Error(
-            "flypath: branches() needs at least one stack() or branches() " +
+            "branches() needs at least one stack() or branches() " +
               "child to branch into",
           );
         }

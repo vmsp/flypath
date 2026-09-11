@@ -54,10 +54,10 @@ function skip(cursor: Cursor): void {
 function openTag(cursor: Cursor): { name: string; empty: boolean } {
   skip(cursor);
   if (cursor.text[cursor.at] !== "<") {
-    throw new Error(`flypath: malformed plist at offset ${cursor.at}`);
+    throw new Error(`Malformed plist at offset ${cursor.at}`);
   }
   const end = cursor.text.indexOf(">", cursor.at);
-  if (end === -1) throw new Error("flypath: malformed plist");
+  if (end === -1) throw new Error("Malformed plist");
   const body = cursor.text.slice(cursor.at + 1, end);
   cursor.at = end + 1;
   const empty = body.endsWith("/");
@@ -68,7 +68,7 @@ function openTag(cursor: Cursor): { name: string; empty: boolean } {
 function textUntilClose(cursor: Cursor, name: string): string {
   const close = `</${name}>`;
   const end = cursor.text.indexOf(close, cursor.at);
-  if (end === -1) throw new Error(`flypath: unclosed <${name}> in plist`);
+  if (end === -1) throw new Error(`Unclosed <${name}> in plist`);
   const body = cursor.text.slice(cursor.at, end);
   cursor.at = end + close.length;
   return body;
@@ -91,7 +91,7 @@ function readValue(cursor: Cursor): PlistValue {
     while (!peekClose(cursor, "dict")) {
       const key = openTag(cursor);
       if (key.name !== "key") {
-        throw new Error("flypath: expected <key> in plist <dict>");
+        throw new Error("Expected <key> in plist <dict>");
       }
       value[decode(textUntilClose(cursor, "key"))] = readValue(cursor);
     }
@@ -114,7 +114,7 @@ function readValue(cursor: Cursor): PlistValue {
 
 export function parsePlist(source: string): PlistValue {
   const start = source.indexOf("<plist");
-  if (start === -1) throw new Error("flypath: missing <plist> element");
+  if (start === -1) throw new Error("Missing <plist> element");
   const cursor: Cursor = { text: source, at: source.indexOf(">", start) + 1 };
   return readValue(cursor);
 }

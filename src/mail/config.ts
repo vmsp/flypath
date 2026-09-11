@@ -3,6 +3,7 @@ import {
   mailFrom as mailFromEnv,
   smtpUrl as smtpUrlEnv,
 } from "../shared/env.ts";
+import { FlypathError } from "../shared/errors.ts";
 import { globals } from "../shared/globals.ts";
 
 export type MailOptions = {
@@ -28,16 +29,17 @@ export function mailConfig(): MailOptions {
 export function smtpUrl(): string {
   const { url } = mailConfig();
   if (url) return url;
-  throw new Error(
-    "flypath: no mail transport is configured; set SMTP_URL in .env",
-  );
+  throw new FlypathError("No mail transport is configured", {
+    hint: "Set SMTP_URL in .env",
+  });
 }
 
 export function mailFrom(): string {
   const { from } = mailConfig();
   if (from) return from;
-  throw new Error(
-    "flypath: this message has no sender; pass from to sendMail(), declare " +
-      "mail.from in vite.config.ts, or set MAIL_FROM in .env",
-  );
+  throw new FlypathError("This message has no sender", {
+    hint:
+      "Pass from to sendMail(), declare mail.from in vite.config.ts, or " +
+      "set MAIL_FROM in .env",
+  });
 }

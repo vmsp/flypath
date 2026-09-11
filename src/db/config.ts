@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { databaseUrl } from "../shared/env.ts";
+import { FlypathError } from "../shared/errors.ts";
 import { globals } from "../shared/globals.ts";
 
 export type DatabaseOptions = {
@@ -31,12 +32,13 @@ export function databaseOptions(name: string): DatabaseOptions {
 export function connectionUrl(name: string): string {
   const { url } = databaseOptions(name);
   if (url) return url;
-  throw new Error(
-    name === "default"
-      ? "flypath: no database is configured; set DATABASE_URL in .env"
-      : `flypath: the "${name}" database has no url; declare it as ` +
-          `flypath({ databases: { ${name}: { url: … } } })`,
-  );
+  throw name === "default"
+    ? new FlypathError("No database is configured", {
+        hint: "Set DATABASE_URL in .env",
+      })
+    : new FlypathError(`The "${name}" database has no url`, {
+        hint: `Declare it as flypath({ databases: { ${name}: { url: … } } })`,
+      });
 }
 
 export function loadEnv(root: string): void {

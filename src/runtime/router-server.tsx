@@ -114,7 +114,7 @@ export async function renderFragment(
 ): Promise<ReactNode> {
   const container = resolved.containers.get(id);
   if (!container) {
-    throw new Error(`flypath: unknown navigation container "${id}"`);
+    throw new Error(`Unknown navigation container "${id}"`);
   }
 
   const parent =

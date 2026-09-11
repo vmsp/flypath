@@ -70,7 +70,7 @@ function notAJob(value: unknown): Error {
       ? value.name
       : "the callee";
   return new Error(
-    `flypath: ${name} is not a job: it must be an export of a module the ` +
+    `${name} is not a job: it must be an export of a module the ` +
       "scan can see, called from an arrow literal",
   );
 }

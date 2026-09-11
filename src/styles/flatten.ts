@@ -70,7 +70,7 @@ function visit(input: unknown, out: Flattened): void {
       continue;
     }
     if (!isSupported(key)) {
-      throw new Error(`flypath: unsupported style property "${key}"`);
+      throw new Error(`Unsupported style property "${key}"`);
     }
     if (isConditionMap(value)) {
       validateConditionMap(key, value);

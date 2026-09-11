@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import { report } from "../shared/events.ts";
 import { singleton } from "../shared/globals.ts";
 import { jobById } from "./registry.ts";
 import type { JobRow } from "./schema.ts";
@@ -31,7 +32,7 @@ export function currentJob(): JobContext {
   const store = storage.getStore();
   if (!store) {
     throw new Error(
-      "flypath: currentJob() only runs inside a job; enqueue it with jobs()",
+      "currentJob() only runs inside a job; enqueue it with jobs()",
     );
   }
   return store;
@@ -42,15 +43,37 @@ function describe(error: unknown): string {
   return String(error);
 }
 
+function jobName(id: string): string {
+  return id.slice(id.lastIndexOf("#") + 1);
+}
+
+function retryDelay(row: JobRow): number {
+  const seconds = row.backoff
+    ? row.retryDelay * 2 ** (row.attempts - 1)
+    : row.retryDelay;
+  return seconds * 1000;
+}
+
 export async function runJob(
   database: string,
   row: JobRow,
   shutdown: AbortSignal,
 ): Promise<void> {
   const fence = row.lockedBy ?? "";
+  const started = performance.now();
+  const base = {
+    kind: "job",
+    job: jobName(row.job),
+    attempt: row.attempts,
+    attempts: row.maxAttempts,
+  } as const;
+
   const fn = jobById(row.job);
   if (!fn) {
-    await discard(database, row.id, `no job registered as ${row.job}`, fence);
+    const error = `no job registered as ${row.job}`;
+    if (await discard(database, row.id, error, fence)) {
+      report({ ...base, state: "failed", ms: 0, error });
+    }
     return;
   }
 
@@ -80,9 +103,20 @@ export async function runJob(
       ),
       expiry,
     ]);
-    await complete(database, row.id, output, fence);
+    if (await complete(database, row.id, output, fence)) {
+      report({ ...base, state: "done", ms: performance.now() - started });
+    }
   } catch (error) {
-    await fail(database, row.id, describe(error), fence);
+    const state = await fail(database, row.id, describe(error), fence);
+    if (state === "retry" || state === "failed") {
+      report({
+        ...base,
+        state,
+        ms: performance.now() - started,
+        ...(state === "retry" ? { retryIn: retryDelay(row) } : {}),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   } finally {
     clearTimeout(timer);
     shutdown.removeEventListener("abort", onShutdown);

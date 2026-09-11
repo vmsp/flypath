@@ -41,7 +41,7 @@ function clean(id: string): string {
 
 function serverStub(module: NativeModuleEntry): string {
   const bodies = exportNames(module).map((name) => {
-    const message = `flypath: ${name} is a device capability declared in ${module.source} and has no server implementation`;
+    const message = `${name} is a device capability declared in ${module.source} and has no server implementation`;
     return `export function ${name}() {\n  throw new Error(${JSON.stringify(
       message,
     )});\n}`;
@@ -116,7 +116,7 @@ function missingWeb(module: NativeModuleEntry): string {
   const bodies = exportNames(module).map(
     (name) =>
       `export function ${name}() {\n  throw new Error(${JSON.stringify(
-        `flypath: ${name}() has no web implementation (expected ${expected})`,
+        `${name}() has no web implementation (expected ${expected})`,
       )});\n}`,
   );
   return `${bodies.join("\n\n")}\n`;

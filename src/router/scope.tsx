@@ -67,7 +67,7 @@ function scope(): RouteInfo {
   const value = use(RouteScopeContext);
   if (!value) {
     throw new Error(
-      "flypath: params() and query() read the route that rendered the " +
+      "params() and query() read the route that rendered the " +
         "component, so they only work while a component rendered by the " +
         "flypath router is rendering",
     );

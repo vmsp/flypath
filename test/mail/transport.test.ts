@@ -59,8 +59,8 @@ describe("SMTP_URL", () => {
   });
 
   test("rejects a url that is not smtp", () => {
-    expect(() => parseSmtpUrl("https://example.com")).toThrow(/flypath:/);
-    expect(() => parseSmtpUrl("not a url")).toThrow(/flypath: SMTP_URL/);
+    expect(() => parseSmtpUrl("https://example.com")).toThrow(/SMTP_URL/);
+    expect(() => parseSmtpUrl("not a url")).toThrow(/^SMTP_URL/);
   });
 });
 
@@ -76,9 +76,7 @@ describe("configuration", () => {
   });
 
   test("throws its own message when nothing is configured", () => {
-    expect(() => smtpUrl()).toThrow(
-      "flypath: no mail transport is configured; set SMTP_URL in .env",
-    );
+    expect(() => smtpUrl()).toThrow("No mail transport is configured");
   });
 
   test("reads .env when nothing is declared", () => {

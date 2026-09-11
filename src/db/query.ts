@@ -374,7 +374,7 @@ export class Query<
     const at = steps.findLastIndex((step) => step.kind === "lock");
     if (at === -1) {
       throw new Error(
-        "flypath: skipLocked() and noWait() follow forUpdate() or forShare()",
+        "skipLocked() and noWait() follow forUpdate() or forShare()",
       );
     }
     steps[at] = { ...(steps[at] as Step & { kind: "lock" }), wait: mode };

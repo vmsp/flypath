@@ -1,11 +1,16 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
 import * as env from "../shared/env.ts";
 import { packageRoot } from "../shared/paths.ts";
+import type { Progress } from "../terminal/output.ts";
+import { step, warn } from "../terminal/output.ts";
 import { loadOptions } from "./config.ts";
-import { run } from "./exec.ts";
+import { devServerRunning } from "./dev-server.ts";
+import { androidHome, tool } from "./device.ts";
+import type { Collector } from "./diagnostics.ts";
+import { collector, showWarnings } from "./diagnostics.ts";
+import { run, startLog } from "./exec.ts";
 import { generateAndroidRegistry } from "./generate-cpp.ts";
 import { generateCxxAdapters } from "./generate-cxx.ts";
 import { link, list } from "./link.ts";
@@ -27,12 +32,6 @@ export type AndroidOptions = {
 // TODO: Add support for finding ANDROID_HOME and JAVA_HOME on Linux and
 // Windows.
 
-function androidHome(): string {
-  return (
-    env.androidHome() ?? path.join(os.homedir(), "Library", "Android", "sdk")
-  );
-}
-
 const JAVA_CANDIDATES = [
   "/Applications/Android Studio.app/Contents/jbr/Contents/Home",
   "/opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home",
@@ -52,11 +51,6 @@ function javaEnv(): NodeJS.ProcessEnv {
     JAVA_HOME: home,
     PATH: `${path.join(home, "bin")}:${process.env["PATH"] ?? ""}`,
   };
-}
-
-function tool(name: string): string {
-  const candidate = path.join(androidHome(), "platform-tools", name);
-  return fs.existsSync(candidate) ? candidate : name;
 }
 
 function movePackageSources(target: string, androidPackage: string): void {
@@ -244,17 +238,43 @@ export async function prepareAndroid(
   return { target, context };
 }
 
-export function gradle(target: string, tasks: string[]): Promise<string> {
-  return run(path.join(target, "gradlew"), tasks, {
+export async function gradle(
+  root: string,
+  target: string,
+  tasks: string[],
+  options: { progress?: Progress; serial?: string } = {},
+): Promise<Collector> {
+  const build = collector(root, "gradle");
+  await run(path.join(target, "gradlew"), ["--console=plain", ...tasks], {
     cwd: target,
-    env: { ...javaEnv(), ANDROID_HOME: androidHome() },
+    env: {
+      ...javaEnv(),
+      ANDROID_HOME: androidHome(),
+      ...(options.serial === undefined
+        ? {}
+        : { ANDROID_SERIAL: options.serial }),
+    },
+    onLine: (line) => {
+      const label = build.feed(line);
+      if (label !== undefined) options.progress?.status(label);
+    },
+    failure: (output) => build.failure(output),
   });
+  return build;
+}
+
+export function generating(): { active: string; done: string } {
+  return {
+    active: "Generating the Gradle project",
+    done: "Generated the Gradle project",
+  };
 }
 
 export async function runAndroid(options: AndroidOptions = {}): Promise<void> {
   const root = options.root ?? process.cwd();
   const configured = await loadOptions(root);
   const port = options.port ?? configured.port;
+  startLog(root, "android");
 
   if (options.release === true) {
     const { releaseAndroid } = await import("./release-android.ts");
@@ -263,46 +283,74 @@ export async function runAndroid(options: AndroidOptions = {}): Promise<void> {
   }
 
   const { androidTargets, pick, resolveHost } = await import("./device.ts");
-  const targets = await androidTargets();
-  const chosen = pick(targets, options.device, undefined);
+  const chosen = pick(await androidTargets(), options.device, undefined);
   const onDevice = chosen.kind === "device";
-
   const host = onDevice ? resolveHost(options.host) : "localhost";
   const context = projectContext(root, port, configured, host);
-  const prepared = await prepareAndroid(root, context);
 
-  await gradle(prepared.target, ["installDebug"]);
+  const prepared = await step(generating(), () =>
+    prepareAndroid(root, context),
+  );
 
-  let reachable = "localhost";
-  if (onDevice || chosen.kind === "simulator") {
-    try {
+  const build = await step(
+    {
+      active: `Building for ${chosen.name}`,
+      done: `Built for ${chosen.name}`,
+      failed: `Build failed for ${chosen.name}`,
+    },
+    (progress) =>
+      gradle(root, prepared.target, ["installDebug"], {
+        progress,
+        serial: chosen.id,
+      }),
+  );
+  showWarnings(root, build);
+
+  if (!(await devServerRunning(port))) {
+    warn(
+      `Nothing is listening on http://localhost:${String(port)}`,
+      "The app shows a red screen until flypath dev is running",
+    );
+  }
+
+  let reversed = true;
+  await step(
+    {
+      active: `Launching on ${chosen.name}`,
+      done: `Launched on ${chosen.name}`,
+    },
+    async (progress) => {
+      try {
+        await run(tool("adb"), [
+          "-s",
+          chosen.id,
+          "reverse",
+          `tcp:${String(port)}`,
+          `tcp:${String(port)}`,
+        ]);
+      } catch {
+        reversed = false;
+      }
+      if (!reversed && host !== "localhost") {
+        progress.summary(`reaching http://${host}:${String(port)}`);
+      }
       await run(tool("adb"), [
         "-s",
         chosen.id,
-        "reverse",
-        `tcp:${String(port)}`,
-        `tcp:${String(port)}`,
+        "shell",
+        "am",
+        "start",
+        "-n",
+        `${context.androidPackage}/${context.androidPackage}.MainActivity`,
       ]);
-    } catch {
-      reachable = host;
-      console.warn(
-        `flypath: adb reverse failed on ${chosen.name}; the app will reach ` +
-          `the dev server at http://${host}:${String(port)} instead`,
-      );
-    }
-  }
-  console.log(
-    `flypath: ${chosen.name} reaches the dev server at ` +
-      `http://${reachable}:${String(port)}`,
+    },
+    { time: false },
   );
 
-  await run(tool("adb"), [
-    "-s",
-    chosen.id,
-    "shell",
-    "am",
-    "start",
-    "-n",
-    `${context.androidPackage}/${context.androidPackage}.MainActivity`,
-  ]);
+  if (!reversed) {
+    warn(
+      `adb reverse failed on ${chosen.name}`,
+      `The app reaches the dev server at http://${host}:${String(port)} instead`,
+    );
+  }
 }

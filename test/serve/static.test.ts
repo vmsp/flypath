@@ -63,7 +63,7 @@ function must(
   headers: Record<string, string> = {},
 ): Response {
   const response = get(pathname, headers);
-  if (!response) throw new Error(`flypath: ${pathname} did not resolve`);
+  if (!response) throw new Error(`${pathname} did not resolve`);
   return response;
 }
 

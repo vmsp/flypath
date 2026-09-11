@@ -7,8 +7,15 @@ import type { Plugin, PluginOption } from "vite";
 
 import type { FlypathOptions } from "../native/config.ts";
 import { appUrl, buildId, setBuildId } from "../shared/env.ts";
+import { report } from "../shared/events.ts";
+import { globals } from "../shared/globals.ts";
 import { distDir } from "../shared/paths.ts";
 import { hash } from "../styles/hash.ts";
+import { reporter } from "../terminal/format.ts";
+import { isTerminalLogger } from "../terminal/logger.ts";
+import type { Handle } from "../terminal/output.ts";
+import { open } from "../terminal/output.ts";
+import { plural, size } from "../terminal/style.ts";
 import { flowStrip } from "./flow.ts";
 import { jobsScan } from "./jobs-scan.ts";
 import { jobsTransform } from "./jobs.ts";
@@ -164,11 +171,129 @@ function serverOnlyDependencies(): Plugin {
       if (name !== "client" && !name?.startsWith("native_")) return undefined;
       if (!SERVER_ONLY.includes(source)) return undefined;
       throw new Error(
-        `flypath: "${source}" reached the browser bundle. It is a node ` +
+        `"${source}" reached the browser bundle. It is a node ` +
           "library the server uses to send mail, so an import of it must " +
           "stay on the server — call sendMail() from a server component, a " +
           "server action or a job",
       );
+    },
+  };
+}
+
+const ENVIRONMENT_LABELS: Record<string, string> = {
+  rsc: "server",
+  client: "client",
+  ssr: "SSR",
+};
+
+function progress(): Plugin {
+  let enabled = false;
+  let analysis: Handle | undefined;
+  let analyzed = false;
+  const steps = new Map<string, Handle>();
+  const modules = new Map<string, number>();
+  const scripts = new Map<string, number>();
+
+  return {
+    name: "flypath:progress",
+    apply: "build",
+    sharedDuringBuild: true,
+    configResolved(config) {
+      enabled = isTerminalLogger(config.logger);
+    },
+    buildStart() {
+      if (!enabled) return;
+      const name = this.environment.name;
+      modules.set(name, 0);
+      if (this.environment.config.build.write === false) {
+        if (!analysis && !analyzed) {
+          analysis = open({
+            active: "Analyzing references",
+            done: "Analyzed references",
+          });
+        }
+        return;
+      }
+      if (analysis) {
+        analysis.finish();
+        analysis = undefined;
+        analyzed = true;
+      }
+      const label = ENVIRONMENT_LABELS[name] ?? name;
+      steps.set(
+        name,
+        open({
+          active: `Building ${label}`,
+          done: `Built ${label}`,
+          failed: `Build failed for ${label}`,
+        }),
+      );
+    },
+    transform: {
+      order: "post",
+      handler() {
+        if (!enabled) return;
+        const name = this.environment.name;
+        const count = (modules.get(name) ?? 0) + 1;
+        modules.set(name, count);
+        (steps.get(name) ?? analysis)?.status(plural(count, "module"));
+      },
+    },
+    generateBundle(_options, bundle) {
+      if (!enabled || this.environment.config.consumer !== "client") return;
+      let total = 0;
+      for (const item of Object.values(bundle)) {
+        if (item.type === "chunk") total += Buffer.byteLength(item.code);
+      }
+      scripts.set(this.environment.name, total);
+    },
+    buildEnd(error) {
+      if (!enabled || !error) return;
+      const name = this.environment.name;
+      const handle = steps.get(name) ?? analysis;
+      steps.delete(name);
+      if (handle === analysis) analysis = undefined;
+      handle?.fail();
+    },
+    closeBundle() {
+      if (!enabled) return;
+      const name = this.environment.name;
+      const handle = steps.get(name);
+      if (!handle) return;
+      steps.delete(name);
+      const parts = [plural(modules.get(name) ?? 0, "module")];
+      const bytes = scripts.get(name);
+      if (bytes !== undefined) parts.push(`${size(bytes)} JS`);
+      handle.summary(parts.join(" · "));
+      handle.finish();
+    },
+  };
+}
+
+function terminal(): Plugin {
+  const changed = new Set<string>();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  return {
+    name: "flypath:terminal",
+    apply: "serve",
+    configureServer() {
+      globals().report = reporter();
+    },
+    hotUpdate({ file }) {
+      const segments = file.split("/");
+      if (
+        segments.includes("generated") ||
+        segments.some((segment) => segment.startsWith("."))
+      ) {
+        return;
+      }
+      changed.add(file);
+      timer ??= setTimeout(() => {
+        timer = undefined;
+        for (const entry of changed) report({ kind: "change", file: entry });
+        changed.clear();
+      }, 25);
     },
   };
 }
@@ -180,6 +305,8 @@ export function plugins(
   const entry = (name: string) => path.join(distDir, "runtime", name);
 
   return [
+    progress(),
+    terminal(),
     database(options),
     mail(options),
     buildInfo(options),

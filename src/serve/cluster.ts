@@ -2,9 +2,22 @@ import cluster from "node:cluster";
 import type { Worker } from "node:cluster";
 import http from "node:http";
 
+import { FlypathError } from "../shared/errors.ts";
+import type { Progress } from "../terminal/output.ts";
+import {
+  blank,
+  change,
+  header,
+  printError,
+  step,
+  success,
+  warn,
+} from "../terminal/output.ts";
+import { duration } from "../terminal/style.ts";
 import { acquire, challengeResponse, readMeta, shouldRenew } from "./acme.ts";
 import type { ResolvedServe } from "./config.ts";
 import type { ServeMessage } from "./index.ts";
+import { addresses } from "./index.ts";
 import { after, cancel, every } from "./timers.ts";
 
 const RESTART_WINDOW = 10_000;
@@ -92,7 +105,11 @@ async function challengeListener(
   };
 }
 
-async function issue(serve: ResolvedServe, standalone: boolean): Promise<void> {
+async function issue(
+  serve: ResolvedServe,
+  standalone: boolean,
+  progress?: Progress,
+): Promise<void> {
   const acme = serve.tls?.acme;
   if (!acme) return;
 
@@ -110,9 +127,7 @@ async function issue(serve: ResolvedServe, standalone: boolean): Promise<void> {
 
   const lock = acquire(acme.storage);
   if (!lock) {
-    console.warn(
-      "flypath: another process holds the ACME lock; skipping this attempt",
-    );
+    warn("Another process holds the ACME lock", "Skipped this attempt");
     return;
   }
 
@@ -121,6 +136,7 @@ async function issue(serve: ResolvedServe, standalone: boolean): Promise<void> {
     const { obtain } = await import("./acme.ts");
     await obtain({
       ...acme,
+      log: (message) => progress?.status(message),
       publish: (token, authorization) => {
         broadcast({ type: "acme-challenge", token, authorization });
       },
@@ -132,7 +148,15 @@ async function issue(serve: ResolvedServe, standalone: boolean): Promise<void> {
   }
 }
 
-export async function primary(serve: ResolvedServe): Promise<void> {
+export async function primary(
+  serve: ResolvedServe,
+  started: number,
+): Promise<void> {
+  header("start", [
+    ...addresses(serve, serve.port, serve.tls?.port),
+    ["Workers", String(serve.workers)],
+  ]);
+
   if (serve.tls?.acme) {
     const domain = serve.tls.acme.domains[0];
     const meta =
@@ -143,19 +167,29 @@ export async function primary(serve: ResolvedServe): Promise<void> {
       domain !== undefined &&
       shouldRenew(meta, serve.tls.acme.domains, serve.tls.acme.renewBefore)
     ) {
-      console.log("flypath: no usable certificate on disk — obtaining one");
-      await issue(serve, true);
+      await step(
+        { active: "Obtaining a certificate", done: "Obtained a certificate" },
+        (progress) => issue(serve, true, progress),
+      );
     }
   }
 
   const restarts = newRestartState();
   let stopping = false;
+  let ready = 0;
 
   const fork = (): Worker => {
     const worker = cluster.fork();
     worker.on("message", (message: ServeMessage) => {
       if (message.type === "acme-challenge" || message.type === "tls-reload") {
         broadcast(message);
+      }
+      if (message.type === "ready") {
+        ready += 1;
+        if (ready === serve.workers) {
+          success(`Ready in ${duration(performance.now() - started)}`);
+          blank();
+        }
       }
     });
     return worker;
@@ -166,31 +200,31 @@ export async function primary(serve: ResolvedServe): Promise<void> {
 
     const { bail, delay } = recordExit(restarts, code, Date.now());
     if (bail) {
-      console.error(
-        `flypath: ${String(RESTART_LIMIT)} workers failed within ` +
-          `${String(RESTART_WINDOW / 1000)}s — refusing to restart-loop`,
+      printError(
+        new FlypathError(
+          `${String(RESTART_LIMIT)} workers failed within ${String(RESTART_WINDOW / 1000)}s`,
+          { hint: "Stopped instead of restarting them in a loop" },
+        ),
       );
       stopping = true;
       for (const entry of Object.values(cluster.workers ?? {})) entry?.kill();
       process.exit(code ?? 1);
     }
 
-    console.warn(
-      `flypath: worker ${String(worker.process.pid)} exited ` +
-        `(${signal ?? String(code)}); restarting in ${String(delay)}ms`,
+    warn(
+      `Worker ${String(worker.process.pid)} exited with ${signal ?? `code ${String(code)}`}`,
+      `Restarting it in ${duration(delay)}`,
     );
     after(delay, () => void fork()).unref();
   });
 
   for (let at = 0; at < serve.workers; at += 1) fork();
-  console.log(`flypath: ${String(serve.workers)} workers`);
 
   const renewal = every(RENEW_INTERVAL, () => {
     void issue(serve, false).catch((error: unknown) => {
-      console.warn(
-        `flypath: certificate renewal failed — ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+      warn(
+        "Certificate renewal failed",
+        error instanceof Error ? error.message : String(error),
       );
     });
   });
@@ -203,7 +237,7 @@ export async function primary(serve: ResolvedServe): Promise<void> {
       process.off("SIGINT", stop);
       process.off("SIGTERM", stop);
       cancel(renewal);
-      console.log("flypath: draining workers");
+      change("Draining workers");
       broadcast({ type: "stop" });
 
       const timer = after((serve.shutdownTimeout + 5) * 1000, () => {

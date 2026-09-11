@@ -170,9 +170,7 @@ function inputTypeProps(type: unknown): TextInputProps {
   if (type === undefined || type === null) return INPUT_TYPES["text"] as never;
   const mapped = INPUT_TYPES[String(type)];
   if (!mapped) {
-    throw new Error(
-      `flypath: <input type="${String(type)}"> has no native equivalent`,
-    );
+    throw new Error(`<input type="${String(type)}"> has no native equivalent`);
   }
   return mapped;
 }
@@ -200,7 +198,7 @@ function submitEvent(prevent: () => void): unknown {
     get currentTarget(): unknown {
       if (DEV) {
         console.error(
-          "flypath: event.currentTarget is not a DOM form on native — " +
+          "event.currentTarget is not a DOM form on native — " +
             "use the <form action={...}> prop instead of " +
             "new FormData(event.currentTarget)",
         );
@@ -307,7 +305,7 @@ function openHref(href: unknown): void {
   if (!router) {
     if (DEV) {
       console.error(
-        `flypath: <a href="${href}"> was pressed before the flypath router ` +
+        `<a href="${href}"> was pressed before the flypath router ` +
           "was ready",
       );
     }
@@ -449,7 +447,7 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
 
     if (DEV && $scroll !== undefined && !scrolls) {
       throw new Error(
-        `flypath: <${tag}> cannot scroll on native — "overflow: auto" needs a ` +
+        `<${tag}> cannot scroll on native — "overflow: auto" needs a ` +
           "container element without a press handler",
       );
     }

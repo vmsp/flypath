@@ -233,7 +233,7 @@ export async function diff(
         );
         if (supplied === undefined || supplied.trim() === "") {
           throw new Error(
-            `flypath: "${name}"."${column}" is not null and has no default, ` +
+            `"${name}"."${column}" is not null and has no default, ` +
               "so existing rows have nothing to hold; give it .default(…) or " +
               "run makemigration interactively",
           );

@@ -2,6 +2,7 @@ import { connection, pool } from "../db/client.ts";
 import { transaction } from "../db/transaction.ts";
 import type { SchemaState } from "../schema/types.ts";
 import { emptyState } from "../schema/types.ts";
+import { FlypathError } from "../shared/errors.ts";
 import { statements } from "./ddl.ts";
 import type { MigrationFile } from "./files.ts";
 import { discover, loadAll } from "./files.ts";
@@ -77,9 +78,12 @@ export async function migratePlan(
 ): Promise<Plan[]> {
   const current = await status(root, database);
   if (current.missing.length > 0) {
-    throw new Error(
-      `flypath: ${current.missing.join(", ")} is recorded as applied but has ` +
-        "no file in db/migrations",
+    throw new FlypathError(
+      "Applied migrations are missing from db/migrations",
+      {
+        hint: "Restore the files, or roll the database back past them",
+        details: current.missing,
+      },
     );
   }
   const pending =
@@ -156,7 +160,7 @@ async function stateBefore(
     }
   }
   if (!migration) {
-    throw new Error(`flypath: ${target} has no file in db/migrations`);
+    throw new FlypathError(`${target} has no file in db/migrations`);
   }
   return { state, migration };
 }

@@ -51,19 +51,19 @@ describe("pick", () => {
       target("iPhone 17", "simulator"),
     ];
     expect(() => pick(targets, undefined, undefined)).toThrow(
-      /more than one target/,
+      /More than one target/,
     );
   });
 
   test("names what it has when the wanted target is not there", () => {
     expect(() =>
       pick([target("iPhone 16", "simulator")], "Nexus", undefined),
-    ).toThrow(/no target named "Nexus"/);
+    ).toThrow(/No target named "Nexus"/);
   });
 
   test("says so when nothing is connected", () => {
-    expect(() => pick([], undefined, "device")).toThrow(/no connected device/);
-    expect(() => pick([], undefined, undefined)).toThrow(/no simulator/);
+    expect(() => pick([], undefined, "device")).toThrow(/No connected device/);
+    expect(() => pick([], undefined, undefined)).toThrow(/No simulator/);
   });
 
   test("narrows to the preferred kind", () => {
@@ -74,7 +74,7 @@ describe("pick", () => {
     expect(pick(targets, undefined, "device").name).toBe("Vitor");
     expect(() =>
       pick([target("iPhone 16", "simulator")], undefined, "device"),
-    ).toThrow(/no device is available/);
+    ).toThrow(/No device is available/);
   });
 });
 

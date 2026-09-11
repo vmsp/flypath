@@ -31,7 +31,7 @@ export type Css = {
 
 function unreachable(name: string): never {
   throw new Error(
-    `flypath: css.${name}() was not compiled away. It may only be called at ` +
+    `css.${name}() was not compiled away. It may only be called at ` +
       "the top level of a *.css.ts module.",
   );
 }

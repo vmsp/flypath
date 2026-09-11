@@ -24,7 +24,7 @@ function parseBigint(value: string): number {
   const parsed = BigInt(value);
   if (parsed > MAX_SAFE || parsed < MIN_SAFE) {
     throw new Error(
-      `flypath: ${value} does not fit in a JavaScript number; declare the ` +
+      `${value} does not fit in a JavaScript number; declare the ` +
         'column as bigint({ mode: "bigint" })',
     );
   }

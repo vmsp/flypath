@@ -61,8 +61,8 @@ export class MailError extends Error {
     };
     super(
       typeof detail.message === "string"
-        ? `flypath: the mail transport rejected the message: ${detail.message}`
-        : "flypath: the mail transport rejected the message",
+        ? `The mail transport rejected the message: ${detail.message}`
+        : "The mail transport rejected the message",
       { cause },
     );
     this.name = "MailError";
@@ -92,7 +92,7 @@ export function parseSmtpUrl(raw: string): SmtpOptions {
     url = new URL(raw);
   } catch {
     throw new Error(
-      `flypath: SMTP_URL is not a url: ${raw}. It looks like ` +
+      `SMTP_URL is not a url: ${raw}. It looks like ` +
         "smtp://user:password@host:587 or smtps://user:password@host:465",
     );
   }
@@ -100,13 +100,13 @@ export function parseSmtpUrl(raw: string): SmtpOptions {
   const secure = url.protocol === "smtps:";
   if (!secure && url.protocol !== "smtp:") {
     throw new Error(
-      `flypath: SMTP_URL speaks "${url.protocol.replace(":", "")}", and the ` +
+      `SMTP_URL speaks "${url.protocol.replace(":", "")}", and the ` +
         'mail transport speaks "smtp" (upgraded with STARTTLS) or "smtps" ' +
         "(TLS from the first byte)",
     );
   }
   if (url.hostname === "") {
-    throw new Error(`flypath: SMTP_URL has no host: ${raw}`);
+    throw new Error(`SMTP_URL has no host: ${raw}`);
   }
 
   const options: SmtpOptions = {
@@ -222,7 +222,7 @@ export function checkAttachments(
   for (const cid of cids) {
     if (declared.has(cid)) continue;
     throw new Error(
-      `flypath: <img src="cid:${cid}"> has no attachment to point at; pass ` +
+      `<img src="cid:${cid}"> has no attachment to point at; pass ` +
         `sendMail({ attachments: [{ cid: "${cid}", filename: …, content: … }] })`,
     );
   }
@@ -230,7 +230,7 @@ export function checkAttachments(
   for (const cid of declared) {
     if (cids.has(cid)) continue;
     console.warn(
-      `flypath: the attachment with cid "${cid}" is inlined into the message ` +
+      `The attachment with cid "${cid}" is inlined into the message ` +
         `but nothing references it; write <img src="cid:${cid}"> or drop the cid`,
     );
   }

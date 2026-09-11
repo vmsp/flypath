@@ -28,7 +28,7 @@ export function requireMail(what: string): MailContext {
   const context = mailContext();
   if (!context) {
     throw new Error(
-      `flypath: ${what} only renders inside an email; pass the component to ` +
+      `${what} only renders inside an email; pass the component to ` +
         "sendMail({ content }) rather than rendering it as a page",
     );
   }

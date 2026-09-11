@@ -78,7 +78,7 @@ export const NavigatorContext: Context<NavigatorValue | null> =
 export function useNavigator(): NavigatorValue {
   const value = useContext(NavigatorContext);
   if (!value) {
-    throw new Error("flypath: navigator rendered outside the flypath root");
+    throw new Error("Navigator rendered outside the flypath root");
   }
   return value;
 }

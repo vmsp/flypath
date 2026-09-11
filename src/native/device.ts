@@ -1,5 +1,9 @@
+import fs from "node:fs";
 import os from "node:os";
+import path from "node:path";
 
+import * as env from "../shared/env.ts";
+import { FlypathError } from "../shared/errors.ts";
 import { run } from "./exec.ts";
 
 export type Target = {
@@ -9,6 +13,17 @@ export type Target = {
   name: string;
   state: string;
 };
+
+export function androidHome(): string {
+  return (
+    env.androidHome() ?? path.join(os.homedir(), "Library", "Android", "sdk")
+  );
+}
+
+export function tool(name: string): string {
+  const candidate = path.join(androidHome(), "platform-tools", name);
+  return fs.existsSync(candidate) ? candidate : name;
+}
 
 function lanAddress(): string | undefined {
   const candidates: string[] = [];
@@ -29,11 +44,11 @@ export function resolveHost(override: string | undefined): string {
   if (override !== undefined && override !== "") return override;
   const address = lanAddress();
   if (address === undefined) {
-    throw new Error(
-      "flypath: could not find a LAN address for this machine, and a device " +
-        "cannot reach localhost — pass --host with the address the device " +
-        "should use",
-    );
+    throw new FlypathError("Could not find a LAN address for this machine", {
+      hint:
+        "A device cannot reach localhost. Pass --host with the address the " +
+        "device should use",
+    });
   }
   return address;
 }
@@ -48,9 +63,7 @@ type SimctlDevice = {
 async function iosSimulators(): Promise<Target[]> {
   let raw: string;
   try {
-    raw = await run("xcrun", ["simctl", "list", "devices", "-j"], {
-      capture: true,
-    });
+    raw = await run("xcrun", ["simctl", "list", "devices", "-j"]);
   } catch {
     return [];
   }
@@ -81,11 +94,14 @@ type DevicectlDevice = {
 async function iosDevices(): Promise<Target[]> {
   let raw: string;
   try {
-    raw = await run(
-      "xcrun",
-      ["devicectl", "list", "devices", "--json-output", "-", "--quiet"],
-      { capture: true },
-    );
+    raw = await run("xcrun", [
+      "devicectl",
+      "list",
+      "devices",
+      "--json-output",
+      "-",
+      "--quiet",
+    ]);
   } catch {
     return [];
   }
@@ -114,7 +130,7 @@ async function iosDevices(): Promise<Target[]> {
 export async function androidTargets(): Promise<Target[]> {
   let raw: string;
   try {
-    raw = await run("adb", ["devices", "-l"], { capture: true });
+    raw = await run(tool("adb"), ["devices", "-l"]);
   } catch {
     return [];
   }
@@ -128,7 +144,8 @@ export async function androidTargets(): Promise<Target[]> {
     if (state !== "device") continue;
     const model = rest
       .find((entry) => entry.startsWith("model:"))
-      ?.slice("model:".length);
+      ?.slice("model:".length)
+      .replaceAll("_", " ");
     out.push({
       kind: serial.startsWith("emulator-") ? "simulator" : "device",
       platform: "android",
@@ -140,10 +157,11 @@ export async function androidTargets(): Promise<Target[]> {
   return out;
 }
 
-function describe(targets: readonly Target[]): string {
-  return targets
-    .map((target) => `  ${target.name}  (${target.kind}, ${target.id})`)
-    .join("\n");
+function describe(targets: readonly Target[]): string[] {
+  const width = Math.max(...targets.map((target) => target.name.length)) + 2;
+  return targets.map(
+    (target) => `${target.name.padEnd(width)}${target.kind} · ${target.id}`,
+  );
 }
 
 export function pick(
@@ -152,12 +170,13 @@ export function pick(
   prefer: "simulator" | "device" | undefined,
 ): Target {
   if (targets.length === 0) {
-    throw new Error(
-      prefer === "device"
-        ? "flypath: no connected device found — plug one in, unlock it, and " +
-            "trust this computer"
-        : "flypath: no simulator or device is available",
-    );
+    throw prefer === "device"
+      ? new FlypathError("No connected device found", {
+          hint: "Plug one in, unlock it, and trust this computer",
+        })
+      : new FlypathError("No simulator or device is available", {
+          hint: "Boot a simulator or an emulator, or connect a device",
+        });
   }
 
   if (wanted !== undefined && wanted !== "") {
@@ -168,9 +187,10 @@ export function pick(
         target.name.toLowerCase() === wanted.toLowerCase(),
     );
     if (!match) {
-      throw new Error(
-        `flypath: no target named "${wanted}". Available:\n${describe(targets)}`,
-      );
+      throw new FlypathError(`No target named "${wanted}"`, {
+        hint: "Pass --device with one of these",
+        details: describe(targets),
+      });
     }
     return match;
   }
@@ -180,19 +200,19 @@ export function pick(
       ? targets
       : targets.filter((target) => target.kind === prefer);
   if (pool.length === 0) {
-    throw new Error(
-      `flypath: no ${prefer} is available. Found:\n${describe(targets)}`,
-    );
+    throw new FlypathError(`No ${String(prefer)} is available`, {
+      details: describe(targets),
+    });
   }
   if (pool.length === 1) return pool[0] as Target;
 
   const booted = pool.find((target) => target.state === "Booted");
   if (booted) return booted;
 
-  throw new Error(
-    `flypath: more than one target is available; pass --device with one of ` +
-      `these:\n${describe(pool)}`,
-  );
+  throw new FlypathError("More than one target is available", {
+    hint: "Pass --device with one of these",
+    details: describe(pool),
+  });
 }
 
 export async function iosTargets(includeDevices: boolean): Promise<Target[]> {

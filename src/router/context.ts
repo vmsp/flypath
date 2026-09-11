@@ -24,7 +24,7 @@ function store(): ContextStore {
   const request = getRequest();
   if (!request) {
     throw new Error(
-      "flypath: a context value is only available while the flypath router " +
+      "A context value is only available while the flypath router " +
         "is handling a request, so it reads in a middleware, a server " +
         "component or a server action",
     );
@@ -44,7 +44,7 @@ export function context<T>(...fallback: readonly T[]): Context<T> {
     if (values.has(read)) return values.get(read) as T;
     if (fallback.length > 0) return fallback[0] as T;
     throw new Error(
-      "flypath: this context was read before anything set it; set it from a " +
+      "This context was read before anything set it; set it from a " +
         "middleware on this route, or declare it with a fallback as " +
         "context(value)",
     );
@@ -55,7 +55,7 @@ export function context<T>(...fallback: readonly T[]): Context<T> {
       const current = store();
       if (!current.open) {
         throw new Error(
-          "flypath: context.set() ran outside a middleware; a value set " +
+          "context.set() ran outside a middleware; a value set " +
             "while rendering would reach some siblings and not others, so " +
             "it is only allowed while middleware runs",
         );

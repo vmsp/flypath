@@ -7,6 +7,20 @@ import { Readable } from "node:stream";
 import { pathToFileURL } from "node:url";
 import zlib from "node:zlib";
 
+import { FlypathError } from "../shared/errors.ts";
+import { PLATFORM_HEADER } from "../shared/headers.ts";
+import { format } from "../terminal/format.ts";
+import type { Row } from "../terminal/output.ts";
+import {
+  blank,
+  change,
+  header,
+  printError,
+  rows,
+  step,
+  success,
+} from "../terminal/output.ts";
+import { duration, paint, plural, relative } from "../terminal/style.ts";
 import { challengeResponse, clearChallenge, setChallenge } from "./acme.ts";
 import type { Trust } from "./adapter.ts";
 import { sendResponse, toRequest, trustPredicate } from "./adapter.ts";
@@ -32,7 +46,13 @@ type TlsMessage = { type: "tls-reload" };
 
 type StopMessage = { type: "stop" };
 
-export type ServeMessage = ChallengeMessage | TlsMessage | StopMessage;
+type ReadyMessage = { type: "ready" };
+
+export type ServeMessage =
+  | ChallengeMessage
+  | TlsMessage
+  | StopMessage
+  | ReadyMessage;
 
 async function loadHandler(root: string): Promise<Handler> {
   const entry = path.join(root, "dist", "rsc", "index.js");
@@ -40,16 +60,16 @@ async function loadHandler(root: string): Promise<Handler> {
   try {
     module = (await import(pathToFileURL(entry).href)) as { default?: unknown };
   } catch (error) {
-    throw new Error(
-      `flypath: could not load ${entry}; run flypath build first`,
-      { cause: error },
-    );
+    throw new FlypathError(`Could not load ${relative(entry)}`, {
+      hint: "Run flypath build first",
+      cause: error,
+    });
   }
   const handler = module.default;
   if (typeof handler !== "function") {
-    throw new TypeError(
-      `flypath: ${entry} has no default export to serve; run flypath build`,
-    );
+    throw new FlypathError(`${relative(entry)} has no default export`, {
+      hint: "Run flypath build",
+    });
   }
   return handler as Handler;
 }
@@ -148,15 +168,24 @@ function logAccess(
     );
     return;
   }
-  console.log(
-    `${request.method} ${url.pathname}${url.search} ${String(status)} ${String(ms)}ms`,
+  const platform = request.headers.get(PLATFORM_HEADER);
+  const line = format(
+    {
+      kind: "request",
+      method: request.method,
+      path: `${url.pathname}${url.search}`,
+      status,
+      platform: platform === "ios" || platform === "android" ? platform : "web",
+      ms,
+    },
+    process.stdout,
+    { names: false },
   );
+  process.stdout.write(`${process.stdout.isTTY ? "  " : ""}${line}\n`);
 }
 
 function errorResponse(error: unknown): Response {
-  console.error(
-    error instanceof Error ? (error.stack ?? error.message) : error,
-  );
+  printError(error);
   return new Response("Internal Server Error", {
     status: 500,
     headers: { "content-type": "text/plain;charset=utf-8" },
@@ -293,8 +322,23 @@ function close(server: http.Server | https.Server): Promise<void> {
 export type Serving = {
   port: number;
   tlsPort: number | undefined;
+  inflight: () => number;
   stop: () => Promise<void>;
 };
+
+export function addresses(
+  serve: ResolvedServe,
+  port: number,
+  tlsPort: number | undefined,
+): Row[] {
+  const p = paint(process.stderr);
+  const plain = `http://${display(serve.host)}:${String(port)}`;
+  if (tlsPort === undefined) return [["Local", p.accent(plain)]];
+  return [
+    ["Local", p.accent(`https://${display(serve.host)}:${String(tlsPort)}`)],
+    ["HTTP", `${plain}  ${p.dim("ACME and redirects")}`],
+  ];
+}
 
 export async function serveProcess(
   serve: ResolvedServe,
@@ -322,9 +366,6 @@ export async function serveProcess(
     );
     servers.push(plain);
     port = await listen(plain, serve.port, serve.host);
-    console.log(
-      `flypath: listening on http://${display(serve.host)}:${String(port)} (ACME + redirect)`,
-    );
 
     const material = await ensureMaterial(serve);
     const secure = https.createServer(
@@ -333,15 +374,12 @@ export async function serveProcess(
     );
     servers.push(secure);
     tlsPort = await listen(secure, serve.tls.port, serve.host);
-    console.log(
-      `flypath: listening on https://${display(serve.host)}:${String(tlsPort)}`,
-    );
 
     const reload = (): void => {
       const next = readMaterial(serve.tls as NonNullable<typeof serve.tls>);
       if (!next) return;
       secure.setSecureContext(secureContext(next));
-      console.log("flypath: reloaded the TLS certificate");
+      change("Reloaded the TLS certificate");
     };
     process.on("SIGHUP", reload);
     process.on("message", (message: ServeMessage) => {
@@ -357,9 +395,6 @@ export async function serveProcess(
     );
     servers.push(plain);
     port = await listen(plain, serve.port, serve.host);
-    console.log(
-      `flypath: listening on http://${display(serve.host)}:${String(port)}`,
-    );
   }
 
   const stop = async (): Promise<void> => {
@@ -386,7 +421,7 @@ export async function serveProcess(
     for (const server of servers) server.closeAllConnections();
   };
 
-  return { port, tlsPort, stop };
+  return { port, tlsPort, inflight: () => state.inflight, stop };
 }
 
 function display(host: string): string {
@@ -396,31 +431,36 @@ function display(host: string): string {
 
 async function ensureMaterial(serve: ResolvedServe): Promise<Material> {
   const tls = serve.tls;
-  if (!tls) throw new Error("flypath: serve.tls is not configured");
+  if (!tls) throw new FlypathError("serve.tls is not configured");
   const held = readMaterial(tls);
   if (held) return held;
-  if (!tls.acme) {
-    throw new Error(
-      "flypath: serve.tls.key and serve.tls.cert do not exist yet, and no " +
-        "acme block is configured to obtain one",
-    );
+  const acme = tls.acme;
+  if (!acme) {
+    throw new FlypathError("serve.tls.key and serve.tls.cert do not exist", {
+      hint: "Write them, or add an acme block to obtain a certificate",
+    });
   }
   const { obtain } = await import("./acme.ts");
-  await obtain(tls.acme);
+  await step(
+    { active: "Obtaining a certificate", done: "Obtained a certificate" },
+    (progress) => obtain({ ...acme, log: progress.status }),
+  );
   const material = readMaterial(tls);
   if (!material) {
-    throw new Error("flypath: the certificate was not written to storage");
+    throw new FlypathError("The certificate was not written to storage");
   }
   return material;
 }
 
-function untilSignal(stop: () => Promise<void>): Promise<void> {
+function untilSignal(serving: Serving, quiet: boolean): Promise<void> {
   return new Promise<void>((resolve) => {
     const done = (): void => {
       process.off("SIGINT", done);
       process.off("SIGTERM", done);
-      console.log("flypath: draining");
-      void stop().then(resolve, resolve);
+      if (!quiet) {
+        change(`Draining ${plural(serving.inflight(), "request")}`);
+      }
+      void serving.stop().then(resolve, resolve);
     };
     process.on("SIGINT", done);
     process.on("SIGTERM", done);
@@ -431,6 +471,7 @@ function untilSignal(stop: () => Promise<void>): Promise<void> {
 }
 
 export async function start(overrides: ServeOverrides = {}): Promise<void> {
+  const started = performance.now();
   const root = process.cwd();
   const { loadEnv } = await import("../db/config.ts");
   loadEnv(root);
@@ -440,12 +481,21 @@ export async function start(overrides: ServeOverrides = {}): Promise<void> {
 
   if (cluster.isPrimary && serve.workers > 0) {
     const { primary } = await import("./cluster.ts");
-    await primary(serve);
+    await primary(serve, started);
     return;
   }
 
+  if (cluster.isPrimary) header("start");
   const serving = await serveProcess(serve);
-  await untilSignal(serving.stop);
+  if (cluster.isWorker) {
+    process.send?.({ type: "ready" } satisfies ServeMessage);
+  } else {
+    rows(addresses(serve, serving.port, serving.tlsPort));
+    blank();
+    success(`Ready in ${duration(performance.now() - started)}`);
+    blank();
+  }
+  await untilSignal(serving, cluster.isWorker);
   const { closePools } = await import("../db/client.ts");
   await closePools();
   if (cluster.isWorker) process.disconnect();

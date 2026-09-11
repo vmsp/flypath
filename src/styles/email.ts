@@ -86,7 +86,7 @@ const DEPTH = 8;
 
 function unknownVar(tag: string, property: string, name: string): never {
   throw new Error(
-    `flypath: <${tag}> style "${property}" reads the css variable "${name}", ` +
+    `<${tag}> style "${property}" reads the css variable "${name}", ` +
       "which no *.css.ts module registered and which carries no fallback. " +
       "An inbox cannot resolve var(), so email needs a literal value",
   );
@@ -152,7 +152,7 @@ function resolveMap(
 
 function warnIgnored(tag: string, property: string): void {
   console.warn(
-    `flypath: <${tag}> style "${property}" is not honoured by any email ` +
+    `<${tag}> style "${property}" is not honoured by any email ` +
       "client; it is sent anyway, but the message should not depend on it",
   );
 }
@@ -166,7 +166,7 @@ function build(tag: string, input: unknown): EmailStyle {
   const themed = Object.keys(theme);
   if (themed.length > 0) {
     throw new Error(
-      `flypath: <${tag}> carries the css.override() theme "${
+      `<${tag}> carries the css.override() theme "${
         themed[0] as string
       }", which reaches descendants through the cascade. Email inlines every ` +
         "declaration on the element it belongs to, so a theme cannot travel; " +
@@ -195,7 +195,7 @@ function build(tag: string, input: unknown): EmailStyle {
   for (const [property, value] of props) {
     if (property === "animationName") {
       throw new Error(
-        `flypath: <${tag}> is animated, but the @keyframes it names lives in ` +
+        `<${tag}> is animated, but the @keyframes it names lives in ` +
           "the app stylesheet, which no inbox loads. Remove the animation " +
           "from the email, or render the end state directly",
       );

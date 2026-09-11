@@ -48,7 +48,7 @@ function compileVars(
       for (const condition of Object.keys(value)) {
         if (condition !== "default" && !isMedia(condition)) {
           throw new Error(
-            `flypath: css.vars only supports "@media" conditions, got "${condition}"`,
+            `css.vars only supports "@media" conditions, got "${condition}"`,
           );
         }
       }
@@ -71,11 +71,11 @@ function compileOverride(
     const reference = tokens[key];
     const match = reference === undefined ? null : TOKEN.exec(reference);
     if (!match) {
-      throw new Error(`flypath: css.override got an unknown token "${key}"`);
+      throw new Error(`css.override got an unknown token "${key}"`);
     }
     if (typeof value === "object") {
       throw new TypeError(
-        `flypath: css.override values must be scalars, got a condition map for "${key}"`,
+        `css.override values must be scalars, got a condition map for "${key}"`,
       );
     }
     out[match[1] as string] = value;
@@ -98,7 +98,7 @@ function compileKeyframes(
     for (const [property, value] of Object.entries(style)) {
       if (!isSupported(property)) {
         throw new Error(
-          `flypath: unsupported keyframe property "${property}" in "${binding}"`,
+          `Unsupported keyframe property "${property}" in "${binding}"`,
         );
       }
       for (const [longhand, next] of expandProperty(property, value)) {
@@ -165,9 +165,7 @@ export function compileTokens(
 ): Compiled {
   const { program, errors } = parseSync(id, code);
   if (errors.length > 0) {
-    throw new Error(
-      `flypath: failed to parse ${relative}: ${errors[0]?.message}`,
-    );
+    throw new Error(`Failed to parse ${relative}: ${errors[0]?.message}`);
   }
 
   const output = new MagicString(code);
@@ -236,7 +234,7 @@ export function compileTokens(
       const values = evaluate(args[1] as Node, scope);
       return compileOverride(tokens, values);
     }
-    throw new Error(`flypath: unknown css.${method}()`);
+    throw new Error(`Unknown css.${method}()`);
   };
 
   const declare = (declaration: Node, isExport: boolean): void => {

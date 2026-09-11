@@ -1,11 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { FlypathError } from "../shared/errors.ts";
+import { note, step, success } from "../terminal/output.ts";
+import { size } from "../terminal/style.ts";
 import { BUNDLE_NAMES } from "./bundle.ts";
 import { loadOptions } from "./config.ts";
+import { showWarnings } from "./diagnostics.ts";
 import { run } from "./exec.ts";
 import type { IosOptions } from "./ios.ts";
-import { prepareIos } from "./ios.ts";
+import { generating, prepareIos, xcodebuild } from "./ios.ts";
+import { nativeDir } from "./scaffold.ts";
 import { projectContext } from "./template.ts";
 
 export type Distribution =
@@ -50,11 +55,11 @@ export function exportOptions(options: {
 function requireBundle(root: string): string {
   const bundle = path.join(root, "dist", "native", "ios", BUNDLE_NAMES.ios);
   if (!fs.existsSync(bundle)) {
-    throw new Error(
-      `flypath: ${path.relative(root, bundle)} does not exist — run ` +
-        "`flypath build --platform ios` first, so the app ships the same " +
+    throw new FlypathError(`${path.relative(root, bundle)} does not exist`, {
+      hint:
+        "Run flypath build --platform ios first, so the app ships the " +
         "JavaScript the server was built with",
-    );
+    });
   }
   return bundle;
 }
@@ -64,8 +69,18 @@ export async function releaseIos(options: IosOptions = {}): Promise<void> {
   const configured = await loadOptions(root);
   const bundle = requireBundle(root);
 
+  const teamId = configured.ios?.teamId;
+  const xcconfig = path.join(nativeDir(root, "apple"), "App.xcconfig");
+  if (teamId === undefined && !fs.existsSync(xcconfig)) {
+    throw new FlypathError("A release build has to be signed", {
+      hint:
+        "Set ios.teamId in vite.config.ts, or write apple/App.xcconfig with " +
+        "DEVELOPMENT_TEAM, CODE_SIGN_STYLE and PROVISIONING_PROFILE_SPECIFIER",
+    });
+  }
+
   const context = projectContext(root, configured.port, configured);
-  const prepared = await prepareIos(root, context);
+  const prepared = await step(generating(), () => prepareIos(root, context));
 
   fs.mkdirSync(path.join(prepared.target, "App", "Bundle"), {
     recursive: true,
@@ -75,55 +90,53 @@ export async function releaseIos(options: IosOptions = {}): Promise<void> {
     path.join(prepared.target, "App", "Bundle", BUNDLE_NAMES.ios),
   );
 
-  const teamId = configured.ios?.teamId;
-  if (teamId === undefined && prepared.xcconfig === undefined) {
-    throw new Error(
-      "flypath: a release build has to be signed. Set ios.teamId in " +
-        "vite.config.ts, or write apple/App.xcconfig with DEVELOPMENT_TEAM, " +
-        "CODE_SIGN_STYLE and PROVISIONING_PROFILE_SPECIFIER",
-    );
-  }
-
   const dist = path.join(root, "dist");
   const archive = path.join(dist, "App.xcarchive");
+  const shown = path.relative(root, archive);
   fs.rmSync(archive, { recursive: true, force: true });
 
-  await run(
-    "xcodebuild",
-    [
-      "archive",
-      "-project",
-      path.join(prepared.target, "App.xcodeproj"),
-      "-scheme",
-      "App",
-      "-configuration",
-      "Release",
-      "-destination",
-      "generic/platform=iOS",
-      "-archivePath",
-      archive,
-      "-allowProvisioningUpdates",
-      ...(prepared.xcconfig === undefined
-        ? []
-        : ["-xcconfig", prepared.xcconfig]),
-      ...(teamId === undefined ? [] : [`DEVELOPMENT_TEAM=${teamId}`]),
-    ],
-    { cwd: prepared.target },
+  const build = await step(
+    {
+      active: "Archiving",
+      done: `Archived ${shown}`,
+      failed: "Archive failed",
+    },
+    (progress) =>
+      xcodebuild(
+        root,
+        prepared.target,
+        [
+          "archive",
+          "-project",
+          path.join(prepared.target, "App.xcodeproj"),
+          "-scheme",
+          "App",
+          "-configuration",
+          "Release",
+          "-destination",
+          "generic/platform=iOS",
+          "-archivePath",
+          archive,
+          "-allowProvisioningUpdates",
+          ...(prepared.xcconfig === undefined
+            ? []
+            : ["-xcconfig", prepared.xcconfig]),
+          ...(teamId === undefined ? [] : [`DEVELOPMENT_TEAM=${teamId}`]),
+        ],
+        progress,
+      ),
   );
+  showWarnings(root, build);
 
   if (options.xcode === true) {
     await run("open", [path.join(prepared.target, "App.xcodeproj")]);
   }
 
   if (options.archiveOnly === true) {
-    console.log(
-      [
-        `flypath: archived to ${path.relative(root, archive)}`,
-        "  finish it by hand with:",
-        `    xcodebuild -exportArchive -archivePath ${path.relative(root, archive)} \\`,
-        "      -exportOptionsPlist <options>.plist -exportPath dist",
-        "  or open the archive in Xcode's Organizer",
-      ].join("\n"),
+    note(
+      `Export it with xcodebuild -exportArchive -archivePath ${shown} ` +
+        "-exportOptionsPlist <options>.plist -exportPath dist, or open it in " +
+        "Xcode's Organizer",
     );
     return;
   }
@@ -138,30 +151,36 @@ export async function releaseIos(options: IosOptions = {}): Promise<void> {
     }),
   );
 
-  await run(
-    "xcodebuild",
-    [
-      "-exportArchive",
-      "-archivePath",
-      archive,
-      "-exportOptionsPlist",
-      plist,
-      "-exportPath",
-      dist,
-      "-allowProvisioningUpdates",
-    ],
-    { cwd: prepared.target },
+  const upload = options.upload === true;
+  await step(
+    {
+      active: upload ? "Uploading to App Store Connect" : "Exporting",
+      done: upload ? "Handed the build to App Store Connect" : "Exported",
+      failed: upload ? "Upload failed" : "Export failed",
+    },
+    (progress) =>
+      xcodebuild(
+        root,
+        prepared.target,
+        [
+          "-exportArchive",
+          "-archivePath",
+          archive,
+          "-exportOptionsPlist",
+          plist,
+          "-exportPath",
+          dist,
+          "-allowProvisioningUpdates",
+        ],
+        progress,
+      ),
   );
-
-  if (options.upload === true) {
-    console.log("flypath: handed the build to App Store Connect");
-    return;
-  }
+  if (upload) return;
 
   const ipa = fs.readdirSync(dist).find((entry) => entry.endsWith(".ipa"));
-  console.log(
-    ipa === undefined
-      ? `flypath: exported to ${path.relative(root, dist)}`
-      : `flypath: wrote dist/${ipa}`,
-  );
+  if (ipa === undefined) {
+    success(`Exported to ${path.relative(root, dist)}`);
+    return;
+  }
+  success(`Wrote dist/${ipa}`, size(fs.statSync(path.join(dist, ipa)).size));
 }

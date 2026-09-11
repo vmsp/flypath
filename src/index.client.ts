@@ -54,7 +54,7 @@ export interface Register {}
 
 function serverOnly(name: string): never {
   throw new Error(
-    `flypath: ${name}() only runs on the server; call it from a server ` +
+    `${name}() only runs on the server; call it from a server ` +
       "component, a server action or a middleware",
   );
 }

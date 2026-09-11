@@ -14,6 +14,7 @@ import type { MailContext } from "../mail/context.ts";
 import type { NativeRegistry } from "../runtime/native-bindings.ts";
 import type { NativeConfig } from "../runtime/native-config.ts";
 import type { RequestInfo } from "../runtime/platform.ts";
+import type { Event } from "./events.ts";
 
 /** Global server-side framework state. Available when executing in Node. */
 type FlypathState = {
@@ -24,6 +25,7 @@ type FlypathState = {
   mailConfig: MailOptions;
   mailStorage: AsyncLocalStorage<MailContext>;
   pools: Map<string, Connection>;
+  report: (event: Event) => void;
   requestStorage: AsyncLocalStorage<RequestInfo>;
   tableColumns: Map<string, readonly string[]>;
   transactions: AsyncLocalStorage<Map<string, TransactionConnection>>;

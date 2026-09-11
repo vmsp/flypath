@@ -98,9 +98,13 @@ describe("resolveReferences", () => {
 
   test("fails naming the key when the two builds disagree", () => {
     writeManifest(["000000000000"]);
-    expect(() =>
-      resolveReferences(root, path.join(root, "dist", "rsc")),
-    ).toThrow(/000000000000/);
+    let caught: unknown;
+    try {
+      resolveReferences(root, path.join(root, "dist", "rsc"));
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toMatchObject({ details: ["000000000000"] });
   });
 
   test("reads every key out of clientReferenceDeps", () => {
