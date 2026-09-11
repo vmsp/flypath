@@ -1,9 +1,10 @@
 import { parseSync } from "oxc-parser";
 
 import type { FlatRoute, Flattened } from "../router/flatten.ts";
-import { flatten, hasChrome, matchRoutes } from "../router/flatten.ts";
+import { flatten, hasChrome } from "../router/flatten.ts";
 import type { ManifestRoute, RouteManifest } from "../router/manifest.ts";
 import type { Middleware, Next } from "../router/middleware.ts";
+import { matchRoutes } from "../router/path.ts";
 import type {
   AnyNode,
   Loader,

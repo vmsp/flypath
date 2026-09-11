@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { BranchesHost, StackHost } from "../components/native/navigator.tsx";
 import { SafeAreaView } from "../components/safe-area.ts";
 import type { ContainerInfo, FlatRoute } from "../router/flatten.ts";
-import { flatten, matchRoutes } from "../router/flatten.ts";
+import { flatten } from "../router/flatten.ts";
 import { ContainerScope, RouteScope } from "../router/scope.tsx";
 import type {
   AnyNode,
@@ -90,21 +90,6 @@ export async function renderMatch(
   const chain = route.chain.filter((node) => !skip.has(node));
 
   return { route, info, node: scoped(info, await wrap(resolved, chain, page)) };
-}
-
-export async function renderScreen(
-  resolved: Resolved,
-  info: RouteInfo,
-  container: string | undefined,
-): Promise<ScreenRender | undefined> {
-  const matched = matchRoutes(resolved.routes, info.pathname);
-  if (!matched) return undefined;
-  return renderMatch(
-    resolved,
-    matched.route,
-    { ...info, params: matched.params },
-    container,
-  );
 }
 
 export async function renderFragment(

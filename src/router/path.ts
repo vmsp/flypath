@@ -18,25 +18,33 @@ export function joinPattern(base: string, pattern: string): string {
   return parts.length === 0 ? "/" : `/${parts.join("/")}`;
 }
 
-export function matchPattern(
-  pattern: string,
-  pathname: string,
-): Params | undefined {
-  const expected = segments(pattern);
-  const actual = segments(pathname);
-  const params: Params = {};
+const patterns = new WeakMap<readonly { pattern: string }[], string[][]>();
 
-  for (const [position, part] of expected.entries()) {
-    const value = actual[position];
-    if (value === undefined) return undefined;
-    if (part.startsWith(":")) {
-      params[part.slice(1)] = decodeURIComponent(value);
+export function matchRoutes<T extends { pattern: string }>(
+  routes: readonly T[],
+  pathname: string,
+): { route: T; params: Params } | undefined {
+  let compiled = patterns.get(routes);
+  if (!compiled) {
+    compiled = routes.map((route) => segments(route.pattern));
+    patterns.set(routes, compiled);
+  }
+  const actual = segments(pathname);
+  for (const [index, expected] of compiled.entries()) {
+    if (expected.length !== actual.length) continue;
+    if (
+      !expected.every((part, at) => part.startsWith(":") || part === actual[at])
+    ) {
       continue;
     }
-    if (part !== value) return undefined;
+    const params: Params = {};
+    for (const [at, part] of expected.entries()) {
+      if (part.startsWith(":"))
+        params[part.slice(1)] = decodeURIComponent(actual[at]!);
+    }
+    return { route: routes[index]!, params };
   }
-
-  return expected.length === actual.length ? params : undefined;
+  return undefined;
 }
 
 export function hrefOf(url: URL): string {

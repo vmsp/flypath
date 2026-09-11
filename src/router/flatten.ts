@@ -1,7 +1,7 @@
 import type { ContainerKind } from "./manifest.ts";
 import { ROOT_CONTAINER, SHARED } from "./manifest.ts";
 import type { Middleware } from "./middleware.ts";
-import { joinPattern, matchPattern } from "./path.ts";
+import { joinPattern } from "./path.ts";
 import type {
   AnyNode,
   LoadedNode,
@@ -224,15 +224,4 @@ export function hasChrome(
   const parent =
     info.parent === undefined ? undefined : containers.get(info.parent);
   return info.ancestors.length > (parent?.ancestors.length ?? 0);
-}
-
-export function matchRoutes(
-  routes: readonly FlatRoute[],
-  pathname: string,
-): { route: FlatRoute; params: Record<string, string> } | undefined {
-  for (const route of routes) {
-    const params = matchPattern(route.pattern, pathname);
-    if (params) return { route, params };
-  }
-  return undefined;
 }

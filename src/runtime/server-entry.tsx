@@ -12,7 +12,7 @@ import { tree } from "virtual:flypath/routes";
 
 import { createContextStore } from "../router/context.ts";
 import type { FlatRoute } from "../router/flatten.ts";
-import { hasChrome, matchRoutes } from "../router/flatten.ts";
+import { hasChrome } from "../router/flatten.ts";
 import { declaredContainer, ROOT_CONTAINER } from "../router/manifest.ts";
 import { runMiddleware } from "../router/middleware.ts";
 import type { NavigationSignal } from "../router/navigation.ts";
@@ -21,7 +21,12 @@ import {
   encodeLocation,
   navigationSignal,
 } from "../router/navigation.ts";
-import { hrefOf, normalizePath, searchOf } from "../router/path.ts";
+import {
+  hrefOf,
+  matchRoutes,
+  normalizePath,
+  searchOf,
+} from "../router/path.ts";
 import { parseRevalidate } from "../router/revalidate.ts";
 import type { RouteInfo } from "../router/types.ts";
 import { verbose } from "../shared/env.ts";
@@ -50,7 +55,6 @@ import type { ScreenRender } from "./router-server.tsx";
 import {
   renderFragment,
   renderMatch,
-  renderScreen,
   resolveTree,
   withSafeArea,
 } from "./router-server.tsx";
@@ -530,7 +534,9 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
           });
         }
 
-        const match = await renderScreen(resolved, base, container);
+        const match = matched
+          ? await renderMatch(resolved, matched.route, base, container)
+          : undefined;
         const rendered = match ? await compose(match) : undefined;
         const rendering = rendered?.signal;
 
