@@ -10,7 +10,6 @@ import {
 
 import { jobs } from "../../src/jobs/enqueue.ts";
 import { register, reset } from "../../src/jobs/registry.ts";
-import { currentJob } from "../../src/jobs/run.ts";
 import type { Worker } from "../../src/jobs/worker.ts";
 import { work } from "../../src/jobs/worker.ts";
 import { byId, clear, schemaName, setup, teardown } from "./harness.ts";
@@ -37,14 +36,14 @@ async function until(
 let attempts: number[] = [];
 
 async function flaky(succeedOn: number): Promise<string> {
-  const { attempt } = currentJob();
+  const { attempt } = jobs.current();
   attempts.push(attempt);
   if (attempt < succeedOn) throw new Error(`not yet (${String(attempt)})`);
   return "finally";
 }
 
 async function doomed(): Promise<void> {
-  attempts.push(currentJob().attempt);
+  attempts.push(jobs.current().attempt);
   throw new Error("always broken");
 }
 

@@ -1,4 +1,4 @@
-import { currentJob, db } from "flypath";
+import { db, jobs } from "flypath";
 
 import { sendMentionEmail, sendWelcomeEmail } from "./mail.tsx";
 
@@ -32,7 +32,7 @@ export async function notifyMentions(noteId: number): Promise<number> {
   for (const user of mentioned) await sendMentionEmail(user, noteId);
 
   console.log(
-    `flypath: job ${String(currentJob().id)} noted ${String(
+    `flypath: job ${String(jobs.current().id)} noted ${String(
       mentioned.length,
     )} mention(s) on note ${String(noteId)}`,
   );

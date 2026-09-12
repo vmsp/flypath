@@ -256,7 +256,7 @@ src/jobs/
   enqueue.ts     jobs(), cron(), options, the [fn, args] contract, keys
   registry.ts    id → fn and fn → id, populated by the virtual module
   worker.ts      work(): per-queue loops, LISTEN, sweep, retention, crons
-  run.ts         the handler, timeouts, currentJob()
+  run.ts         the handler, timeouts, jobs.current()
   config.ts      JobsOptions and defaults
 src/vite/jobs.ts       the call-site rewrite (transform hook)
 src/vite/jobs-scan.ts  call-site discovery → virtual:flypath/jobs
@@ -393,9 +393,9 @@ a second terminal.
 ### Inside a job
 
 ```ts
-import { currentJob } from "flypath";
+import { jobs } from "flypath";
 
-const { id, attempt, signal } = currentJob();
+const { id, attempt, signal } = jobs.current();
 ```
 
 An `AsyncLocalStorage` like `context()`. `signal` aborts on timeout and on
@@ -525,7 +525,7 @@ started.
 are found by the poll, not by a notification.
 
 `timeout` is the row's own column. The handler races the job against a
-local timer and aborts `currentJob().signal` at the deadline; the attempt
+local timer and aborts `jobs.current().signal` at the deadline; the attempt
 is then failed through the normal statement, so the retry is immediate
 rather than waiting for the sweep. The body cannot be killed: a job that
 ignores the signal keeps running while its retry may already be
@@ -662,7 +662,7 @@ on add, unlink and change of any of them. Same skeleton as `routes()`.
 
 `run.ts` takes a claimed row, looks the id up in `byId`, fails the row
 without retry when it is unknown (`attempts` forced to `max_attempts`),
-otherwise runs `fn(...args)` inside `currentJob` storage with a signal
+otherwise runs `fn(...args)` inside job context storage with a signal
 composed from the timeout timer and the shutdown controller, and writes
 `complete` or `fail` with the worker id as the fence.
 
@@ -707,7 +707,7 @@ composed from the timeout timer and the shutdown controller, and writes
   job runs after `delay`; shutdown drains an active job before
   returning.
 - **retries** — a job that throws N−1 times succeeds on attempt N with
-  `currentJob().attempt` counting; one that always throws ends `failed`
+  `jobs.current().attempt` counting; one that always throws ends `failed`
   after `retries` with `error` set.
 - **timeout** — a job that awaits `signal` sees it abort at `timeout`
   and the row goes to `retry`; a job that ignores the signal and
@@ -747,7 +747,7 @@ Rewrite and scan tests.
 ### Phase 3 — the worker
 
 `work()` exported from the server entry, the loops, LISTEN, sweep,
-retention, `run.ts` with `currentJob()` and timeouts, graceful stop,
+retention, `run.ts` with `jobs.current()` and timeouts, graceful stop,
 `flypath work`, the in-process start in `flypath dev`. Worker, retry and
 timeout tests.
 

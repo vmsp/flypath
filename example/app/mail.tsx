@@ -1,4 +1,4 @@
-import { db, href, Preview, sendMail, Subject } from "flypath";
+import { db, href, Preview, mail, Subject } from "flypath";
 import type { ReactNode } from "react";
 
 import { colors } from "./vars.css.ts";
@@ -75,7 +75,7 @@ export async function sendWelcomeEmail(user: {
   email: string;
   name: string;
 }): Promise<void> {
-  await sendMail({
+  await mail({
     to: { email: user.email, name: user.name },
     content: <WelcomeEmail name={user.name} />,
   });
@@ -85,7 +85,7 @@ export async function sendMentionEmail(
   user: { email: string; name: string },
   noteId: number,
 ): Promise<void> {
-  await sendMail({
+  await mail({
     to: { email: user.email, name: user.name },
     content: <MentionEmail name={user.name} noteId={noteId} />,
   });

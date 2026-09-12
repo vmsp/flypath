@@ -9,8 +9,7 @@ export type {
   EnqueueOptions,
   Jobs,
 } from "./jobs/enqueue.ts";
-export { currentJob } from "./jobs/run.ts";
-export { sendMail } from "./mail/index.ts";
+export { mail } from "./mail/index.ts";
 export type {
   Address,
   Attachment,

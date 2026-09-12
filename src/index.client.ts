@@ -3,12 +3,11 @@ import type { Db } from "./db/query.ts";
 import type { SqlTag } from "./db/sql.ts";
 import type { TransactionOptions } from "./db/transaction.ts";
 import type { cron as serverCron, jobs as serverJobs } from "./jobs/enqueue.ts";
-import type { currentJob as serverCurrentJob } from "./jobs/run.ts";
 import type {
   Preview as serverPreview,
   Subject as serverSubject,
 } from "./mail/document.tsx";
-import type { sendMail as serverSendMail } from "./mail/index.ts";
+import type { mail as serverMail } from "./mail/index.ts";
 
 export * from "./index.shared.ts";
 export type { Expression } from "./db/expression.ts";
@@ -81,14 +80,13 @@ export const sql: SqlTag = Object.assign(
   },
 );
 
-export const jobs: typeof serverJobs = () => serverOnly("jobs");
+export const jobs: typeof serverJobs = Object.assign(() => serverOnly("jobs"), {
+  current: () => serverOnly("jobs.current"),
+});
 
 export const cron: typeof serverCron = () => serverOnly("cron");
 
-export const currentJob: typeof serverCurrentJob = () =>
-  serverOnly("currentJob");
-
-export const sendMail: typeof serverSendMail = () => serverOnly("sendMail");
+export const mail: typeof serverMail = () => serverOnly("sendMail");
 
 export const Subject: typeof serverSubject = () => serverOnly("Subject");
 

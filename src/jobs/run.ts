@@ -21,18 +21,19 @@ const storage: AsyncLocalStorage<JobContext> = singleton(
 );
 
 /**
- * Information about the job attempt that's currently executing. Throws when
- * called outside a job.
+ * Information about the job attempt that's currently executing.
  *
- * The context is read-only: a job can observe `signal` to stop early when it
+ * The context is read-only. A job can observe `signal` to stop early when it
  * times out or the worker shuts down, but it can't change its own retry or
  * timeout settings.
+ *
+ * Throws when called outside a job.
  */
-export function currentJob(): JobContext {
+export function current(): JobContext {
   const store = storage.getStore();
   if (!store) {
     throw new Error(
-      "currentJob() only runs inside a job; enqueue it with jobs()",
+      "jobs.current() only runs inside a job; enqueue it with jobs()",
     );
   }
   return store;

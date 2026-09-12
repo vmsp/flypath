@@ -9,7 +9,7 @@ import {
 
 import { jobs } from "../../src/jobs/enqueue.ts";
 import { register, reset } from "../../src/jobs/registry.ts";
-import { currentJob, runJob } from "../../src/jobs/run.ts";
+import { runJob } from "../../src/jobs/run.ts";
 import { claim, complete, insert } from "../../src/jobs/schema.ts";
 import { byId, clear, job, schemaName, setup, teardown } from "./harness.ts";
 
@@ -25,7 +25,7 @@ let aborted: string[] = [];
 let finished: string[] = [];
 
 async function obedient(): Promise<void> {
-  const { signal } = currentJob();
+  const { signal } = jobs.current();
   await new Promise<void>((resolve) => {
     signal.addEventListener("abort", () => {
       aborted.push("obedient");

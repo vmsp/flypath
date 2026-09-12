@@ -145,52 +145,52 @@ type Signed = { protected: string; payload: string; signature: string };
  * `newAccount` signs with the bare `jwk`. Everything after it with the `kid`.
  */
 class AcmeClient {
-  readonly #directoryUrl: string;
-  readonly #fetch: Fetcher;
-  readonly #key: crypto.KeyObject;
-  readonly #jwk: Jwk;
-  #directory: Directory | undefined;
-  #nonce: string | undefined;
-  #kid: string | undefined;
+  private readonly directoryUrl: string;
+  private readonly fetch: Fetcher;
+  private readonly key: crypto.KeyObject;
+  private readonly accountJwk: Jwk;
+  private cachedDirectory: Directory | undefined;
+  private nonce: string | undefined;
+  private kid: string | undefined;
 
   constructor(options: {
     directory: string;
     key: crypto.KeyObject;
     fetch?: Fetcher;
   }) {
-    this.#directoryUrl = options.directory;
-    this.#key = options.key;
-    this.#fetch = options.fetch ?? fetch;
-    this.#jwk = crypto.createPublicKey(this.#key).export({
+    this.directoryUrl = options.directory;
+    this.key = options.key;
+    this.fetch = options.fetch ?? fetch;
+    this.accountJwk = crypto.createPublicKey(this.key).export({
       format: "jwk",
     }) as unknown as Jwk;
   }
 
   get jwk(): Jwk {
-    return this.#jwk;
+    return this.accountJwk;
   }
 
   async directory(): Promise<Directory> {
-    if (this.#directory) return this.#directory;
-    const response = await this.#fetch(this.#directoryUrl);
+    if (this.cachedDirectory) return this.cachedDirectory;
+    const response = await this.fetch(this.directoryUrl);
     if (!response.ok) {
       throw new Error(
-        `The ACME directory at ${this.#directoryUrl} answered ` +
+        `The ACME directory at ${this.directoryUrl} answered ` +
           String(response.status),
       );
     }
-    this.#directory = (await response.json()) as Directory;
-    return this.#directory;
+    this.cachedDirectory = (await response.json()) as Directory;
+    return this.cachedDirectory;
   }
 
-  async #nextNonce(): Promise<string> {
-    const held = this.#nonce;
+  private async nextNonce(): Promise<string> {
+    const held = this.nonce;
     if (held !== undefined) {
-      this.#nonce = undefined;
+      this.nonce = undefined;
       return held;
     }
     const { newNonce } = await this.directory();
-    const response = await this.#fetch(newNonce, { method: "HEAD" });
+    const response = await this.fetch(newNonce, { method: "HEAD" });
     const nonce = response.headers.get("replay-nonce");
     if (nonce === null) {
       throw new Error("The ACME directory returned no Replay-Nonce");
@@ -198,19 +198,21 @@ class AcmeClient {
     return nonce;
   }
 
-  #sign(url: string, nonce: string, payload: string): Signed {
+  private sign(url: string, nonce: string, payload: string): Signed {
     const header = {
       alg: "ES256",
       nonce,
       url,
-      ...(this.#kid === undefined ? { jwk: this.#jwk } : { kid: this.#kid }),
+      ...(this.kid === undefined
+        ? { jwk: this.accountJwk }
+        : { kid: this.kid }),
     };
     const encodedHeader = base64url(JSON.stringify(header));
     const encodedPayload = payload === "" ? "" : base64url(payload);
     const signature = crypto.sign(
       "sha256",
       Buffer.from(`${encodedHeader}.${encodedPayload}`),
-      { key: this.#key, dsaEncoding: "ieee-p1363" },
+      { key: this.key, dsaEncoding: "ieee-p1363" },
     );
     return {
       protected: encodedHeader,
@@ -223,15 +225,15 @@ class AcmeClient {
     const body = payload === undefined ? "" : JSON.stringify(payload);
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const nonce = await this.#nextNonce();
-      const response = await this.#fetch(url, {
+      const nonce = await this.nextNonce();
+      const response = await this.fetch(url, {
         method: "POST",
         headers: { "content-type": "application/jose+json" },
-        body: JSON.stringify(this.#sign(url, nonce, body)),
+        body: JSON.stringify(this.sign(url, nonce, body)),
       });
 
       const replay = response.headers.get("replay-nonce");
-      if (replay !== null) this.#nonce = replay;
+      if (replay !== null) this.nonce = replay;
 
       if (response.ok) return response;
 
@@ -266,7 +268,7 @@ class AcmeClient {
     if (kid === null) {
       throw new Error("newAccount returned no account URL");
     }
-    this.#kid = kid;
+    this.kid = kid;
     return kid;
   }
 

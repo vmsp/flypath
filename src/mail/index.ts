@@ -24,8 +24,8 @@ function requestOrigin(): string | undefined {
 }
 
 /** Send an email message. */
-export async function sendMail(message: MailMessage): Promise<MailResult> {
-  forbidPrerender("sendMail() was called", EFFECT);
+export async function mail(message: MailMessage): Promise<MailResult> {
+  forbidPrerender("mail() was called", EFFECT);
 
   if ((message.content === undefined) === (message.html === undefined)) {
     throw new Error(

@@ -4,6 +4,7 @@ import { EFFECT, forbidPrerender } from "../runtime/platform.ts";
 import type { Queue } from "./config.ts";
 import { jobsDatabase, queue as queueConfig } from "./config.ts";
 import { idOf } from "./registry.ts";
+import { current } from "./run.ts";
 import type { NewJob } from "./schema.ts";
 import { insert, notify } from "./schema.ts";
 
@@ -141,7 +142,7 @@ async function enqueueAll(
  * The thunk's callee and arguments are what gets stored, so it must call an
  * exported function with serializable arguments.
  */
-export function jobs(options: EnqueueOptions = {}): Jobs {
+function create(options: EnqueueOptions = {}): Jobs {
   forbidPrerender("jobs() was called", EFFECT);
 
   const enqueue = async (
@@ -152,6 +153,11 @@ export function jobs(options: EnqueueOptions = {}): Jobs {
   };
   return { enqueue: enqueue as unknown as Enqueue };
 }
+
+export const jobs: {
+  (options?: EnqueueOptions): Jobs;
+  current: typeof current;
+} = Object.assign(create, { current });
 
 /**
  * Declare a job that runs on a cron schedule. Entries are picked up from the
