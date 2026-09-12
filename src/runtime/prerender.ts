@@ -22,10 +22,7 @@ async function within<T>(
   const budget = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
       const error = new Error(
-        `Prerendering ${path} did not finish within ` +
-          `${String(BUDGET / 1000)}s; a prerendered page renders with no ` +
-          "request behind it, so anything it waits on has to resolve on " +
-          "its own — check what the page suspends on",
+        `Prerendering ${path} timed out after ${String(BUDGET / 1000)}s. Check for unresolved promises or suspended components`,
       );
       controller.abort(error);
       reject(error);
@@ -50,9 +47,7 @@ async function fetchOne(
     if (response.status !== 200) {
       void response.body?.cancel().catch(() => {});
       throw new Error(
-        `Prerendering ${path} answered ${String(response.status)} for ` +
-          `${url}; a prerendered route is written to a file at its own path, ` +
-          "so it has to render — drop prerender, or fix what the page does",
+        `Prerendering ${path} returned ${String(response.status)} for ${url}. Return a 200 response or remove prerender`,
       );
     }
 

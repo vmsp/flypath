@@ -77,8 +77,8 @@ export function nativeComponent(
     if (host) return host;
     if (!nativeRegistry().components.includes(config.name)) {
       throw new Error(
-        `<${config.label}> is not in this build of the app — ` +
-          'run "pnpm ios" or "pnpm android"',
+        `<${config.label}> is not in this build of the app. ` +
+          'Run "pnpm ios" or "pnpm android"',
       );
     }
     const created = NativeComponentRegistry.get<NativeComponentProps>(

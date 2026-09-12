@@ -163,8 +163,8 @@ export function metroEndpoints(distDir: string): Plugin {
               // keep the default label
             }
             server.config.logger.warn(
-              `${platform} was built from stale "use native" declarations — ` +
-                `run "pnpm ${platform}" to rebuild the app`,
+              `${platform} was built from stale "use native" declarations. ` +
+                `Run "pnpm ${platform}" to rebuild the app`,
             );
             send(response, 200, "text/plain", "OK");
             return;

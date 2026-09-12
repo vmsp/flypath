@@ -10,8 +10,7 @@ export type NativeRegistry = {
 };
 
 const SKEW =
-  'This build of the app was made from a different set of "use native" ' +
-  'declarations than the running server — run "pnpm ios" or "pnpm android"';
+  'App and server "use native" declarations differ. Run "pnpm ios" or "pnpm android"';
 
 function skewed(): boolean {
   const expected = globalThis.__FLYPATH__?.manifestHash;
@@ -45,8 +44,8 @@ export function installNativeBindings(): void {
   >("Flypath");
   if (!module) {
     throw new Error(
-      "This build of the app does not provide native bindings — " +
-        'run "pnpm ios" or "pnpm android"',
+      "This build of the app does not provide native bindings. " +
+        'Run "pnpm ios" or "pnpm android"',
     );
   }
   module.install();
@@ -72,8 +71,8 @@ export function nativeModule(
     if (binding) return binding;
     return () => {
       throw new Error(
-        `${name}() is not in this build of the app (${source}) — ` +
-          'run "pnpm ios" or "pnpm android"',
+        `${name}() is not in this build of the app (${source}). ` +
+          'Run "pnpm ios" or "pnpm android"',
       );
     };
   };

@@ -210,7 +210,7 @@ cli
         if (current.pending.length > 0) {
           rows.push([
             "Database",
-            `${plural(current.pending.length, "migration")} pending ${p.dim("— run flypath migrate")}`,
+            `${plural(current.pending.length, "migration")} pending. ${p.dim("Run flypath migrate")}`,
           ]);
         }
       } catch (error) {

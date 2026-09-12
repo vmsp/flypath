@@ -101,7 +101,7 @@ function reference(parsed: Parsed, callee: Node): Reference {
       const name = exportedAs(parsed.module, local);
       if (name === undefined) {
         throw new JobError(
-          `"${local}" is not a job: a job must be a top-level export ` +
+          `"${local}" is not a job. A job must be a top-level export ` +
             "of a module, imported or exported where it is enqueued",
           start,
         );
@@ -131,7 +131,7 @@ function reference(parsed: Parsed, callee: Node): Reference {
         return { source: imported.source, name };
       }
       throw new JobError(
-        `"${String(object["name"])}.${name}" is not a job: only a ` +
+        `"${String(object["name"])}.${name}" is not a job. Only a ` +
           "namespace import or a dynamic import can hold one",
         start,
       );
@@ -226,7 +226,7 @@ export async function discover(
 
       if (resolvedFile.includes("node_modules")) {
         throw new Error(
-          `${target.name} comes from node_modules; a job must be a ` +
+          `${target.name} comes from node_modules. A job must be a ` +
             `module in the project (${file})`,
         );
       }
@@ -237,7 +237,7 @@ export async function discover(
       }
       if (directive(targetParsed) === "use server") {
         throw new Error(
-          `${resolvedFile} is a "use server" module; its exports are ` +
+          `${resolvedFile} is a "use server" module. Its exports are ` +
             "public endpoints and cannot be jobs",
         );
       }

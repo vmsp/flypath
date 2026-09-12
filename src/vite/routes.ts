@@ -22,7 +22,7 @@ function findRoutesFile(root: string): string {
     if (fs.existsSync(file)) return file;
   }
   throw new Error(
-    `No route configuration found — create ${path.join(root, "app/routes.ts")}`,
+    `No route configuration found. Create ${path.join(root, "app/routes.ts")}`,
   );
 }
 

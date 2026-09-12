@@ -20,8 +20,7 @@ function normalizeReferenceId(id: string): string {
 function assertLocal(reference: string): void {
   if (/^[a-z][a-z\d+.-]*:/i.test(reference) || reference.startsWith("//")) {
     throw new Error(
-      `Refusing to load client reference "${reference}" — ` +
-        "chunks may only be fetched from the configured flypath server",
+      `Client reference "${reference}" is outside the configured flypath server. Chunks must load from that server`,
     );
   }
 }
@@ -99,11 +98,7 @@ export function updateRequired(): boolean {
 }
 
 function skewMessage(server: string, binary: string): string {
-  return (
-    "This build of the app was made against a different base bundle " +
-    `than the running server (app ${binary}, server ${server}) — screens it ` +
-    "already carries keep working; anything new needs a rebuilt app"
-  );
+  return `App and server base bundles differ (app ${binary}, server ${server}). Existing screens still work. Rebuild the app to load new screens`;
 }
 
 function reportSkew(server: string): void {
@@ -133,8 +128,7 @@ async function fetchManifest(): Promise<ChunkManifest> {
   if (response.status === 426) {
     stale = true;
     throw new UpdateRequired(
-      "This server no longer supports this version of the app — " +
-        "install the latest build",
+      "This server no longer supports this app version. Install the latest build",
     );
   }
 
@@ -182,7 +176,7 @@ async function loadChunk(reference: string): Promise<unknown> {
       `The server has no chunk for client reference "${reference}"` +
         (current.baseId === nativeConfig().baseId
           ? ""
-          : ` — ${skewMessage(current.baseId, nativeConfig().baseId)}`),
+          : `. ${skewMessage(current.baseId, nativeConfig().baseId)}`),
     );
   }
 

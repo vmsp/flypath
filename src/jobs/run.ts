@@ -33,7 +33,7 @@ export function current(): JobContext {
   const store = storage.getStore();
   if (!store) {
     throw new Error(
-      "jobs.current() only runs inside a job; enqueue it with jobs()",
+      "jobs.current() only runs inside a job. Enqueue it with jobs()",
     );
   }
   return store;

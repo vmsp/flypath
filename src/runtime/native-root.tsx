@@ -125,17 +125,14 @@ async function fetchFragment(
   const response = await flight(url, { [FRAGMENT_HEADER]: container });
   if (response.status === 204) {
     throw new Error(
-      `The chrome of container "${container}" redirected while ` +
-        "rendering; a fragment renders around a URL whose guards have " +
-        "already passed, so following it would let the chrome navigate the app",
+      `The chrome of container "${container}" redirected during a fragment render. Move navigation into route middleware or a server action`,
     );
   }
   return decode(response);
 }
 
 const NO_HISTORY =
-  'navigate("back") ran while rendering a screen; there is no ' +
-  "history to pop until the screen exists";
+  'navigate("back") cannot run while rendering a screen. Call it from a server action or client event handler';
 
 class RootBoundary extends Component<
   { children: ReactNode },

@@ -172,10 +172,7 @@ function serverOnlyDependencies(): Plugin {
       if (name !== "client" && !name?.startsWith("native_")) return undefined;
       if (!SERVER_ONLY.includes(source)) return undefined;
       throw new Error(
-        `"${source}" reached the browser bundle. It is a node ` +
-          "library the server uses to send mail, so an import of it must " +
-          "stay on the server — call sendMail() from a server component, a " +
-          "server action or a job",
+        `"${source}" is a server mail dependency and cannot be bundled for the browser. Call sendMail() from a server component, server action or job`,
       );
     },
   };

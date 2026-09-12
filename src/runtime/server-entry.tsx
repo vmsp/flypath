@@ -510,9 +510,7 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
             outgoing.delete(REVALIDATE_HEADER);
             if (import.meta.env.DEV) {
               console.warn(
-                "revalidate.none() ran in an action that also " +
-                  "navigated; the destination is rendered fresh either way, " +
-                  "so the opt-out is ignored",
+                "revalidate.none() is ignored when an action navigates. The destination always renders fresh",
               );
             }
           }
@@ -593,10 +591,7 @@ async function respond(request: Request, meta: Meta): Promise<Response> {
     if (fragment !== null) {
       if (import.meta.env.DEV) {
         throw new Error(
-          `The chrome of container "${fragment}" redirected while ` +
-            "rendering; a fragment renders around a URL whose guards have " +
-            "already passed, so following it would let the chrome navigate " +
-            "the app",
+          `The chrome of container "${fragment}" redirected during a fragment render. Move navigation into route middleware or a server action`,
         );
       }
       return withOutgoing(response, outgoing);

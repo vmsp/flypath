@@ -53,7 +53,7 @@ function required(what: string): RequestInfo {
   if (!request) {
     throw new Error(
       `${what}, so it is only available while the flypath router ` +
-        "is handling a request — in a middleware, a server component or a " +
+        "is handling a request in middleware, a server component or a " +
         "server action",
     );
   }
@@ -93,47 +93,37 @@ function reserved(name: string): void {
   const key = name.toLowerCase();
   if (key === "set-cookie") {
     throw new Error(
-      'headers.set("set-cookie") would replace every cookie on ' +
-        "the response at once; use cookies.set() and cookies.clear(), which " +
-        "merge into what the rest of the request already wrote",
+      'headers.set("set-cookie") would replace all response cookies. Use cookies.set() or cookies.clear()',
     );
   }
   if (key.startsWith("x-flypath-")) {
     throw new Error(
-      `"${key}" belongs to the flypath wire protocol, which the ` +
-        "client parses; pick a header name of your own",
+      `"${key}" is reserved for the flypath protocol. Use a different header name`,
     );
   }
   if (key === "content-type" || key === "location") {
     throw new Error(
-      `"${key}" is decided by the response flypath builds — a ` +
-        "flight payload, a document or a redirect — so overwriting it would " +
-        "break the client; use navigate() to send the user elsewhere",
+      `"${key}" is set by flypath and cannot be overwritten. Use navigate() for redirects`,
     );
   }
 }
 
 export const VISITOR: string =
-  "a prerendered page is rendered once and served to everyone, so it cannot " +
-  "depend on who is asking — drop prerender from the route, or move the part " +
-  'that needs the visitor into a "use client" component';
+  'Prerendered pages cannot use request data. Remove prerender or read the data in a "use client" component';
 
 export const EFFECT: string =
-  "a prerendered page is rendered during the build, and again every time the " +
-  "server renders it on demand, so an effect here runs at moments nobody " +
-  "chose — move it into a server action, a job or a middleware";
+  "Side effects cannot run while prerendering. Move this call into a server action, a job or middleware";
 
 export function forbidPrerender(call: string, why: string): void {
   const request = getRequest();
   if (!request?.prerender) return;
-  throw new Error(`${call} while prerendering ${request.pathname}; ${why}`);
+  throw new Error(`${call} while prerendering ${request.pathname}. ${why}`);
 }
 
 export function forbidRender(call: string): void {
   if (getRequest()?.phase !== "render") return;
   throw new Error(
-    `${call} during a server render; the response is streaming, so ` +
-      "navigation, status and response headers must be decided in middleware or a server action",
+    `${call} is not allowed during a server render. Set navigation, status and response headers in middleware or a server action`,
   );
 }
 

@@ -151,7 +151,7 @@ class Level {
     }
 
     throw new Error(
-      `"${name}" is not a column of this query; the columns in ` +
+      `"${name}" is not a column of this query. The columns in ` +
         `scope are ${this.names().join(", ") || "(none)"}`,
     );
   }

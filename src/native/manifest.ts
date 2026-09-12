@@ -177,8 +177,8 @@ function readType(
       );
       if (rest.length === members.length || rest.length !== 1) {
         throw new ManifestError(
-          `${where} uses a union type that is not "T | undefined" — ` +
-            "declare a named type alias for literal unions",
+          `${where} uses a union type that is not "T | undefined". ` +
+            "Declare a named type alias for literal unions",
           file,
           node,
         );
@@ -714,8 +714,7 @@ function assertNoCaptures(
     const value = String(child["name"]);
     if (locals.has(value) || !bindings.has(value)) return;
     throw new ManifestError(
-      `Inline "use native" function ${name}() captures "${value}" — ` +
-        "nothing can cross into Swift or Kotlin",
+      `Inline "use native" function ${name}() captures "${value}". JavaScript variables cannot be captured by Swift or Kotlin code`,
       file,
       child,
     );
@@ -842,7 +841,7 @@ function checkWebParity(module: NativeModuleEntry): void {
   throw new ManifestError(
     `${posix(path.basename(module.web))} does not export ${missing.join(
       ", ",
-    )} — a web implementation must match ${module.source}`,
+    )}. A web implementation must match ${module.source}`,
     module.web,
     undefined,
   );
@@ -884,7 +883,7 @@ export function buildManifest(root: string): NativeManifest {
       const existing = owners.get(name);
       if (existing) {
         throw new ManifestError(
-          `"${name}" is exported by both ${existing} and ${module.source} — ` +
+          `"${name}" is exported by both ${existing} and ${module.source}. ` +
             '"use native" exports bind by symbol name and must be unique',
           module.file,
           undefined,

@@ -95,8 +95,7 @@ function assertServerProxy(id: string, code: string): void {
   }
   if (!USE_SERVER.test(source)) return;
   throw new Error(
-    `"use server" module reached the native bundle un-proxied — ` +
-      `its body would ship to the device: ${id}`,
+    `"use server" module ${id} reached the native bundle without a proxy. Its server code cannot be included in the app`,
   );
 }
 
@@ -534,9 +533,7 @@ export class NativeBundler {
     for (const mod of modules) {
       if (!this.base.has(mod.id)) continue;
       throw new Error(
-        `The chunk for ${this.relative(id)} would ship ` +
-          `${this.relative(mod.id)}, which the base bundle already provides — ` +
-          "the two copies would be different modules at runtime",
+        `The chunk for ${this.relative(id)} duplicates ${this.relative(mod.id)} from the base bundle. Both copies would become separate modules at runtime`,
       );
     }
 

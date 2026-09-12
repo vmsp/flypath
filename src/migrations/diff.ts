@@ -233,9 +233,7 @@ export async function diff(
         );
         if (supplied === undefined || supplied.trim() === "") {
           throw new Error(
-            `"${name}"."${column}" is not null and has no default, ` +
-              "so existing rows have nothing to hold; give it .default(…) or " +
-              "run makemigration interactively",
+            `"${name}"."${column}" is not null and has no default for existing rows. Add .default(…) or run makemigration interactively`,
           );
         }
         alters.push(

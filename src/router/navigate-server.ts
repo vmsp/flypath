@@ -13,9 +13,7 @@ function phase(): "middleware" | "render" | "action" {
 }
 
 const NOWHERE =
-  "a prerendered route is written to a file at its own path, so it has " +
-  "nowhere to send a visitor — drop prerender from the route, or navigate " +
-  "from a server action instead";
+  "Prerendered routes cannot navigate during rendering. Remove prerender or navigate from a server action";
 
 export const navigate: Navigate = makeNavigate(
   (to, params, mode, permanent): void => {
@@ -29,9 +27,7 @@ export const navigate: Navigate = makeNavigate(
     if (to === "back") {
       if (phase() !== "action") {
         throw new Error(
-          'navigate("back") ran during a server render; there is no ' +
-            "history to pop until the page exists, so it works in a server " +
-            "action or a client event handler",
+          'navigate("back") cannot run during a server render. Call it from a server action or client event handler',
         );
       }
       throw new NavigationError({ kind: "back" });

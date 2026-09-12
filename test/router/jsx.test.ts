@@ -65,7 +65,7 @@ test.each([serverJsx, serverJsxs, jsxDEV])(
         });
         expect(() =>
           create({ $$typeof: Symbol.for("react.client.reference") }, {}),
-        ).toThrow(/cannot be rendered into an email/);
+        ).toThrow(/cannot render in email/);
       },
     );
     const Component = () => null;

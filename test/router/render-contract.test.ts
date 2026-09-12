@@ -31,17 +31,25 @@ test("rendering rejects response changes and context writes after suspension", a
   const value = context("initial");
   await runWithRequest(request("render"), async () => {
     await Promise.resolve();
-    expect(() => navigate("/other")).toThrow(/response is streaming/);
-    expect(() => navigate("not-found")).toThrow(/response is streaming/);
+    expect(() => navigate("/other")).toThrow(
+      /is not allowed during a server render/,
+    );
+    expect(() => navigate("not-found")).toThrow(
+      /is not allowed during a server render/,
+    );
     expect(() => headers.set("x-test", "value")).toThrow(
-      /response is streaming/,
+      /is not allowed during a server render/,
     );
-    expect(() => headers.delete("x-test")).toThrow(/response is streaming/);
+    expect(() => headers.delete("x-test")).toThrow(
+      /is not allowed during a server render/,
+    );
     expect(() => cookies.set("session", "value")).toThrow(
-      /response is streaming/,
+      /is not allowed during a server render/,
     );
-    expect(() => cookies.clear("session")).toThrow(/response is streaming/);
-    expect(() => value.set("changed")).toThrow(/outside a middleware/);
+    expect(() => cookies.clear("session")).toThrow(
+      /is not allowed during a server render/,
+    );
+    expect(() => value.set("changed")).toThrow(/can only run in middleware/);
     expect(value()).toBe("initial");
   });
 });
@@ -115,7 +123,7 @@ test("prerender times out and cancels a stalled response body", async () => {
   const failed = pending.catch((error: unknown) => error);
   await vi.advanceTimersByTimeAsync(30_000);
   await expect(failed).resolves.toMatchObject({
-    message: expect.stringContaining("did not finish within 30s"),
+    message: expect.stringContaining("timed out after 30s"),
   });
   expect(signal?.aborted).toBe(true);
   expect(cancelled).toHaveBeenCalledOnce();

@@ -41,7 +41,7 @@ describe("prerender", () => {
       manifest(`export default routes([
         route("p/:id", () => import("./post.tsx"), { prerender: true }),
       ]);`),
-    ).toThrow(/\/p\/:id has prerender: true but its pattern takes a param/);
+    ).toThrow(/\/p\/:id has prerender: true but takes a route parameter/);
   });
 
   test("rejects a middleware declared on the route", () => {
@@ -52,9 +52,7 @@ describe("prerender", () => {
           prerender: true,
         }),
       ]);`),
-    ).toThrow(
-      /the middleware auth\(\) runs over it \(declared on route\("about"\)\)/,
-    );
+    ).toThrow(/runs middleware auth\(\) from route\("about"\)/);
   });
 
   test("rejects a middleware declared on an ancestor", () => {
@@ -62,9 +60,7 @@ describe("prerender", () => {
       manifest(`export default routes({ middleware: [request] }, [
         route("about", () => import("./about.tsx"), { prerender: true }),
       ]);`),
-    ).toThrow(
-      /the middleware request\(\) runs over it \(declared on routes\(\)\)/,
-    );
+    ).toThrow(/runs middleware request\(\) from routes\(\)/);
   });
 
   test("rejects a middleware declared on a container in between", () => {
@@ -76,9 +72,7 @@ describe("prerender", () => {
           ]),
         ]),
       ]);`),
-    ).toThrow(
-      /the middleware request\(\) runs over it \(declared on stack\(\)\)/,
-    );
+    ).toThrow(/runs middleware request\(\) from stack\(\)/);
   });
 
   test("allows a middleware on a sibling branch", () => {
@@ -108,7 +102,7 @@ describe("prerender", () => {
       manifest(`export default routes([
         route("docs/index", () => import("./about.tsx"), { prerender: true }),
       ]);`),
-    ).toThrow(/a path segment is "index"/);
+    ).toThrow(/has an "index" segment/);
   });
 
   test('rejects a path segment ending in ".flight"', () => {
@@ -118,7 +112,7 @@ describe("prerender", () => {
           prerender: true,
         }),
       ]);`),
-    ).toThrow(/a path segment ends in "\.flight"/);
+    ).toThrow(/has a segment ending in "\.flight"/);
   });
 
   test("rejects the notFound() route", () => {
@@ -126,7 +120,7 @@ describe("prerender", () => {
       manifest(`export default routes([
         notFound(() => import("./not-found.tsx"), { prerender: true }),
       ]);`),
-    ).toThrow(/notFound\(\) has prerender: true/);
+    ).toThrow(/notFound\(\) cannot be prerendered/);
   });
 
   test("renders under branches() with no middleware", () => {
@@ -167,7 +161,7 @@ describe("launch", () => {
         index(() => import("./landing.tsx"), { prerender: true }),
         route("feed", () => import("./feed.tsx")),
       ]);`),
-    ).toThrow(/\/ is prerendered but routes\(\) declares no launch/);
+    ).toThrow(/\/ is prerendered and cannot be the native launch route/);
   });
 
   test("rejects a path that is itself prerendered", () => {
@@ -176,7 +170,9 @@ describe("launch", () => {
         index(() => import("./feed.tsx")),
         route("about", () => import("./about.tsx"), { prerender: true }),
       ]);`),
-    ).toThrow(/routes\(\{ launch: "\/about" \}\) names a prerendered route/);
+    ).toThrow(
+      /routes\(\{ launch: "\/about" \}\) points to a prerendered route/,
+    );
   });
 
   test('rejects launch: "/" when / is prerendered', () => {
@@ -184,7 +180,7 @@ describe("launch", () => {
       manifest(`export default routes({ launch: "/" }, [
         index(() => import("./landing.tsx"), { prerender: true }),
       ]);`),
-    ).toThrow(/routes\(\{ launch: "\/" \}\) names a prerendered route/);
+    ).toThrow(/routes\(\{ launch: "\/" \}\) points to a prerendered route/);
   });
 
   test("accepts a launch that points away from a prerendered index", () => {
@@ -209,6 +205,6 @@ describe("launch", () => {
       manifest(`export default routes({ launch: "/p/:id" }, [
         route("p/:id", () => import("./post.tsx")),
       ]);`),
-    ).toThrow(/routes\(\{ launch: "\/p\/:id" \}\) takes a param/);
+    ).toThrow(/routes\(\{ launch: "\/p\/:id" \}\) contains a route parameter/);
   });
 });

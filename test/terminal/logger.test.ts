@@ -60,7 +60,9 @@ describe("shown", () => {
     const { stream, logger } = setup();
     logger.info("vite.config.ts changed, restarting server...");
     logger.info("server restarted.");
-    expect(stream.lines()).toEqual(["  ↻ Restarted — vite.config.ts changed"]);
+    expect(stream.lines()).toEqual([
+      "  ↻ Restarted after vite.config.ts changed",
+    ]);
   });
 });
 
@@ -74,7 +76,7 @@ describe("build", () => {
     expect(logger.flush()).toBe(1);
     expect(stream.lines()).toEqual([
       "  ! app/a.ts: this is odd",
-      "    2 more from dependencies — --verbose to list them",
+      "    2 more from dependencies. Use --verbose to list them",
     ]);
   });
 

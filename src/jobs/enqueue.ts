@@ -71,8 +71,7 @@ function notAJob(value: unknown): Error {
       ? value.name
       : "the callee";
   return new Error(
-    `${name} is not a job: it must be an export of a module the ` +
-      "scan can see, called from an arrow literal",
+    `${name} is not a job. Export it from a module included in the job scan and call it from an inline arrow function`,
   );
 }
 

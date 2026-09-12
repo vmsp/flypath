@@ -198,8 +198,8 @@ function submitEvent(prevent: () => void): unknown {
     get currentTarget(): unknown {
       if (DEV) {
         console.error(
-          "event.currentTarget is not a DOM form on native — " +
-            "use the <form action={...}> prop instead of " +
+          "event.currentTarget is not a DOM form on native. " +
+            "Use the <form action={...}> prop instead of " +
             "new FormData(event.currentTarget)",
         );
       }
@@ -447,7 +447,7 @@ export function createPrimitive(tag: Tag): ComponentType<PrimitiveProps> {
 
     if (DEV && $scroll !== undefined && !scrolls) {
       throw new Error(
-        `<${tag}> cannot scroll on native — "overflow: auto" needs a ` +
+        `<${tag}> cannot scroll on native. "overflow: auto" requires a ` +
           "container element without a press handler",
       );
     }

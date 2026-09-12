@@ -89,9 +89,7 @@ export function skewResponse(
   if (!manifest || manifest.baseId === declared) return undefined;
 
   return new Response(
-    `This app was built against base bundle ${declared}, and the ` +
-      `server is serving ${manifest.baseId}; chunks built for one base cannot ` +
-      "be evaluated against the other",
+    `App and server base bundles differ (app ${declared}, server ${manifest.baseId}). Rebuild the app before loading chunks from this server`,
     {
       status: 409,
       headers: {

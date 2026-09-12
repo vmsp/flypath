@@ -7,16 +7,13 @@ export const navigate: Navigate = makeNavigate(
   (to, params, mode, permanent): void => {
     if (permanent) {
       throw new Error(
-        "navigate.permanent() ran in the browser; a permanent " +
-          "redirect is an HTTP answer, so it only works in a server " +
-          "component or a server action",
+        "navigate.permanent() cannot run in the browser. Call it from a server component or server action",
       );
     }
 
     if (to === "not-found") {
       throw new Error(
-        'navigate("not-found") ran in the browser; it answers a ' +
-          "request, so it only works in a server component or a server action",
+        'navigate("not-found") cannot run in the browser. Call it from a server component or server action',
       );
     }
 

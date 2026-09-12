@@ -43,9 +43,7 @@ export function context<T>(...fallback: readonly T[]): Context<T> {
     if (values.has(read)) return values.get(read) as T;
     if (fallback.length > 0) return fallback[0] as T;
     throw new Error(
-      "This context was read before anything set it; set it from a " +
-        "middleware on this route, or declare it with a fallback as " +
-        "context(value)",
+      "This context has no value. Set it in route middleware or provide a fallback with context(value)",
     );
   };
 
@@ -53,11 +51,7 @@ export function context<T>(...fallback: readonly T[]): Context<T> {
     set: (value: T): void => {
       const current = store();
       if (getRequest()?.phase !== "middleware") {
-        throw new Error(
-          "context.set() ran outside a middleware; a value set " +
-            "while rendering would reach some siblings and not others, so " +
-            "it is only allowed while middleware runs",
-        );
+        throw new Error("context.set() can only run in middleware");
       }
       current.values.set(read, value);
     },

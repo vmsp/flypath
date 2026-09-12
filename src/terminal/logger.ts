@@ -54,7 +54,9 @@ export function terminalLogger(
       }
       if (text === "server restarted.") {
         change(
-          reason === undefined ? "Restarted" : `Restarted — ${reason} changed`,
+          reason === undefined
+            ? "Restarted"
+            : `Restarted after ${reason} changed`,
         );
         reason = undefined;
       }
@@ -108,7 +110,7 @@ export function terminalLogger(
       for (const text of collected) warn(text);
       if (count > 0 && hidden > 0) {
         print(
-          `  ${String(hidden)} more from dependencies — --verbose to list them`,
+          `  ${String(hidden)} more from dependencies. Use --verbose to list them`,
         );
       }
       collected.length = 0;

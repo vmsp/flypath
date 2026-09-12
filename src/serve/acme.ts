@@ -251,7 +251,7 @@ class AcmeClient {
 
       throw new Error(
         `ACME ${url} failed with ${String(response.status)} ` +
-          `${problem.type ?? "unknown"}${problem.detail ? ` — ${problem.detail}` : ""}`,
+          `${problem.type ?? "unknown"}${problem.detail ? `: ${problem.detail}` : ""}`,
       );
     }
 
@@ -346,7 +346,7 @@ export async function createCsr(
   } catch (error) {
     throw new Error(
       "serve.tls.acme needs @peculiar/x509 to build the certificate " +
-        "request — install it with `pnpm add @peculiar/x509 reflect-metadata`",
+        "request. Install it with `pnpm add @peculiar/x509 reflect-metadata`",
       { cause: error },
     );
   }
@@ -413,10 +413,10 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
 
-  log(`ACME — registering the account with ${options.directory}`);
+  log(`ACME registering the account with ${options.directory}`);
   await client.account(options.email);
 
-  log(`ACME — ordering ${options.domains.join(", ")}`);
+  log(`ACME ordering ${options.domains.join(", ")}`);
   const { url, body } = await client.order(options.domains);
 
   const published: string[] = [];
@@ -431,14 +431,14 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
       if (!challenge) {
         throw new Error(
           `${authorization.identifier.value} offers no http-01 ` +
-            "challenge; only http-01 is supported",
+            "challenge. Only http-01 is supported",
         );
       }
 
       publish(challenge.token, keyAuthorization(challenge.token, client.jwk));
       published.push(challenge.token);
 
-      log(`ACME — answering http-01 for ${authorization.identifier.value}`);
+      log(`ACME answering http-01 for ${authorization.identifier.value}`);
       await client.post(challenge.url, {});
 
       let state = await client.read<Authorization>(at);
@@ -446,7 +446,7 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
         if (state.status === "valid") break;
         if (state.status === "invalid") {
           throw new Error(
-            `ACME could not validate ${state.identifier.value}; the ` +
+            `ACME could not validate ${state.identifier.value}. The ` +
               "domain must resolve to this host and port 80 must reach it",
           );
         }
@@ -460,7 +460,7 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
       }
     }
 
-    log("ACME — finalizing the order");
+    log("ACME finalizing the order");
     const { der, pem } = await createCsr(options.domains);
     await client.post(body.finalize, {
       csr: Buffer.from(der).toString("base64url"),
@@ -474,7 +474,7 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
     ) {
       if (order.status === "invalid") {
         throw new Error(
-          `The ACME order failed — ${order.error?.detail ?? "no detail"}`,
+          `The ACME order failed: ${order.error?.detail ?? "no detail"}`,
         );
       }
       await wait(POLL_INTERVAL);
@@ -484,7 +484,7 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
       throw new Error("The ACME order never produced a certificate");
     }
 
-    log("ACME — downloading the chain");
+    log("ACME downloading the chain");
     const chain = await client.text(order.certificate);
     const notAfter = notAfterOf(chain);
 
@@ -509,7 +509,7 @@ export async function obtain(options: ObtainOptions): Promise<AcmeResult> {
       )}\n`,
     );
 
-    log(`ACME — certificate stored in ${dir}, valid until ${notAfter}`);
+    log(`ACME certificate stored in ${dir}, valid until ${notAfter}`);
     return {
       key: pem,
       cert: chain,

@@ -222,16 +222,14 @@ export function checkAttachments(
   for (const cid of cids) {
     if (declared.has(cid)) continue;
     throw new Error(
-      `<img src="cid:${cid}"> has no attachment to point at; pass ` +
-        `sendMail({ attachments: [{ cid: "${cid}", filename: …, content: … }] })`,
+      `<img src="cid:${cid}"> has no matching attachment. Pass sendMail({ attachments: [{ cid: "${cid}", filename: …, content: … }] })`,
     );
   }
   if (!DEV) return;
   for (const cid of declared) {
     if (cids.has(cid)) continue;
     console.warn(
-      `The attachment with cid "${cid}" is inlined into the message ` +
-        `but nothing references it; write <img src="cid:${cid}"> or drop the cid`,
+      `Inline attachment "${cid}" is unused. Add <img src="cid:${cid}"> or remove the cid`,
     );
   }
 }

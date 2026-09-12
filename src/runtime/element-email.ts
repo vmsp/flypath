@@ -24,10 +24,7 @@ export function assertNoClientReference(type: unknown): void {
   throw new Error(
     `The "use client" component ${
       typeof name === "string" && name !== "" ? `<${name}> ` : ""
-    }cannot be rendered into an email. A client component is rendered by the ` +
-      "browser environment, whose styles resolve against a stylesheet no " +
-      "inbox loads, and an inbox runs no javascript. Emails are static: " +
-      "render the server component directly",
+    }cannot render in email. Use a server component`,
   );
 }
 
@@ -40,9 +37,7 @@ function absolute(
   if (isExternal(value)) return value;
   if (baseUrl === undefined) {
     throw new Error(
-      `<${tag} ${attribute}="${value}"> is relative, and an inbox ` +
-        "has no page for it to be relative to. Declare mail.baseUrl in " +
-        `vite.config.ts, set ${ENV.url} in .env, or pass baseUrl to sendMail()`,
+      `<${tag} ${attribute}="${value}"> needs an absolute URL. Set mail.baseUrl in vite.config.ts, set ${ENV.url} in .env, or pass baseUrl to sendMail()`,
     );
   }
   return new URL(value, baseUrl).href;
@@ -85,8 +80,7 @@ function mirrorAttributes(
     console.warn(
       `<img src="${String(
         props["src"] ?? "",
-      )}"> in an email has no alt text. Many inboxes block images by ` +
-        "default, and the alt text is all the reader sees until they load them",
+      )}"> in an email has no alt text. Add alt text for email clients that block images`,
     );
   }
 }
@@ -102,11 +96,7 @@ export function createEmailIntrinsic(
 ): ReactElement {
   if (DOCUMENT.has(type)) {
     throw new Error(
-      `<${type}> cannot be written inside an email; the renderer ` +
-        "owns the document, exactly as it does for a page. Everything that " +
-        "belongs in <head> — a <title>, a <meta>, a <style> — is hoisted " +
-        "there from anywhere in the tree. To own the whole document, send a " +
-        "string instead with sendMail({ html })",
+      `<${type}> cannot render inside an email. The renderer creates the document and moves <title>, <meta> and <style> into <head>. Use sendMail({ html }) to supply the whole document`,
     );
   }
   if (isMetadata(type)) return create(type, props, key);

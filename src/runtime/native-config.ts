@@ -14,8 +14,7 @@ export function nativeConfig(): NativeConfig {
   const config = globalThis.__FLYPATH__;
   if (!config) {
     throw new Error(
-      "The native prelude did not run, so there is no server to " +
-        'talk to — run "pnpm ios" or "pnpm android"',
+      'The native prelude did not configure a server. Run "pnpm ios" or "pnpm android"',
     );
   }
   return config;

@@ -148,9 +148,7 @@ function options(node: Node | undefined, context: Context): RouteOptions {
     } catch (error) {
       if (!(error instanceof StaticError)) throw error;
       throw new StaticError(
-        `Route option "${key}" is read at build time and shipped to ` +
-          'the client, so it must be a literal; only "middleware" may hold ' +
-          "functions and other runtime values",
+        `Route option "${key}" must be a literal. Only "middleware" accepts functions or other runtime values`,
         property,
       );
     }
@@ -203,8 +201,7 @@ function launchOption(
     const launch = evaluate(property["value"] as Node, context.scope);
     if (typeof launch !== "string") {
       throw new StaticError(
-        "routes() launch is read at build time and shipped to the " +
-          "client, so it must be a string literal",
+        "routes() launch must be a string literal",
         property,
       );
     }
@@ -356,52 +353,36 @@ function checkRoute(route: FlatRoute): void {
 
   if (at.split("/").some((part) => part.startsWith(":"))) {
     throw new Error(
-      `${at} has prerender: true but its pattern takes a param; a ` +
-        "prerendered route is rendered once at build time and there is " +
-        "nowhere yet to declare the values to render it for — drop prerender",
+      `${at} has prerender: true but takes a route parameter. Prerendering parameters is not supported. Remove prerender`,
     );
   }
 
   const guard = route.middleware[0];
   if (guard) {
     throw new Error(
-      `${at} has prerender: true but the middleware ${guard.name}() ` +
-        `runs over it (declared on ${origins.get(guard) ?? "an ancestor"}); a ` +
-        "middleware exists to make a response depend on the request, and a " +
-        "prerendered response is a file — move the route out from under it, " +
-        "or drop prerender",
+      `${at} has prerender: true but runs middleware ${guard.name}() from ${origins.get(guard) ?? "an ancestor"}. Move the route outside that middleware or remove prerender`,
     );
   }
 
   if (route.options.presentation === "modal") {
     throw new Error(
-      `${at} has prerender: true and presentation: "modal"; a modal ` +
-        "is fetched as a container-scoped payload and a prerendered route is " +
-        "one file, so it cannot be both — drop one of the two",
+      `${at} has prerender: true and presentation: "modal". Modal routes cannot be prerendered. Remove one of these options`,
     );
   }
 
   for (const part of at.split("/")) {
     if (part === "index") {
       throw new Error(
-        `${at} has prerender: true but a path segment is "index"; ` +
-          "the page is written to <path>/index.html, so the segment would " +
-          "collide with the file — rename it",
+        `${at} has an "index" segment that conflicts with prerendered index.html files. Rename the segment`,
       );
     }
     if (part.endsWith(FLIGHT_SUFFIX)) {
       throw new Error(
-        `${at} has prerender: true but a path segment ends in ` +
-          `"${FLIGHT_SUFFIX}"; that is the URL a route's payload is fetched ` +
-          "from, so the segment would collide with it — rename it",
+        `${at} has a segment ending in "${FLIGHT_SUFFIX}" that conflicts with prerendered payload files. Rename the segment`,
       );
     }
   }
 }
-
-const BUILT_FOR_THE_BROWSER =
-  "a prerendered page is built for the browser and rendered once for " +
-  "everyone, which is not what an app opens on";
 
 function checkLaunch(tree: RouteTree, routes: readonly FlatRoute[]): void {
   const { launch } = tree;
@@ -409,34 +390,26 @@ function checkLaunch(tree: RouteTree, routes: readonly FlatRoute[]): void {
   if (launch === undefined) {
     if (matchRoutes(routes, "/")?.route.options.prerender !== true) return;
     throw new Error(
-      "/ is prerendered but routes() declares no launch, so the app " +
-        `would open on it; ${BUILT_FOR_THE_BROWSER} — set launch to the ` +
-        "route the app opens on",
+      "/ is prerendered and cannot be the native launch route. Set launch in routes() to a route without prerender",
     );
   }
 
   if (launch.split("/").some((part) => part.startsWith(":"))) {
     throw new Error(
-      `routes({ launch: "${launch}" }) takes a param; the app opens ` +
-        "on it with no request to fill one from, so it must be a complete " +
-        "path — write the value into it",
+      `routes({ launch: "${launch}" }) contains a route parameter. Replace it with a value to form a complete path`,
     );
   }
 
   const matched = matchRoutes(routes, launch);
   if (!matched) {
     throw new Error(
-      `routes({ launch: "${launch}" }) matches no route; launch is ` +
-        "the path the native app opens on, so it must be one this tree " +
-        "declares",
+      `routes({ launch: "${launch}" }) matches no route. Set launch to a path declared in this route tree`,
     );
   }
 
   if (matched.route.options.prerender === true) {
     throw new Error(
-      `routes({ launch: "${launch}" }) names a prerendered route; ` +
-        `${BUILT_FOR_THE_BROWSER} — point launch at a route the app renders ` +
-        "on demand, or drop prerender from it",
+      `routes({ launch: "${launch}" }) points to a prerendered route. Choose a route without prerender or remove prerender from this route`,
     );
   }
 }
@@ -446,9 +419,7 @@ function check(tree: RouteTree, flat: Flattened): void {
 
   if (flat.fallback?.options.prerender === true) {
     throw new Error(
-      "notFound() has prerender: true; the fallback has no path of " +
-        "its own, so there is no file to write it to and no URL for the " +
-        "client to ask for — drop prerender",
+      "notFound() cannot be prerendered because it has no fixed path. Remove prerender",
     );
   }
 

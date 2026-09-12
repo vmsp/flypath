@@ -27,7 +27,7 @@ describe("prerenderFiles", () => {
 
   test("rejects two routes claiming one file", () => {
     expect(() => prerenderFiles(["/about", "/about"])).toThrow(
-      /\/about and \/about are both prerendered to about\/index\.html/,
+      /\/about and \/about both prerender to about\/index\.html/,
     );
   });
 });

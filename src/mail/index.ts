@@ -29,9 +29,7 @@ export async function mail(message: MailMessage): Promise<MailResult> {
 
   if ((message.content === undefined) === (message.html === undefined)) {
     throw new Error(
-      "sendMail() takes either content, a react element rendered " +
-        "with the components the app already has, or html, a string you " +
-        "built yourself — exactly one of them",
+      "sendMail() requires exactly one of content (a React element) or html (a string)",
     );
   }
 
@@ -55,7 +53,7 @@ export async function mail(message: MailMessage): Promise<MailResult> {
 
   if (subject === undefined) {
     throw new Error(
-      "This email has no subject; render <Subject>…</Subject> " +
+      "This email has no subject. Render <Subject>…</Subject> " +
         "anywhere in the message, or pass subject to sendMail()",
     );
   }

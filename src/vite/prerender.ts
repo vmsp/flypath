@@ -35,8 +35,7 @@ export function prerenderFiles(paths: readonly string[]): OutputFiles[] {
       const owner = claimed.get(file);
       if (owner !== undefined) {
         throw new Error(
-          `${at} and ${owner} are both prerendered to ${file}; two ` +
-            "routes cannot share one file — rename one of the patterns",
+          `${at} and ${owner} both prerender to ${file}. Rename one of the route patterns`,
         );
       }
       claimed.set(file, at);
@@ -52,9 +51,7 @@ function write(dir: string, file: string, body: string | Uint8Array): void {
   const target = path.join(dir, file);
   if (fs.existsSync(target)) {
     throw new Error(
-      `Prerendering would overwrite ${file}, which the client ` +
-        "build already wrote; a prerendered route may not take the name of " +
-        "an asset — rename the route",
+      `Prerendering would overwrite client asset ${file}. Rename the route`,
     );
   }
   fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -96,8 +93,7 @@ export function prerender(): Plugin {
         };
         if (!module.prerender) {
           throw new Error(
-            `${entry} does not export prerender(); the server build ` +
-              "is stale — build it again",
+            `${entry} does not export prerender(). Rebuild the server`,
           );
         }
 

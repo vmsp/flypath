@@ -25,8 +25,7 @@ export function runMiddleware(
     const next: Next = () => {
       if (pending) {
         throw new Error(
-          "A middleware called next() twice; a request has one " +
-            "downstream, so it may be called at most once",
+          "Middleware called next() more than once. Call it once per request",
         );
       }
       const running = step(index + 1);

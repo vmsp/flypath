@@ -152,8 +152,7 @@ function resolveMap(
 
 function warnIgnored(tag: string, property: string): void {
   console.warn(
-    `<${tag}> style "${property}" is not honoured by any email ` +
-      "client; it is sent anyway, but the message should not depend on it",
+    `<${tag}> style "${property}" is unsupported in email clients. It will be included, but provide a fallback`,
   );
 }
 
