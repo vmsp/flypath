@@ -13,6 +13,7 @@ import {
   exportNames,
   ManifestError,
 } from "../native/manifest.ts";
+import { enabledNativePlatforms } from "../native/platforms.ts";
 import { scaffoldNative } from "../native/scaffold.ts";
 import { projectContext } from "../native/template.ts";
 
@@ -143,6 +144,7 @@ export function nativeModules(distDir: string): Plugin[] {
   };
 
   const generate = (): void => {
+    if (enabledNativePlatforms(root).length === 0) return;
     try {
       scaffoldNative(projectContext(root, 8081));
     } catch {}

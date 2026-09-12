@@ -1,5 +1,7 @@
 Use PNPM instead of NPM.
 
+Run `pnpm lint` and `pnpm fmt` when you're done introducing changes.
+
 Never write READMEs, docstrings, or comments. I will write those myself later.
 And yes, I really mean this.
 

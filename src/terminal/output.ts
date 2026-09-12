@@ -1,6 +1,6 @@
-import fs from "node:fs";
-import path from "node:path";
 import { clearInterval, setInterval } from "node:timers";
+
+import packageJson from "flypath/package.json" with { type: "json" };
 
 import { verbose as verboseFlag } from "../shared/env.ts";
 import { FlypathError } from "../shared/errors.ts";
@@ -46,7 +46,6 @@ let midline = false;
 let tick = 0;
 let timer: NodeJS.Timeout | undefined;
 let headed = false;
-let known: string | undefined;
 
 export function setStream(stream: Stream): void {
   out = stream;
@@ -291,19 +290,6 @@ export async function step<T>(
   return result;
 }
 
-export function flypathVersion(): string {
-  if (known !== undefined) return known;
-  try {
-    const parsed = JSON.parse(
-      fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"),
-    ) as { version?: string };
-    known = parsed.version ?? "";
-  } catch {
-    known = "";
-  }
-  return known;
-}
-
 function closing(): void {
   clear();
   raw("\n");
@@ -322,7 +308,7 @@ export function intro(title?: string): void {
 export function header(command: string, entries: readonly Row[] = []): void {
   const p = paint(out);
   intro(
-    `${p.bold(p.accent("flypath"))} ${p.dim(flypathVersion())}  ${command}`,
+    `${p.bold(p.accent("flypath"))} ${p.dim(packageJson.version)}  ${command}`,
   );
   if (entries.length > 0) {
     rows(entries);

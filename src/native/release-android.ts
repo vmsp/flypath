@@ -5,11 +5,11 @@ import { androidSigning, ENV } from "../shared/env.ts";
 import { FlypathError } from "../shared/errors.ts";
 import { note, step, success } from "../terminal/output.ts";
 import { size } from "../terminal/style.ts";
-import type { AndroidOptions } from "./android.ts";
 import { generating, gradle, prepareAndroid } from "./android.ts";
 import { BUNDLE_NAMES } from "./bundle.ts";
 import { loadOptions } from "./config.ts";
 import { showWarnings } from "./diagnostics.ts";
+import { startLog } from "./exec.ts";
 import { nativeDir } from "./scaffold.ts";
 import { projectContext } from "./template.ts";
 
@@ -57,9 +57,10 @@ function requireBundle(root: string): string {
 }
 
 export async function releaseAndroid(
-  options: AndroidOptions = {},
+  options: { root?: string; apk?: boolean } = {},
 ): Promise<void> {
   const root = options.root ?? process.cwd();
+  startLog(root, "android");
   const configured = await loadOptions(root);
   const bundle = requireBundle(root);
 

@@ -7,8 +7,7 @@ import { size } from "../terminal/style.ts";
 import { BUNDLE_NAMES } from "./bundle.ts";
 import { loadOptions } from "./config.ts";
 import { showWarnings } from "./diagnostics.ts";
-import { run } from "./exec.ts";
-import type { IosOptions } from "./ios.ts";
+import { startLog } from "./exec.ts";
 import { generating, prepareIos, xcodebuild } from "./ios.ts";
 import { nativeDir } from "./scaffold.ts";
 import { projectContext } from "./template.ts";
@@ -64,8 +63,12 @@ function requireBundle(root: string): string {
   return bundle;
 }
 
-export async function releaseIos(options: IosOptions = {}): Promise<void> {
+export async function releaseIos(options: {
+  root?: string;
+  mode: "archive" | "export" | "upload";
+}): Promise<void> {
   const root = options.root ?? process.cwd();
+  startLog(root, "ios");
   const configured = await loadOptions(root);
   const bundle = requireBundle(root);
 
@@ -128,11 +131,7 @@ export async function releaseIos(options: IosOptions = {}): Promise<void> {
   );
   showWarnings(root, build);
 
-  if (options.xcode === true) {
-    await run("open", [path.join(prepared.target, "App.xcodeproj")]);
-  }
-
-  if (options.archiveOnly === true) {
+  if (options.mode === "archive") {
     note(
       `Export it with xcodebuild -exportArchive -archivePath ${shown} ` +
         "-exportOptionsPlist <options>.plist -exportPath dist, or open it in " +
@@ -147,11 +146,11 @@ export async function releaseIos(options: IosOptions = {}): Promise<void> {
     exportOptions({
       distribution: configured.ios?.distribution ?? "app-store",
       teamId,
-      upload: options.upload === true,
+      upload: options.mode === "upload",
     }),
   );
 
-  const upload = options.upload === true;
+  const upload = options.mode === "upload";
   await step(
     {
       active: upload ? "Uploading to App Store Connect" : "Exporting",

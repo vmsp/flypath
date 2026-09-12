@@ -38,10 +38,6 @@ export type IosOptions = {
   port?: number;
   root?: string;
   host?: string;
-  release?: boolean;
-  archiveOnly?: boolean;
-  upload?: boolean;
-  xcode?: boolean;
   console?: boolean;
 };
 
@@ -251,16 +247,11 @@ export async function runIos(options: IosOptions = {}): Promise<void> {
   const port = options.port ?? configured.port;
   startLog(root, "ios");
 
-  if (options.release === true) {
-    const { releaseIos } = await import("./release-ios.ts");
-    await releaseIos({ ...options, root });
-    return;
-  }
-
   const { iosTargets, pick, resolveHost } = await import("./device.ts");
   const chosen = pick(await iosTargets(true), options.device, undefined);
   const onDevice = chosen.kind === "device";
-  const host = onDevice ? resolveHost(options.host) : "localhost";
+  const host =
+    options.host ?? (onDevice ? resolveHost(undefined) : "localhost");
   const context = projectContext(root, port, configured, host);
 
   const prepared = await step(generating(), () => prepareIos(root, context));

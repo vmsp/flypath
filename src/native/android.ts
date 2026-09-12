@@ -24,9 +24,6 @@ export type AndroidOptions = {
   root?: string;
   device?: string;
   host?: string;
-  release?: boolean;
-  apk?: boolean;
-  studio?: boolean;
 };
 
 // TODO: Add support for finding ANDROID_HOME and JAVA_HOME on Linux and
@@ -276,16 +273,11 @@ export async function runAndroid(options: AndroidOptions = {}): Promise<void> {
   const port = options.port ?? configured.port;
   startLog(root, "android");
 
-  if (options.release === true) {
-    const { releaseAndroid } = await import("./release-android.ts");
-    await releaseAndroid({ ...options, root });
-    return;
-  }
-
   const { androidTargets, pick, resolveHost } = await import("./device.ts");
   const chosen = pick(await androidTargets(), options.device, undefined);
   const onDevice = chosen.kind === "device";
-  const host = onDevice ? resolveHost(options.host) : "localhost";
+  const host =
+    options.host ?? (onDevice ? resolveHost(undefined) : "localhost");
   const context = projectContext(root, port, configured, host);
 
   const prepared = await step(generating(), () =>

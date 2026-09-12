@@ -8,6 +8,7 @@ import { generateKotlin } from "./generate-kotlin.ts";
 import { generateSwift } from "./generate-swift.ts";
 import type { NativeManifest } from "./manifest.ts";
 import { buildManifest } from "./manifest.ts";
+import { enabledNativePlatforms } from "./platforms.ts";
 import type { ProjectContext } from "./template.ts";
 import { scaffoldTemplate } from "./template.ts";
 
@@ -83,7 +84,8 @@ export type ScaffoldOptions = {
 
 export function scaffoldNative(options: ScaffoldOptions): NativeManifest {
   const manifest = buildManifest(options.root);
-  if (manifest.modules.length === 0) return manifest;
+  const enabled = enabledNativePlatforms(options.root);
+  if (manifest.modules.length === 0 || enabled.length === 0) return manifest;
 
   const cxx = manifest.modules.filter((module) => module.cpp !== undefined);
   const platform = manifest.modules.filter(
@@ -111,35 +113,39 @@ export function scaffoldNative(options: ScaffoldOptions): NativeManifest {
 
   if (platform.length === 0) return manifest;
 
-  const target = appleTargetName(options.projectName);
-  const apple = nativeDir(options.root, "apple");
-  const sources = path.join(apple, "Sources");
+  if (enabled.includes("ios")) {
+    const target = appleTargetName(options.projectName);
+    const apple = nativeDir(options.root, "apple");
+    const sources = path.join(apple, "Sources");
 
-  writeOnce(
-    path.join(apple, "Package.swift"),
-    applePackage(options.root, target),
-  );
-  resetGenerated(path.join(sources, GENERATED));
-  for (const module of platform) {
-    write(
-      path.join(sources, GENERATED, `${module.slug}.swift`),
-      generateSwift(module),
+    writeOnce(
+      path.join(apple, "Package.swift"),
+      applePackage(options.root, target),
     );
+    resetGenerated(path.join(sources, GENERATED));
+    for (const module of platform) {
+      write(
+        path.join(sources, GENERATED, `${module.slug}.swift`),
+        generateSwift(module),
+      );
+    }
   }
 
-  const kotlin = path.join(
-    nativeDir(options.root, "android"),
-    "src",
-    "main",
-    "kotlin",
-  );
+  if (enabled.includes("android")) {
+    const kotlin = path.join(
+      nativeDir(options.root, "android"),
+      "src",
+      "main",
+      "kotlin",
+    );
 
-  fs.mkdirSync(kotlin, { recursive: true });
-  resetGenerated(path.join(kotlin, GENERATED));
-  write(
-    path.join(kotlin, GENERATED, "FlypathGenerated.kt"),
-    generateKotlin(manifest),
-  );
+    fs.mkdirSync(kotlin, { recursive: true });
+    resetGenerated(path.join(kotlin, GENERATED));
+    write(
+      path.join(kotlin, GENERATED, "FlypathGenerated.kt"),
+      generateKotlin(manifest),
+    );
+  }
 
   return manifest;
 }

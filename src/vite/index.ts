@@ -4,10 +4,10 @@ import type { ConfigEnv, Plugin, PluginOption, UserConfig } from "vite";
 
 import type { FlypathOptions } from "../native/config.ts";
 import { CONFIG_PLUGIN, DEFAULT_PORT } from "../native/config.ts";
+import { enabledNativePlatforms } from "../native/platforms.ts";
 import { FlypathError } from "../shared/errors.ts";
 import { distDir } from "../shared/paths.ts";
 import {
-  NATIVE_PLATFORMS,
   nativeEnvironmentName,
   nativeEnvironmentOptions,
 } from "./native-env.ts";
@@ -60,7 +60,9 @@ function flypathConfig(options: FlypathOptions): Plugin {
         environments:
           env.command === "serve"
             ? Object.fromEntries(
-                NATIVE_PLATFORMS.map((platform) => [
+                enabledNativePlatforms(
+                  path.resolve(userConfig.root ?? process.cwd()),
+                ).map((platform) => [
                   nativeEnvironmentName(platform),
                   nativeEnvironmentOptions(platform, env.mode !== "production"),
                 ]),
